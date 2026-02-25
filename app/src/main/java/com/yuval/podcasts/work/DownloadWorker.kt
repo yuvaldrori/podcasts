@@ -38,7 +38,7 @@ class DownloadWorker @AssistedInject constructor(
                 return@withContext Result.failure()
             }
 
-            val body = response.body() ?: run {
+            val body = response.body ?: run {
                 updateDownloadStatus(episodeId, 0, null)
                 return@withContext Result.failure()
             }

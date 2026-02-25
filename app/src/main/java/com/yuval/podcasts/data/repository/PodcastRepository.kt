@@ -29,7 +29,7 @@ class PodcastRepository @Inject constructor(
     private val queueDao: QueueDao
 ) {
     val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts()
-    val listeningQueue: Flow<List<QueueState>> = queueDao.getQueue()
+    val listeningQueue: Flow<List<Episode>> = queueDao.getQueueEpisodes()
 
     fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl)
 
