@@ -16,12 +16,12 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 ## Phase 1: Project Setup & Architecture
 - [x] Initialize a new Android project with Jetpack Compose.
 - [x] Set up navigation dependencies and a `BottomNavigation` layout (Tabs: Feeds, Queue, Settings).
-- [ ] Configure Dependency Injection (e.g., Hilt) to manage database and player instances.
+- [x] Configure Dependency Injection (e.g., Hilt) to manage database and player instances.
 
 ## Phase 2: Data & Networking Layer
-- [ ] **Room Database setup:** Create tables for `Podcast` (subscription), `Episode` (metadata, download status), and `QueueState` (ordering).
-- [ ] **RSS Fetching:** Set up network calls to fetch and parse podcast XML feeds.
-- [ ] **Manual Refresh logic:** Build the repository logic to manually fetch and merge new episodes without overwriting the queue state.
+- [x] **Room Database setup:** Create tables for `Podcast` (subscription), `Episode` (metadata, download status), and `QueueState` (ordering).
+- [x] **RSS Fetching:** Set up network calls to fetch and parse podcast XML feeds.
+- [x] **Manual Refresh logic:** Build the repository logic to manually fetch and merge new episodes without overwriting the queue state.
 
 ## Phase 3: Background Audio & Downloading
 - [ ] **Audio Downloading:** Implement a `WorkManager` task that downloads the audio file to internal app storage when an episode is added to the queue.
