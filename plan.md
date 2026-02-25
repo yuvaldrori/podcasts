@@ -11,6 +11,12 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 *   **Background Tasks:** WorkManager (For downloading audio)
 *   **Networking:** Retrofit + XML Parser (For fetching and parsing RSS feeds)
 
+## Development Preferences
+*   **Environment Variables:** Always use `.envrc` when environment variables (like `ANDROID_HOME` or `JAVA_HOME`) are needed.
+*   **Package Installation:** If system-level packages (via `apt`) are required, ask the user to install them instead of attempting to do so or using alternatives.
+*   **Local Tooling:** If a tool is needed and no suitable Ubuntu package exists, install it within the user's home directory.
+*   **Version Control:** Use `git` to commit changes after successful implementation and verification of a task or sub-task.
+
 ---
 
 ## Phase 1: Project Setup & Architecture
