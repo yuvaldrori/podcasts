@@ -47,6 +47,6 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Manual DB Backup/Restore:** Use the system file picker (`ACTION_CREATE_DOCUMENT` and `ACTION_OPEN_DOCUMENT`) to let the user export a backup of their app state (subscriptions and queue) and restore it later.
 
 ## Phase 6: Polish & Testing
-- [ ] Handle permissions (`POST_NOTIFICATIONS` for Android 13+, Foreground Service types for playback and downloading).
-- [ ] Test background download resilience and media playback controls on the lock screen.
-- [ ] Handle error states (e.g., no internet when refreshing, invalid RSS links).
+- [x] Handle permissions (`POST_NOTIFICATIONS` for Android 13+, Foreground Service types for playback and downloading).
+- [x] Test background download resilience and media playback controls on the lock screen.
+- [x] Handle error states (e.g., no internet when refreshing, invalid RSS links).

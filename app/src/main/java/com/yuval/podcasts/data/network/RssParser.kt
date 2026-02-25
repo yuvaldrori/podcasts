@@ -1,9 +1,9 @@
 package com.yuval.podcasts.data.network
 
-import android.util.Xml
+import org.xmlpull.v1.XmlPullParser
+import org.xmlpull.v1.XmlPullParserFactory
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
-import org.xmlpull.v1.XmlPullParser
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -12,8 +12,9 @@ class RssParser {
     private val dateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US)
 
     fun parse(inputStream: InputStream, feedUrl: String): Pair<Podcast, List<Episode>> {
-        val parser = Xml.newPullParser()
-        parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
+        val factory = XmlPullParserFactory.newInstance()
+        factory.isNamespaceAware = false
+        val parser = factory.newPullParser()
         parser.setInput(inputStream, null)
         parser.nextTag()
         return readRss(parser, feedUrl)
