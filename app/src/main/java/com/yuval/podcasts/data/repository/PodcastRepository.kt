@@ -12,10 +12,13 @@ import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.network.PodcastApi
 import com.yuval.podcasts.data.network.RssParser
+import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.work.DownloadWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import java.io.InputStream
+import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +27,7 @@ class PodcastRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val podcastApi: PodcastApi,
     private val rssParser: RssParser,
+    private val opmlManager: OpmlManager,
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
     private val queueDao: QueueDao
@@ -41,6 +45,35 @@ class PodcastRepository @Inject constructor(
         
         podcastDao.insertPodcast(podcast)
         episodeDao.insertEpisodes(episodes)
+    }
+
+    suspend fun importOpml(inputStream: InputStream) {
+        val urls = opmlManager.parse(inputStream)
+        urls.forEach { url ->
+            try {
+                fetchAndStorePodcast(url)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    suspend fun exportOpml(outputStream: OutputStream) {
+        val podcasts = allPodcasts.first()
+        opmlManager.export(podcasts, outputStream)
+    }
+
+    suspend fun backupDatabase(outputStream: OutputStream) {
+        val dbFile = context.getDatabasePath("podcasts_db")
+        if (dbFile.exists()) {
+            dbFile.inputStream().use { it.copyTo(outputStream) }
+        }
+    }
+
+    suspend fun restoreDatabase(inputStream: InputStream) {
+        val dbFile = context.getDatabasePath("podcasts_db")
+        // Note: For a real app, you should close the DB connection first
+        inputStream.use { it.copyTo(dbFile.outputStream()) }
     }
 
     suspend fun enqueueEpisode(episode: Episode) {

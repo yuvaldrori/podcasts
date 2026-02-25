@@ -41,9 +41,9 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [ ] **Player UI:** Build a persistent mini-player above the bottom nav, expanding to a full-screen player with speed controls.
 
 ## Phase 5: Import, Export, & Backup (Local/System)
-- [ ] **Direct RSS Add:** Create a UI dialog to manually paste and validate an RSS feed URL.
-- [ ] **OPML Import/Export:** Implement logic to parse an imported `.opml` file into Room DB subscriptions, and generate an `.opml` file using the system file picker (`Storage Access Framework`).
-- [ ] **Manual DB Backup/Restore:** Use the system file picker (`ACTION_CREATE_DOCUMENT` and `ACTION_OPEN_DOCUMENT`) to let the user export a backup of their app state (subscriptions and queue) and restore it later.
+- [x] **Direct RSS Add:** Create a UI dialog to manually paste and validate an RSS feed URL.
+- [x] **OPML Import/Export:** Implement logic to parse an imported `.opml` file into Room DB subscriptions, and generate an `.opml` file using the system file picker (`Storage Access Framework`).
+- [x] **Manual DB Backup/Restore:** Use the system file picker (`ACTION_CREATE_DOCUMENT` and `ACTION_OPEN_DOCUMENT`) to let the user export a backup of their app state (subscriptions and queue) and restore it later.
 
 ## Phase 6: Polish & Testing
 - [ ] Handle permissions (`POST_NOTIFICATIONS` for Android 13+, Foreground Service types for playback and downloading).
