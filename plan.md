@@ -12,6 +12,7 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 *   **Networking:** Retrofit + XML Parser (For fetching and parsing RSS feeds)
 
 ## Development Preferences
+*   **Android Version:** Support Android 16 (API 36) and up. Drop support for previous versions to simplify system integration.
 *   **Environment Variables:** Always use `.envrc` when environment variables (like `ANDROID_HOME` or `JAVA_HOME`) are needed.
 *   **Package Installation:** If system-level packages (via `apt`) are required, ask the user to install them instead of attempting to do so or using alternatives.
 *   **Local Tooling:** If a tool is needed and no suitable Ubuntu package exists, install it within the user's home directory.
