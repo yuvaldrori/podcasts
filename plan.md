@@ -30,10 +30,10 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Manual Refresh logic:** Build the repository logic to manually fetch and merge new episodes without overwriting the queue state.
 
 ## Phase 3: Background Audio & Downloading
-- [ ] **Audio Downloading:** Implement a `WorkManager` task that downloads the audio file to internal app storage when an episode is added to the queue.
-- [ ] **Media3 (ExoPlayer) setup:** Implement a `MediaSessionService` for robust background audio playback.
-- [ ] **Playback Controls:** Add logic to handle 1x and 2x speed, play/pause, and seeking.
-- [ ] **Auto-Cleanup:** Add an event listener that deletes the local audio file and removes the database record from the queue once playback completes.
+- [x] **Audio Downloading:** Implement a `WorkManager` task that downloads the audio file to internal app storage when an episode is added to the queue.
+- [x] **Media3 (ExoPlayer) setup:** Implement a `MediaSessionService` for robust background audio playback.
+- [x] **Playback Controls:** Add logic to handle 1x and 2x speed, play/pause, and seeking.
+- [x] **Auto-Cleanup:** Add an event listener that deletes the local audio file and removes the database record from the queue once playback completes.
 
 ## Phase 4: UI Implementation (Jetpack Compose)
 - [ ] **Feeds Screen:** Create a list view of recently refreshed podcasts and their episodes.

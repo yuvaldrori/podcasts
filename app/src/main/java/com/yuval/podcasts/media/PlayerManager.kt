@@ -1,0 +1,118 @@
+package com.yuval.podcasts.media
+
+import android.content.ComponentName
+import android.content.Context
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class PlayerManager @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+    private var controllerFuture: ListenableFuture<MediaController>? = null
+    private var controller: MediaController? = null
+
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+
+    private val _currentPosition = MutableStateFlow(0L)
+    val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
+
+    private val _duration = MutableStateFlow(0L)
+    val duration: StateFlow<Long> = _duration.asStateFlow()
+
+    private val _playbackSpeed = MutableStateFlow(1f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+
+    fun initialize() {
+        if (controllerFuture != null) return
+
+        val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        val future = MediaController.Builder(context, sessionToken).buildAsync()
+        
+        future.addListener({
+            controller = future.get()
+            setupControllerListener()
+        }, MoreExecutors.directExecutor())
+        
+        controllerFuture = future
+    }
+
+    private fun setupControllerListener() {
+        val player = controller ?: return
+
+        player.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                _isPlaying.value = isPlaying
+            }
+
+            override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+                _playbackSpeed.value = playbackParameters.speed
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                _duration.value = player.duration.coerceAtLeast(0L)
+            }
+        })
+
+        // Initial states
+        _isPlaying.value = player.isPlaying
+        _playbackSpeed.value = player.playbackParameters.speed
+        _duration.value = player.duration.coerceAtLeast(0L)
+    }
+
+    fun play(mediaId: String, uri: String) {
+        controller?.let {
+            val mediaItem = MediaItem.Builder()
+                .setMediaId(mediaId)
+                .setUri(uri)
+                .build()
+            it.setMediaItem(mediaItem)
+            it.prepare()
+            it.play()
+        }
+    }
+
+    fun togglePlayPause() {
+        controller?.let {
+            if (it.isPlaying) {
+                it.pause()
+            } else {
+                it.play()
+            }
+        }
+    }
+
+    fun seekTo(positionMs: Long) {
+        controller?.seekTo(positionMs)
+        _currentPosition.value = positionMs
+    }
+
+    fun setPlaybackSpeed(speed: Float) {
+        controller?.setPlaybackParameters(PlaybackParameters(speed))
+    }
+
+    fun release() {
+        controllerFuture?.let { MediaController.releaseFuture(it) }
+        controllerFuture = null
+        controller = null
+    }
+
+    // Call this periodically from the UI to update the progress bar
+    fun updatePosition() {
+        controller?.let {
+            _currentPosition.value = it.currentPosition
+        }
+    }
+}
