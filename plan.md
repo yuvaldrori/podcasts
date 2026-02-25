@@ -15,7 +15,7 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 
 ## Phase 1: Project Setup & Architecture
 - [x] Initialize a new Android project with Jetpack Compose.
-- [ ] Set up navigation dependencies and a `BottomNavigation` layout (Tabs: Feeds, Queue, Settings).
+- [x] Set up navigation dependencies and a `BottomNavigation` layout (Tabs: Feeds, Queue, Settings).
 - [ ] Configure Dependency Injection (e.g., Hilt) to manage database and player instances.
 
 ## Phase 2: Data & Networking Layer
