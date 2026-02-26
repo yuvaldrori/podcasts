@@ -1,4 +1,7 @@
-.PHONY: build build-release test clean verify help
+.PHONY: build build-release test clean verify emulator install run help
+
+AVD_NAME=test_avd
+export ANDROID_AVD_HOME=/home/yuval/.config/.android/avd/
 
 # Default target
 all: verify
@@ -10,6 +13,9 @@ help:
 	@echo "  make test          - Run unit tests"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make verify        - Run clean, debug build, and test"
+	@echo "  make emulator      - Start the Android emulator in background"
+	@echo "  make install       - Install the debug APK on connected device"
+	@echo "  make run           - Install and launch the app"
 
 build:
 	./gradlew assembleDebug --no-daemon
@@ -24,3 +30,13 @@ clean:
 	./gradlew clean --no-daemon
 
 verify: clean build test
+
+emulator:
+	@echo "Starting emulator $(AVD_NAME)..."
+	@$(ANDROID_HOME)/emulator/emulator -avd $(AVD_NAME) -no-snapshot-load > /dev/null 2>&1 &
+
+install:
+	./gradlew installDebug --no-daemon
+
+run: install
+	adb shell am start -n com.yuval.podcasts/.MainActivity
