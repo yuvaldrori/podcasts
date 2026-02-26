@@ -65,15 +65,30 @@ class PodcastRepository @Inject constructor(
 
     suspend fun backupDatabase(outputStream: OutputStream) {
         val dbFile = context.getDatabasePath("podcasts_db")
-        if (dbFile.exists()) {
-            dbFile.inputStream().use { it.copyTo(outputStream) }
+        val walFile = context.getDatabasePath("podcasts_db-wal")
+        val shmFile = context.getDatabasePath("podcasts_db-shm")
+
+        java.util.zip.ZipOutputStream(outputStream).use { zipOut ->
+            listOf(dbFile, walFile, shmFile).forEach { file ->
+                if (file.exists()) {
+                    zipOut.putNextEntry(java.util.zip.ZipEntry(file.name))
+                    file.inputStream().use { it.copyTo(zipOut) }
+                    zipOut.closeEntry()
+                }
+            }
         }
     }
 
     suspend fun restoreDatabase(inputStream: InputStream) {
-        val dbFile = context.getDatabasePath("podcasts_db")
-        // Note: For a real app, you should close the DB connection first
-        inputStream.use { it.copyTo(dbFile.outputStream()) }
+        java.util.zip.ZipInputStream(inputStream).use { zipIn ->
+            var entry = zipIn.nextEntry
+            while (entry != null) {
+                val dbFile = context.getDatabasePath(entry.name)
+                dbFile.outputStream().use { zipIn.copyTo(it) }
+                zipIn.closeEntry()
+                entry = zipIn.nextEntry
+            }
+        }
     }
 
     suspend fun enqueueEpisode(episode: Episode) {
@@ -92,6 +107,10 @@ class PodcastRepository @Inject constructor(
             .setInputData(downloadData)
             .build()
 
-        WorkManager.getInstance(context).enqueue(downloadWorkRequest)
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "download_${episode.id}",
+            androidx.work.ExistingWorkPolicy.KEEP,
+            downloadWorkRequest
+        )
     }
 }

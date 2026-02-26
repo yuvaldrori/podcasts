@@ -18,6 +18,10 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 *   **Local Tooling:** If a tool is needed and no suitable Ubuntu package exists, install it within the user's home directory.
 *   **Version Control:** Use `git` to commit changes after successful implementation and verification of a task or sub-task.
 
+## Development Workflow
+*   **Command Line Interface:** Use the provided `Makefile` for all build, test, and verification tasks. 
+*   **Maintenance:** Always keep the `Makefile` up-to-date with any new build configurations, testing suites, or deployment steps added to the project.
+
 ---
 
 ## Phase 1: Project Setup & Architecture
