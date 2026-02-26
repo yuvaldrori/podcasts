@@ -38,7 +38,11 @@ class RssParser {
                         "description" -> podcastDescription = readText(parser)
                         "link" -> podcastWebsite = readText(parser)
                         "image" -> podcastImageUrl = readImage(parser)
-                        "itunes:image" -> podcastImageUrl = parser.getAttributeValue(null, "href") ?: podcastImageUrl
+                        "itunes:image" -> {
+                            val href = parser.getAttributeValue(null, "href")
+                            if (href != null) podcastImageUrl = href
+                            skip(parser)
+                        }
                         "item" -> episodes.add(readItem(parser, feedUrl))
                         else -> skip(parser)
                     }
