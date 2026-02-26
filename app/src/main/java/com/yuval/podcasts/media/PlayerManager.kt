@@ -72,13 +72,16 @@ class PlayerManager @Inject constructor(
         _duration.value = player.duration.coerceAtLeast(0L)
     }
 
-    fun play(mediaId: String, uri: String) {
+    fun play(mediaId: String, uri: String, startPositionMs: Long = 0L) {
         controller?.let {
             val mediaItem = MediaItem.Builder()
                 .setMediaId(mediaId)
                 .setUri(uri)
                 .build()
             it.setMediaItem(mediaItem)
+            if (startPositionMs > 0) {
+                it.seekTo(startPositionMs)
+            }
             it.prepare()
             it.play()
         }

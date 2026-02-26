@@ -14,8 +14,9 @@ import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.ui.viewmodel.FeedsViewModel
 
 @Composable
-fun FeedsScreen(
-    viewModel: FeedsViewModel = hiltViewModel()
+fun SubscriptionsScreen(
+    viewModel: FeedsViewModel = hiltViewModel(),
+    onPodcastClick: (String) -> Unit
 ) {
     val podcasts by viewModel.podcasts.collectAsState()
 
@@ -25,7 +26,7 @@ fun FeedsScreen(
     ) {
         items(podcasts) { podcast ->
             PodcastItem(podcast = podcast) {
-                // TODO: Navigate to episodes screen or show episodes inline
+                onPodcastClick(podcast.feedUrl)
             }
         }
     }

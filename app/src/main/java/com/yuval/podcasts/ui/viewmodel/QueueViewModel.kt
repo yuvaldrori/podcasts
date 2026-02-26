@@ -34,6 +34,11 @@ class QueueViewModel @Inject constructor(
         playerManager.togglePlayPause()
     }
 
+    fun play(episode: Episode) {
+        val uri = episode.localFilePath ?: episode.audioUrl
+        playerManager.play(episode.id, uri, episode.lastPlayedPosition)
+    }
+
     fun seekTo(position: Long) {
         playerManager.seekTo(position)
     }

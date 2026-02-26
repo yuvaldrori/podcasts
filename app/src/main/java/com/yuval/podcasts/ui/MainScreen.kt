@@ -13,16 +13,20 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.yuval.podcasts.ui.components.MiniPlayer
 import com.yuval.podcasts.ui.navigation.Screen
 import com.yuval.podcasts.ui.navigation.bottomNavItems
-import com.yuval.podcasts.ui.screens.FeedsScreen
+import com.yuval.podcasts.ui.screens.NewEpisodesScreen
+import com.yuval.podcasts.ui.screens.PodcastDetailScreen
 import com.yuval.podcasts.ui.screens.QueueScreen
 import com.yuval.podcasts.ui.screens.SettingsScreen
+import com.yuval.podcasts.ui.screens.SubscriptionsScreen
 import com.yuval.podcasts.ui.viewmodel.QueueViewModel
 
 @Composable
@@ -61,12 +65,24 @@ fun MainScreen(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Feeds.route,
+            startDestination = Screen.Queue.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Feeds.route) { FeedsScreen() }
             composable(Screen.Queue.route) { QueueScreen() }
+            composable(Screen.NewEpisodes.route) { NewEpisodesScreen() }
+            composable(Screen.Subscriptions.route) {
+                SubscriptionsScreen(onPodcastClick = { feedUrl ->
+                    navController.navigate(Screen.PodcastDetail.createRoute(feedUrl))
+                })
+            }
             composable(Screen.Settings.route) { SettingsScreen() }
+            composable(
+                route = Screen.PodcastDetail.route,
+                arguments = listOf(navArgument("feedUrl") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val feedUrl = backStackEntry.arguments?.getString("feedUrl") ?: ""
+                PodcastDetailScreen(feedUrl = java.net.URLDecoder.decode(feedUrl, "UTF-8"))
+            }
         }
     }
 }

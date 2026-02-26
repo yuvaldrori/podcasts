@@ -31,12 +31,22 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player).build()
 
         player.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (!isPlaying) {
+                    saveCurrentPosition()
+                }
+            }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     val mediaItem = player.currentMediaItem ?: return
                     val episodeId = mediaItem.mediaId
                     
                     serviceScope.launch {
+                        // Mark as played and reset position
+                        episodeDao.updatePlaybackStatus(episodeId, true)
+                        episodeDao.updateLastPlayedPosition(episodeId, 0L)
+
                         // Delete local file and remove from queue
                         val episode = episodeDao.getEpisodeById(episodeId)
                         episode?.localFilePath?.let { path ->
@@ -55,6 +65,24 @@ class PlaybackService : MediaSessionService() {
                 }
             }
         })
+
+        // Periodic position saving
+        serviceScope.launch(Dispatchers.Main) {
+            while (true) {
+                kotlinx.coroutines.delay(5000)
+                if (player.isPlaying) {
+                    saveCurrentPosition()
+                }
+            }
+        }
+    }
+
+    private fun saveCurrentPosition() {
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        val position = player.currentPosition
+        serviceScope.launch(Dispatchers.IO) {
+            episodeDao.updateLastPlayedPosition(mediaId, position)
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {

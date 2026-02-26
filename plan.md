@@ -31,6 +31,8 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 
 ## Phase 2: Data & Networking Layer
 - [x] **Room Database setup:** Create tables for `Podcast` (subscription), `Episode` (metadata, download status), and `QueueState` (ordering).
+- [ ] **Playback History:** Add `isPlayed` (Boolean) and `lastPlayedPosition` (Long) to the `Episode` entity.
+- [ ] **Data Access:** Add DAO methods to fetch "New/Unplayed Episodes" across all podcasts and "All Episodes" for a specific podcast with playback status.
 - [x] **RSS Fetching:** Set up network calls to fetch and parse podcast XML feeds.
 - [x] **Manual Refresh logic:** Build the repository logic to manually fetch and merge new episodes without overwriting the queue state.
 
@@ -38,12 +40,18 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Audio Downloading:** Implement a `WorkManager` task that downloads the audio file to internal app storage when an episode is added to the queue.
 - [x] **Media3 (ExoPlayer) setup:** Implement a `MediaSessionService` for robust background audio playback.
 - [x] **Playback Controls:** Add logic to handle 1x and 2x speed, play/pause, and seeking.
+- [ ] **Position Persistence:** Periodically save the current playback position to `lastPlayedPosition` when paused or stopped.
+- [ ] **Playback Resumption:** Resume playback from `lastPlayedPosition` when loading an episode.
 - [x] **Auto-Cleanup:** Add an event listener that deletes the local audio file and removes the database record from the queue once playback completes.
+- [ ] **Completion Logic:** Update `isPlayed = true` and reset `lastPlayedPosition` in the database when an episode finishes.
 
 ## Phase 4: UI Implementation (Jetpack Compose)
-- [ ] **Feeds Screen:** Create a list view of recently refreshed podcasts and their episodes.
-- [ ] **Queue Screen:** Implement a drag-and-drop reorderable list for the active listening queue.
-- [ ] **Player UI:** Build a persistent mini-player above the bottom nav, expanding to a full-screen player with speed controls.
+- [ ] **Navigation:** Set the **Queue Screen** as the default start destination.
+- [ ] **Queue Screen (Default):** Implement a drag-and-drop reorderable list for the active listening queue.
+- [ ] **New Episodes Screen:** Aggregated list of recent unplayed episodes from all podcasts with a 'Refresh' button and 'Add to Queue' action.
+- [ ] **Subscriptions Screen:** List view of all subscribed podcasts.
+- [ ] **Podcast Detail Screen:** Detailed list of all episodes for a specific podcast with "Played" markers and progress bars for partially played items.
+- [ ] **Player UI:** Build a persistent mini-player and full-screen player with speed controls.
 
 ## Phase 5: Import, Export, & Backup (Local/System)
 - [x] **Direct RSS Add:** Create a UI dialog to manually paste and validate an RSS feed URL.

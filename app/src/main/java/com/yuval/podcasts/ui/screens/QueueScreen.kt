@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.QueueViewModel
 import androidx.compose.material.icons.filled.Pause
 
@@ -28,7 +29,11 @@ fun QueueScreen(
             contentPadding = PaddingValues(16.dp)
         ) {
             items(queue) { episode ->
-                EpisodeItem(episode = episode)
+                EpisodeItem(
+                    episode = episode,
+                    actionIcon = { Icon(Icons.Default.PlayArrow, contentDescription = "Play") },
+                    onActionClick = { viewModel.play(episode) }
+                )
             }
         }
         
@@ -36,20 +41,6 @@ fun QueueScreen(
             isPlaying = isPlaying,
             onPlayPause = { viewModel.playPause() }
         )
-    }
-}
-
-@Composable
-fun EpisodeItem(episode: Episode) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = episode.title, style = MaterialTheme.typography.titleSmall)
-            Text(text = episode.description, maxLines = 1, style = MaterialTheme.typography.bodySmall)
-        }
     }
 }
 

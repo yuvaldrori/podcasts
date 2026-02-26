@@ -12,6 +12,9 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE podcastFeedUrl = :feedUrl ORDER BY pubDate DESC")
     fun getEpisodesForPodcast(feedUrl: String): Flow<List<Episode>>
 
+    @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC")
+    fun getUnplayedEpisodes(): Flow<List<Episode>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEpisodes(episodes: List<Episode>)
 
@@ -20,4 +23,10 @@ interface EpisodeDao {
 
     @Query("UPDATE episodes SET downloadStatus = :status, localFilePath = :path WHERE id = :id")
     suspend fun updateDownloadStatus(id: String, status: Int, path: String?)
+
+    @Query("UPDATE episodes SET isPlayed = :isPlayed WHERE id = :id")
+    suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean)
+
+    @Query("UPDATE episodes SET lastPlayedPosition = :position WHERE id = :id")
+    suspend fun updateLastPlayedPosition(id: String, position: Long)
 }

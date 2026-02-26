@@ -14,5 +14,7 @@ data class Episode(
     val pubDate: Long,
     val duration: Long,
     val downloadStatus: Int, // 0 = Not Downloaded, 1 = Downloading, 2 = Downloaded
-    val localFilePath: String?
+    val localFilePath: String?,
+    val isPlayed: Boolean = false,
+    val lastPlayedPosition: Long = 0L
 )

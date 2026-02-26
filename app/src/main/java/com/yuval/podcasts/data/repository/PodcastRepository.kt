@@ -34,6 +34,7 @@ class PodcastRepository @Inject constructor(
 ) {
     val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts()
     val listeningQueue: Flow<List<Episode>> = queueDao.getQueueEpisodes()
+    val unplayedEpisodes: Flow<List<Episode>> = episodeDao.getUnplayedEpisodes()
 
     fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl)
 
@@ -45,6 +46,17 @@ class PodcastRepository @Inject constructor(
         
         podcastDao.insertPodcast(podcast)
         episodeDao.insertEpisodes(episodes)
+    }
+
+    suspend fun refreshAll() {
+        val podcasts = allPodcasts.first()
+        podcasts.forEach { podcast ->
+            try {
+                fetchAndStorePodcast(podcast.feedUrl)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     suspend fun importOpml(inputStream: InputStream) {
