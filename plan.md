@@ -87,3 +87,10 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Pull to Refresh:** Wrap the "New Episodes" list with a `pullRefresh` modifier to allow drag-to-refresh for podcast feeds.
 - [x] **Artwork/Images in UI:** Utilize the Coil library to display podcast cover art thumbnails inside the `EpisodeItem` component.
 - [x] **Episode Details Screen:** When tapping an episode item, navigate to a dedicated screen showing extended details from the RSS feed, including episode-specific artwork.
+
+## Phase 10: Comprehensive Local Unit Testing
+- [ ] **ViewModels:** Add tests for `FeedsViewModel`, `QueueViewModel`, `EpisodeDetailViewModel`, and `SettingsViewModel` to verify state emissions and repository interactions using mocked dependencies and coroutine testing tools.
+- [ ] **Repositories:** Add tests for `PodcastRepository` and `SettingsRepository` to verify offline-first logic, network error handling, and preference management.
+- [ ] **Parsers & Data Managers:** Add tests for `OpmlManager` to ensure accurate parsing of OPML XML into subscription lists and correct generation of OPML XML from entities.
+- [ ] **Player State Logic:** Add tests for `PlayerManager` by mocking the underlying player to verify state management (e.g., play, pause, next) and event handling.
+- [ ] **Room Database DAOs:** Add local JVM tests using Robolectric for `PodcastDao`, `EpisodeDao`, and `QueueDao` to verify custom SQL queries, cascading deletes, and correct ordering logic without needing an emulator.
