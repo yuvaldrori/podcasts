@@ -40,10 +40,10 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Audio Downloading:** Implement a `WorkManager` task that downloads the audio file to internal app storage when an episode is added to the queue.
 - [x] **Media3 (ExoPlayer) setup:** Implement a `MediaSessionService` for robust background audio playback.
 - [x] **Playback Controls:** Add logic to handle 1x and 2x speed, play/pause, and seeking.
-- [ ] **Position Persistence:** Periodically save the current playback position to `lastPlayedPosition` when paused or stopped.
-- [ ] **Playback Resumption:** Resume playback from `lastPlayedPosition` when loading an episode.
+- [x] **Position Persistence:** Periodically save the current playback position to `lastPlayedPosition` when paused or stopped.
+- [x] **Playback Resumption:** Resume playback from `lastPlayedPosition` when loading an episode.
 - [x] **Auto-Cleanup:** Add an event listener that deletes the local audio file and removes the database record from the queue once playback completes.
-- [ ] **Completion Logic:** Update `isPlayed = true` and reset `lastPlayedPosition` in the database when an episode finishes.
+- [x] **Completion Logic:** Update `isPlayed = true` and reset `lastPlayedPosition` in the database when an episode finishes.
 
 ## Phase 4: UI Implementation (Jetpack Compose)
 - [x] **Navigation:** Set the **Queue Screen** as the default start destination.
