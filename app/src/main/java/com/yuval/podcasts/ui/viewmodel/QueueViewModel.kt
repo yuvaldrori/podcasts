@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -63,6 +64,12 @@ class QueueViewModel @Inject constructor(
 
     fun updatePosition() {
         playerManager.updatePosition()
+    }
+
+    fun reorderItem(from: Int, to: Int) {
+        viewModelScope.launch {
+            repository.reorderQueue(from, to)
+        }
     }
 
     override fun onCleared() {

@@ -106,3 +106,7 @@ dependencies {
 kapt {
     correctErrorTypes = true
 }
+
+dependencies {
+    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+}

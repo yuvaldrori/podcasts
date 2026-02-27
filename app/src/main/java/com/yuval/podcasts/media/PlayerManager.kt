@@ -9,6 +9,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.yuval.podcasts.data.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,8 @@ import javax.inject.Singleton
 
 @Singleton
 class PlayerManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val settingsRepository: SettingsRepository
 ) {
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
@@ -32,7 +34,7 @@ class PlayerManager @Inject constructor(
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
 
-    private val _playbackSpeed = MutableStateFlow(1f)
+    private val _playbackSpeed = MutableStateFlow(settingsRepository.getPlaybackSpeed())
     val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
     fun initialize() {
@@ -68,7 +70,9 @@ class PlayerManager @Inject constructor(
 
         // Initial states
         _isPlaying.value = player.isPlaying
-        _playbackSpeed.value = player.playbackParameters.speed
+        val defaultSpeed = settingsRepository.getPlaybackSpeed()
+        player.setPlaybackParameters(PlaybackParameters(defaultSpeed))
+        _playbackSpeed.value = defaultSpeed
         _duration.value = player.duration.coerceAtLeast(0L)
     }
 
@@ -119,7 +123,9 @@ class PlayerManager @Inject constructor(
     }
 
     fun setPlaybackSpeed(speed: Float) {
+        settingsRepository.savePlaybackSpeed(speed)
         controller?.setPlaybackParameters(PlaybackParameters(speed))
+        _playbackSpeed.value = speed
     }
 
     fun release() {

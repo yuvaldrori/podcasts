@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +19,10 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.QueueViewModel
 import kotlinx.coroutines.delay
+import org.burnoutcrew.reorderable.ReorderableItem
+import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
+import org.burnoutcrew.reorderable.reorderable
 import java.util.Locale
 
 @Composable
@@ -38,20 +43,40 @@ fun QueueScreen(
         }
     }
 
+    val state = rememberReorderableLazyListState(onMove = { from, to ->
+        viewModel.reorderItem(from.index, to.index)
+    })
+
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            state = state.listState,
+            modifier = Modifier
+                .weight(1f)
+                .reorderable(state)
+                .detectReorderAfterLongPress(state),
             contentPadding = PaddingValues(16.dp)
         ) {
-            items(queue) { episode ->
-                EpisodeItem(
-                    episode = episode,
-                    trailingContent = {
-                        IconButton(onClick = { viewModel.play(episode) }) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "Play")
-                        }
+            items(queue, key = { it.id }) { episode ->
+                ReorderableItem(state, key = episode.id) { isDragging ->
+                    val elevation = if (isDragging) 8.dp else 0.dp
+                    Surface(tonalElevation = elevation) {
+                        EpisodeItem(
+                            episode = episode,
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { viewModel.play(episode) }) {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = "Play")
+                                    }
+                                    Icon(
+                                        Icons.Default.DragHandle,
+                                        contentDescription = "Reorder",
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+                        )
                     }
-                )
+                }
             }
         }
         

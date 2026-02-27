@@ -71,9 +71,9 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Episode Duration & Position Display:** Update the playback controls to display the current playback position and total episode duration (e.g., '12:34 / 45:00').
 
 ## Phase 8: Feature Enhancements (Requested)
-- [ ] **Persistent Playback Speed:** Make 2X the default playback speed. If the user changes it, remember the last used setting across app restarts (e.g., using DataStore or SharedPreferences).
-- [ ] **Remove from New when Queued:** When adding an episode to the queue from the "New" tab, simultaneously remove it from the "New" tab (mark it as queued/dismissed from unplayed status).
-- [ ] **Add to Queue from Podcast Details:** Add a button in the individual podcast subscription page (Podcast Details) to add a specific episode to the queue.
-- [ ] **Prepend to Queue:** When adding an episode to the queue, always add it to the top (position 0) rather than the bottom, shifting existing items down.
-- [ ] **Drag & Drop Queue Reordering:** Allow users to rearrange the episode order in the queue tab by dragging and dropping items up and down.
-- [ ] **Emulator MCP Testing:** Test all new features using the Android emulator via the emulator MCP to verify UI interactions and state correctness.
+- [x] **Persistent Playback Speed:** Make 2X the default playback speed. If the user changes it, remember the last used setting across app restarts (e.g., using DataStore or SharedPreferences).
+- [x] **Remove from New when Queued:** When adding an episode to the queue from the "New" tab, simultaneously remove it from the "New" tab (mark it as queued/dismissed from unplayed status).
+- [x] **Add to Queue from Podcast Details:** Add a button in the individual podcast subscription page (Podcast Details) to add a specific episode to the queue.
+- [x] **Prepend to Queue:** When adding an episode to the queue, always add it to the top (position 0) rather than the bottom, shifting existing items down.
+- [x] **Drag & Drop Queue Reordering:** Allow users to rearrange the episode order in the queue tab by dragging and dropping items up and down.
+- [x] **Emulator MCP Testing:** Test all new features using the Android emulator via the emulator MCP to verify UI interactions and state correctness.

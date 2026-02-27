@@ -105,9 +105,16 @@ class PodcastRepository @Inject constructor(
 
     suspend fun enqueueEpisode(episode: Episode) {
         val currentQueue = queueDao.getQueue().first()
-        val newPosition = if (currentQueue.isEmpty()) 0 else currentQueue.maxOf { it.position } + 1
         
-        queueDao.updateQueue(listOf(QueueState(episode.id, newPosition)))
+        // Shift all existing items down by 1
+        val updatedQueue = currentQueue.map { it.copy(position = it.position + 1) }.toMutableList()
+        // Add new item at position 0
+        updatedQueue.add(QueueState(episode.id, 0))
+        
+        queueDao.updateQueue(updatedQueue)
+        
+        // Dismiss from "New" tab
+        episodeDao.updatePlaybackStatus(episode.id, true)
 
         // Trigger background download
         val downloadData = Data.Builder()
@@ -132,5 +139,19 @@ class PodcastRepository @Inject constructor(
 
     suspend fun markAsPlayed(id: String) {
         episodeDao.updatePlaybackStatus(id, true)
+    }
+
+    suspend fun reorderQueue(fromIndex: Int, toIndex: Int) {
+        val currentQueue = queueDao.getQueue().first().toMutableList()
+        if (fromIndex < 0 || toIndex < 0 || fromIndex >= currentQueue.size || toIndex >= currentQueue.size) return
+        
+        val item = currentQueue.removeAt(fromIndex)
+        currentQueue.add(toIndex, item)
+        
+        val updatedQueue = currentQueue.mapIndexed { index, state -> 
+            state.copy(position = index) 
+        }
+        
+        queueDao.updateQueue(updatedQueue)
     }
 }
