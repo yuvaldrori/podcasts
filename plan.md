@@ -51,7 +51,7 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **New Episodes Screen:** Aggregated list of recent unplayed episodes from all podcasts with a 'Refresh' button and 'Add to Queue' action.
 - [x] **Subscriptions Screen:** List view of all subscribed podcasts.
 - [x] **Podcast Detail Screen:** Detailed list of all episodes for a specific podcast with "Played" markers and progress bars for partially played items.
-- [x] **Player UI:** Build a persistent mini-player and full-screen player with speed controls.
+- [x] **Player UI:** Build a persistent mini-player with speed controls (integrated in Queue screen).
 
 ## Phase 5: Import, Export, & Backup (Local/System)
 - [x] **Direct RSS Add:** Create a UI dialog to manually paste and validate an RSS feed URL.
