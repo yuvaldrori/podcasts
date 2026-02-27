@@ -17,6 +17,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.QueueViewModel
+import kotlinx.coroutines.delay
+import java.util.Locale
 
 @Composable
 fun QueueScreen(
@@ -25,6 +27,16 @@ fun QueueScreen(
     val queue by viewModel.queue.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val playbackSpeed by viewModel.playbackSpeed.collectAsState()
+    val currentPosition by viewModel.currentPosition.collectAsState()
+    val duration by viewModel.duration.collectAsState()
+
+    // Periodically update position when playing
+    LaunchedEffect(isPlaying) {
+        while (isPlaying) {
+            viewModel.updatePosition()
+            delay(1000)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -46,10 +58,13 @@ fun QueueScreen(
         PlaybackControls(
             isPlaying = isPlaying,
             playbackSpeed = playbackSpeed,
+            currentPosition = currentPosition,
+            duration = duration,
             onPlayPause = { viewModel.playPause() },
             onSeekBackward = { viewModel.seekBackward() },
             onSeekForward = { viewModel.seekForward() },
-            onToggleSpeed = { viewModel.toggleSpeed() }
+            onToggleSpeed = { viewModel.toggleSpeed() },
+            onSeekTo = { viewModel.seekTo(it) }
         )
     }
 }
@@ -58,36 +73,70 @@ fun QueueScreen(
 fun PlaybackControls(
     isPlaying: Boolean,
     playbackSpeed: Float,
+    currentPosition: Long,
+    duration: Long,
     onPlayPause: () -> Unit,
     onSeekBackward: () -> Unit,
     onSeekForward: () -> Unit,
-    onToggleSpeed: () -> Unit
+    onToggleSpeed: () -> Unit,
+    onSeekTo: (Long) -> Unit
 ) {
     Surface(tonalElevation = 8.dp) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(16.dp)
         ) {
-            TextButton(onClick = onToggleSpeed) {
-                Text(text = if (playbackSpeed >= 2f) "2x" else "1x")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = formatTime(currentPosition), style = MaterialTheme.typography.bodySmall)
+                Text(text = formatTime(duration), style = MaterialTheme.typography.bodySmall)
             }
-            IconButton(onClick = onSeekBackward) {
-                Icon(Icons.Default.FastRewind, contentDescription = "-30s")
-            }
-            IconButton(onClick = onPlayPause) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp)
-                )
-            }
-            IconButton(onClick = onSeekForward) {
-                Icon(Icons.Default.FastForward, contentDescription = "+30s")
+            
+            val progress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
+            Slider(
+                value = progress,
+                onValueChange = { onSeekTo((it * duration).toLong()) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                TextButton(onClick = onToggleSpeed) {
+                    Text(text = if (playbackSpeed >= 2f) "2x" else "1x")
+                }
+                IconButton(onClick = onSeekBackward) {
+                    Icon(Icons.Default.FastRewind, contentDescription = "-30s")
+                }
+                IconButton(onClick = onPlayPause) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+                IconButton(onClick = onSeekForward) {
+                    Icon(Icons.Default.FastForward, contentDescription = "+30s")
+                }
             }
         }
+    }
+}
+
+private fun formatTime(ms: Long): String {
+    if (ms < 0) return "00:00"
+    val seconds = (ms / 1000) % 60
+    val minutes = (ms / (1000 * 60)) % 60
+    val hours = ms / (1000 * 60 * 60)
+    return if (hours > 0) {
+        String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(Locale.US, "%02d:%02d", minutes, seconds)
     }
 }
 
