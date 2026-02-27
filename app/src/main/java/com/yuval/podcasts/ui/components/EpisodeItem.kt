@@ -7,6 +7,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Episode
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun EpisodeItem(
@@ -36,7 +39,15 @@ fun EpisodeItem(
                     Text(text = episode.title, style = MaterialTheme.typography.titleSmall)
                 }
                 
-                Text(text = episode.description, maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = formatDate(episode.pubDate),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = episode.description, maxLines = 1, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                }
 
                 if (showProgress && episode.lastPlayedPosition > 0 && episode.duration > 0) {
                     Spacer(modifier = Modifier.height(4.dp))
@@ -52,4 +63,10 @@ fun EpisodeItem(
             }
         }
     }
+}
+
+private fun formatDate(timestamp: Long): String {
+    if (timestamp == 0L) return ""
+    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }

@@ -77,3 +77,5 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Prepend to Queue:** When adding an episode to the queue, always add it to the top (position 0) rather than the bottom, shifting existing items down.
 - [x] **Drag & Drop Queue Reordering:** Allow users to rearrange the episode order in the queue tab by dragging and dropping items up and down.
 - [x] **Emulator MCP Testing:** Test all new features using the Android emulator via the emulator MCP to verify UI interactions and state correctness.
+- [x] **Show Episode Publish Date:** Display the publication date for each episode in the episode list views.
+- [x] **Scrolling MiniPlayer Title:** Ensure the MiniPlayer scrolls the title of the currently playing podcast if it exceeds the available screen width.

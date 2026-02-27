@@ -37,6 +37,9 @@ class PlayerManager @Inject constructor(
     private val _playbackSpeed = MutableStateFlow(settingsRepository.getPlaybackSpeed())
     val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
+    private val _currentMediaId = MutableStateFlow<String?>(null)
+    val currentMediaId: StateFlow<String?> = _currentMediaId.asStateFlow()
+
     fun initialize() {
         if (controllerFuture != null) return
 
@@ -66,6 +69,10 @@ class PlayerManager @Inject constructor(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 _duration.value = player.duration.coerceAtLeast(0L)
             }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                _currentMediaId.value = mediaItem?.mediaId
+            }
         })
 
         // Initial states
@@ -74,6 +81,7 @@ class PlayerManager @Inject constructor(
         player.setPlaybackParameters(PlaybackParameters(defaultSpeed))
         _playbackSpeed.value = defaultSpeed
         _duration.value = player.duration.coerceAtLeast(0L)
+        _currentMediaId.value = player.currentMediaItem?.mediaId
     }
 
     fun play(mediaId: String, uri: String, startPositionMs: Long = 0L) {

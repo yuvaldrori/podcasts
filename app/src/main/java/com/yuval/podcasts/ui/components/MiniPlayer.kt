@@ -1,5 +1,7 @@
 package com.yuval.podcasts.ui.components
 
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,13 +17,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.ui.viewmodel.QueueViewModel
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MiniPlayer(
     viewModel: QueueViewModel,
     onClick: () -> Unit
 ) {
     val isPlaying by viewModel.isPlaying.collectAsState()
+    val currentEpisode by viewModel.currentlyPlayingEpisode.collectAsState()
     
+    if (currentEpisode == null) return
+
     Surface(
         tonalElevation = 4.dp,
         modifier = Modifier
@@ -36,9 +42,12 @@ fun MiniPlayer(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Currently Playing...", // TODO: Get title from player
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium
+                text = currentEpisode?.title ?: "Not Playing",
+                modifier = Modifier
+                    .weight(1f)
+                    .basicMarquee(),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1
             )
             IconButton(onClick = { viewModel.playPause() }) {
                 Icon(

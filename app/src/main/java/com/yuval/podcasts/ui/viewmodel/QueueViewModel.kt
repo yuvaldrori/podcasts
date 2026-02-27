@@ -7,8 +7,13 @@ import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.media.PlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,6 +31,13 @@ class QueueViewModel @Inject constructor(
     val currentPosition = playerManager.currentPosition
     val duration = playerManager.duration
     val playbackSpeed = playerManager.playbackSpeed
+    val currentMediaId = playerManager.currentMediaId
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val currentlyPlayingEpisode: StateFlow<Episode?> = currentMediaId.flatMapLatest { id ->
+        if (id == null) flowOf(null)
+        else repository.getEpisodeByIdFlow(id)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     init {
         playerManager.initialize()
