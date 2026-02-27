@@ -9,7 +9,12 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PodcastDao {
-    @Query("SELECT * FROM podcasts")
+    @Query("""
+        SELECT podcasts.* FROM podcasts 
+        LEFT JOIN episodes ON podcasts.feedUrl = episodes.podcastFeedUrl 
+        GROUP BY podcasts.feedUrl 
+        ORDER BY MAX(episodes.pubDate) DESC
+    """)
     fun getAllPodcasts(): Flow<List<Podcast>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

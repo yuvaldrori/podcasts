@@ -47,6 +47,20 @@ class QueueViewModel @Inject constructor(
         playerManager.setPlaybackSpeed(speed)
     }
 
+    fun toggleSpeed() {
+        val currentSpeed = playbackSpeed.value
+        val newSpeed = if (currentSpeed >= 2f) 1f else 2f
+        setSpeed(newSpeed)
+    }
+
+    fun seekForward() {
+        playerManager.seekForward()
+    }
+
+    fun seekBackward() {
+        playerManager.seekBackward()
+    }
+
     fun updatePosition() {
         playerManager.updatePosition()
     }

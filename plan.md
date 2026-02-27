@@ -62,3 +62,9 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] Handle permissions (`POST_NOTIFICATIONS` for Android 13+, Foreground Service types for playback and downloading).
 - [x] Test background download resilience and media playback controls on the lock screen.
 - [x] Handle error states (e.g., no internet when refreshing, invalid RSS links).
+
+## Phase 7: Feature Enhancements (Requested)
+- [x] **Sort Subscriptions by Recent Update:** Update `PodcastDao` queries to sort the subscriptions list so that podcasts with the most recently published episodes appear at the top.
+- [x] **"Dismiss All" in New Tab:** Add a "Dismiss All" action in the `NewEpisodesScreen` to remove all currently listed episodes from the "New" view (marking them as skipped/dismissed).
+- [x] **Individual Episode Actions in New Tab:** Update the UI in the "New" tab to explicitly show two actions per episode: "Add to Queue" and "Dismiss/Reject" (removes it from the New tab without adding to the queue).
+- [x] **Extended Playback Controls:** Enhance the player UI and `PlayerManager` to support playback speed toggling (1x / 2x) and skip controls (go back 30 seconds, go forward 30 seconds).

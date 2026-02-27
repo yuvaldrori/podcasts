@@ -125,4 +125,12 @@ class PodcastRepository @Inject constructor(
             downloadWorkRequest
         )
     }
+
+    suspend fun markAllAsPlayed() {
+        episodeDao.markAllUnplayedAsPlayed()
+    }
+
+    suspend fun markAsPlayed(id: String) {
+        episodeDao.updatePlaybackStatus(id, true)
+    }
 }

@@ -102,6 +102,22 @@ class PlayerManager @Inject constructor(
         _currentPosition.value = positionMs
     }
 
+    fun seekForward(ms: Long = 30000L) {
+        controller?.let {
+            val newPosition = (it.currentPosition + ms).coerceAtMost(it.duration.coerceAtLeast(0L))
+            it.seekTo(newPosition)
+            _currentPosition.value = newPosition
+        }
+    }
+
+    fun seekBackward(ms: Long = 30000L) {
+        controller?.let {
+            val newPosition = (it.currentPosition - ms).coerceAtLeast(0L)
+            it.seekTo(newPosition)
+            _currentPosition.value = newPosition
+        }
+    }
+
     fun setPlaybackSpeed(speed: Float) {
         controller?.setPlaybackParameters(PlaybackParameters(speed))
     }

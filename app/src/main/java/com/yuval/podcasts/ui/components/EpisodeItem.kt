@@ -13,8 +13,7 @@ fun EpisodeItem(
     episode: Episode,
     showProgress: Boolean = false,
     showPlayedMarker: Boolean = false,
-    actionIcon: (@Composable () -> Unit)? = null,
-    onActionClick: (() -> Unit)? = null
+    trailingContent: (@Composable () -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -48,10 +47,8 @@ fun EpisodeItem(
                 }
             }
 
-            if (actionIcon != null && onActionClick != null) {
-                IconButton(onClick = onActionClick) {
-                    actionIcon()
-                }
+            if (trailingContent != null) {
+                trailingContent()
             }
         }
     }

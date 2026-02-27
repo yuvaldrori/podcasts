@@ -56,6 +56,18 @@ class FeedsViewModel @Inject constructor(
 
     fun getEpisodesForPodcast(feedUrl: String) = repository.getEpisodes(feedUrl)
 
+    fun dismissEpisode(episode: Episode) {
+        viewModelScope.launch {
+            repository.markAsPlayed(episode.id)
+        }
+    }
+
+    fun dismissAll() {
+        viewModelScope.launch {
+            repository.markAllAsPlayed()
+        }
+    }
+
     fun clearError() {
         _errorMessage.value = null
     }

@@ -29,4 +29,7 @@ interface EpisodeDao {
 
     @Query("UPDATE episodes SET lastPlayedPosition = :position WHERE id = :id")
     suspend fun updateLastPlayedPosition(id: String, position: Long)
+
+    @Query("UPDATE episodes SET isPlayed = 1 WHERE isPlayed = 0")
+    suspend fun markAllUnplayedAsPlayed()
 }
