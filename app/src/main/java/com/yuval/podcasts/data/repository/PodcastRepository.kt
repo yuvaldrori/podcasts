@@ -15,6 +15,9 @@ import com.yuval.podcasts.data.network.RssParser
 import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.work.DownloadWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.io.InputStream
@@ -50,26 +53,30 @@ class PodcastRepository @Inject constructor(
         episodeDao.insertEpisodes(episodes)
     }
 
-    suspend fun refreshAll() {
+    suspend fun refreshAll() = coroutineScope {
         val podcasts = allPodcasts.first()
-        podcasts.forEach { podcast ->
-            try {
-                fetchAndStorePodcast(podcast.feedUrl)
-            } catch (e: Exception) {
-                e.printStackTrace()
+        podcasts.map { podcast ->
+            async {
+                try {
+                    fetchAndStorePodcast(podcast.feedUrl)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
-        }
+        }.awaitAll()
     }
 
-    suspend fun importOpml(inputStream: InputStream) {
+    suspend fun importOpml(inputStream: InputStream) = coroutineScope {
         val urls = opmlManager.parse(inputStream)
-        urls.forEach { url ->
-            try {
-                fetchAndStorePodcast(url)
-            } catch (e: Exception) {
-                e.printStackTrace()
+        urls.map { url ->
+            async {
+                try {
+                    fetchAndStorePodcast(url)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
-        }
+        }.awaitAll()
     }
 
     suspend fun exportOpml(outputStream: OutputStream) {

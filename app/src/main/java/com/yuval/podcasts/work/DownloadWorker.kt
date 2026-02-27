@@ -49,7 +49,7 @@ class DownloadWorker @AssistedInject constructor(
 
             FileOutputStream(outputFile).use { outputStream ->
                 body.byteStream().use { inputStream ->
-                    inputStream.copyTo(outputStream)
+                    inputStream.copyTo(outputStream, 64 * 1024) // 64KB buffer for large audio files
                 }
             }
 

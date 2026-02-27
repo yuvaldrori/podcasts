@@ -69,7 +69,7 @@ class PlaybackService : MediaSessionService() {
         // Periodic position saving
         serviceScope.launch(Dispatchers.Main) {
             while (true) {
-                kotlinx.coroutines.delay(5000)
+                kotlinx.coroutines.delay(15000)
                 if (player.isPlaying) {
                     saveCurrentPosition()
                 }
