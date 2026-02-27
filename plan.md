@@ -79,3 +79,10 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Emulator MCP Testing:** Test all new features using the Android emulator via the emulator MCP to verify UI interactions and state correctness.
 - [x] **Show Episode Publish Date:** Display the publication date for each episode in the episode list views.
 - [x] **Scrolling MiniPlayer Title:** Ensure the MiniPlayer scrolls the title of the currently playing podcast if it exceeds the available screen width.
+
+## Phase 9: UX & Core Functionality Polish
+- [ ] **Visual Download State Indicators:** Add UI indicators to `EpisodeItem` showing `downloadStatus` (e.g., Cloud, Spinning, Checkmark) so users know when episodes are offline.
+- [ ] **Auto-Play Next in Queue:** Update `PlaybackService` to automatically load and play the next episode in the queue when the current one finishes.
+- [ ] **Swipe-to-Dismiss / Swipe-to-Queue:** Implement Jetpack Compose `SwipeToDismiss` gestures in the "New Episodes" and "Queue" tabs for faster management.
+- [ ] **Pull to Refresh:** Wrap the "New Episodes" list with a `pullRefresh` modifier to allow drag-to-refresh for podcast feeds.
+- [ ] **Artwork/Images in UI:** Utilize the Coil library to display podcast cover art thumbnails inside the `EpisodeItem` component.
