@@ -25,8 +25,6 @@ fun MiniPlayer(
 ) {
     val isPlaying by viewModel.isPlaying.collectAsState()
     val currentEpisode by viewModel.currentlyPlayingEpisode.collectAsState()
-    
-    if (currentEpisode == null) return
 
     Surface(
         tonalElevation = 4.dp,

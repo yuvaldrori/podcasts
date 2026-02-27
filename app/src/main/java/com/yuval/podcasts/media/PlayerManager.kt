@@ -85,6 +85,7 @@ class PlayerManager @Inject constructor(
     }
 
     fun play(mediaId: String, uri: String, startPositionMs: Long = 0L) {
+        _currentMediaId.value = mediaId
         controller?.let {
             val mediaItem = MediaItem.Builder()
                 .setMediaId(mediaId)
