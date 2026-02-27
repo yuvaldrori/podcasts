@@ -12,6 +12,9 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 
+import android.content.Context
+import android.net.Uri
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val repository: PodcastRepository
@@ -40,11 +43,14 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun exportOpml(outputStream: OutputStream) {
+    fun exportOpml(context: Context, uri: Uri) {
         viewModelScope.launch {
             try {
-                repository.exportOpml(outputStream)
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    repository.exportOpml(stream)
+                }
             } catch (e: Exception) {
+                e.printStackTrace()
                 _errorMessage.value = "Failed to export OPML: ${e.message}"
             }
         }

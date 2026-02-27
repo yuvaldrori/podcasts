@@ -57,5 +57,6 @@ class OpmlManager {
         serializer.endTag(null, "body")
         serializer.endTag(null, "opml")
         serializer.endDocument()
+        serializer.flush()
     }
 }

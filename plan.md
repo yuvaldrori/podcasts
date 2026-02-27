@@ -68,3 +68,4 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **"Dismiss All" in New Tab:** Add a "Dismiss All" action in the `NewEpisodesScreen` to remove all currently listed episodes from the "New" view (marking them as skipped/dismissed).
 - [x] **Individual Episode Actions in New Tab:** Update the UI in the "New" tab to explicitly show two actions per episode: "Add to Queue" and "Dismiss/Reject" (removes it from the New tab without adding to the queue).
 - [x] **Extended Playback Controls:** Enhance the player UI and `PlayerManager` to support playback speed toggling (1x / 2x) and skip controls (go back 30 seconds, go forward 30 seconds).
+- [ ] **Episode Duration & Position Display:** Update the playback controls to display the current playback position and total episode duration (e.g., '12:34 / 45:00').

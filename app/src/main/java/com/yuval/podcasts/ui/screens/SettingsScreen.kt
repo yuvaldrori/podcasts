@@ -33,9 +33,7 @@ fun SettingsScreen(
         contract = ActivityResultContracts.CreateDocument("text/x-opml"),
         onResult = { uri ->
             uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { stream ->
-                    viewModel.exportOpml(stream)
-                }
+                viewModel.exportOpml(context, it)
             }
         }
     )

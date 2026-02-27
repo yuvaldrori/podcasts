@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<opml version="1.0">
+  <head>
+    <title>Pocket Casts Feeds</title>
+  </head>
+  <body>
+    <outline text="feeds">
+      <outline type="rss" text="Valley of Genius (MP3)" xmlUrl="http://feeds.twit.tv/vog.xml" />
+      <outline type="rss" text="Recode Decode" xmlUrl="https://feeds.megaphone.fm/recodedecode" />
+      <outline type="rss" text="NodeUp" xmlUrl="HTTP://feeds.feedburner.com/NodeUp" />
+      <outline type="rss" text="The Joe Rogan Experience" xmlUrl="http://joeroganexp.joerogan.libsynpro.com/rss" />
+      <outline type="rss" text="Rework" xmlUrl="https://feeds.transistor.fm/rework" />
+      <outline type="rss" text="Talking Machines" xmlUrl="https://rss.art19.com/talking-machines" />
+      <outline type="rss" text="The Tim Ferriss Show" xmlUrl="https://rss.art19.com/tim-ferriss-show" />
+      <outline type="rss" text="Singularity.FM" xmlUrl="http://feeds.feedburner.com/SingularityWeblogPodcasts" />
+      <outline type="rss" text="Security Now (MP3)" xmlUrl="http://leoville.tv/podcasts/sn.xml" />
+      <outline type="rss" text="The Stephen Wolfram Podcast" xmlUrl="https://anchor.fm/s/8426140/podcast/rss" />
+      <outline type="rss" text="Geekonomy - גיקונומי - פודקאסט שבועי על החיים עצמם" xmlUrl="https://geekonomy.net/category/%d7%a4%d7%a8%d7%a7%d7%99%d7%9d/feed/" />
+      <outline type="rss" text="The Kevin Rose Show" xmlUrl="https://rss.simplecast.com/podcasts/3408/rss" />
+      <outline type="rss" text="It is a Pixies Podcast" xmlUrl="https://rss.art19.com/its-a-pixies-podcast" />
+      <outline type="rss" text="S-Emek" xmlUrl="http://semek.podbean.com/feed/" />
+      <outline type="rss" text="This Week in Tech (MP3)" xmlUrl="http://leoville.tv/podcasts/twit.xml" />
+      <outline type="rss" text="Y Combinator" xmlUrl="http://feeds.backtracks.fm/feeds/ycombinator/ycombinator/feed.xml" />
+      <outline type="rss" text="TWiT Specials (MP3)" xmlUrl="http://feeds.twit.tv/ces.xml" />
+      <outline type="rss" text="The Let is Talk Bitcoin Network" xmlUrl="http://feeds.feedburner.com/TheDailyBitcoinShow" />
+      <outline type="rss" text="Recode Replay" xmlUrl="https://feeds.megaphone.fm/recodereplay" />
+      <outline type="rss" text="Sean Carroll is Mindscape" xmlUrl="https://rss.art19.com/sean-carrolls-mindscape" />
+      <outline type="rss" text="STEAL THIS SHOW" xmlUrl="http://stealthisshow.com/feed/podcast" />
+      <outline type="rss" text="דקות או פחות ‎30" xmlUrl="https://anchor.fm/s/9ed2e94/podcast/rss" />
+      <outline type="rss" text="This Week in Startups - Audio" xmlUrl="http://feeds.feedburner.com/twist-audio" />
+      <outline type="rss" text="The Om Show" xmlUrl="http://omshow.libsyn.com/rss" />
+      <outline type="rss" text="הערת שוליים* עם יהונתן נאה ולולה קידר" xmlUrl="http://www.icast.co.il/Rss.aspx?ID=359581" />
+      <outline type="rss" text="The After On Podcast" xmlUrl="http://afteron.libsyn.com/rss" />
+      <outline type="rss" text="The Space Show" xmlUrl="http://www.gigadial.net/public/station/11253/rss.xml" />
+      <outline type="rss" text="Hanselminutes - Fresh Talk and Tech for Developers" xmlUrl="http://feeds.FeedBurner.com/hanselminutescompletemp3" />
+      <outline type="rss" text="podcast (en) – omega tau science and engineering podcast" xmlUrl="http://omegataupodcast.net/category/podcast-en/feed/" />
+      <outline type="rss" text="Triangulation (MP3)" xmlUrl="http://leoville.tv/podcasts/tri.xml" />
+      <outline type="rss" text="Singularity.FM" xmlUrl="http://feeds.soundcloud.com/users/soundcloud:users:127932303/sounds.rss" />
+      <outline type="rss" text="Masters of Scale with Reid Hoffman" xmlUrl="https://rss.art19.com/masters-of-scale" />
+      <outline type="rss" text="Mapping The Journey" xmlUrl="http://mappingthejourney.libsyn.com/rss" />
+      <outline type="rss" text="TWiT Events (MP3)" xmlUrl="https://feeds.twit.tv/events.xml" />
+      <outline type="rss" text="Block Zero" xmlUrl="https://pcr.apple.com/id1338620184" />
+      <outline type="rss" text="People Behind the Science Podcast" xmlUrl="https://peoplebehindthescience.libsyn.com/rss" />
+      <outline type="rss" text="עושים היסטוריה עם רן לוי Making History with Ran Levi" xmlUrl="https://www.ranlevi.com/feed/podcast/" />
+      <outline type="rss" text="The Decrypting Crypto Podcast" xmlUrl="https://decryptingcrypto.libsyn.com/rss" />
+      <outline type="rss" text="Recode Media" xmlUrl="https://feeds.megaphone.fm/recodemedia" />
+      <outline type="rss" text="Anatomy of Next" xmlUrl="http://feeds.soundcloud.com/users/soundcloud:users:220400255/sounds.rss" />
+      <outline type="rss" text="a16z" xmlUrl="https://feeds.simplecast.com/JGE3yC0V" />
+      <outline type="rss" text="This Week in Google (MP3)" xmlUrl="http://leoville.tv/podcasts/twig.xml" />
+      <outline type="rss" text="Under The Skin with Russell Brand" xmlUrl="https://feeds.megaphone.fm/LM1344278906" />
+      <outline type="rss" text="Software Engineering Radio" xmlUrl="http://feeds.feedburner.com/se-radio" />
+      <outline type="rss" text="Pivot with Kara Swisher and Scott Galloway" xmlUrl="https://feeds.megaphone.fm/pivot" />
+      <outline type="rss" text="Google Cloud Platform Podcast" xmlUrl="https://feeds.feedburner.com/GcpPodcast" />
+    </outline>
+  </body>
+</opml>
+
