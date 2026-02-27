@@ -4,13 +4,19 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE podcastFeedUrl = :feedUrl ORDER BY pubDate DESC")
     fun getEpisodesForPodcast(feedUrl: String): Flow<List<Episode>>
+
+    @Transaction
+    @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC")
+    fun getUnplayedEpisodesWithPodcast(): Flow<List<EpisodeWithPodcast>>
 
     @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC")
     fun getUnplayedEpisodes(): Flow<List<Episode>>

@@ -1,5 +1,6 @@
 package com.yuval.podcasts.media
 
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -12,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
@@ -61,6 +63,24 @@ class PlaybackService : MediaSessionService() {
                         
                         // Remove from Queue
                         queueDao.removeFromQueue(episodeId)
+                        
+                        // Auto-play next
+                        val nextEpisode = queueDao.getNextEpisode()
+                        if (nextEpisode != null) {
+                            withContext(Dispatchers.Main) {
+                                val uri = nextEpisode.localFilePath ?: nextEpisode.audioUrl
+                                val nextMediaItem = MediaItem.Builder()
+                                    .setMediaId(nextEpisode.id)
+                                    .setUri(uri)
+                                    .build()
+                                player.setMediaItem(nextMediaItem)
+                                if (nextEpisode.lastPlayedPosition > 0) {
+                                    player.seekTo(nextEpisode.lastPlayedPosition)
+                                }
+                                player.prepare()
+                                player.play()
+                            }
+                        }
                     }
                 }
             }

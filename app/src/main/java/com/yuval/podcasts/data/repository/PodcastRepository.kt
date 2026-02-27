@@ -8,6 +8,7 @@ import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.QueueDao
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.network.PodcastApi
@@ -20,6 +21,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
@@ -36,8 +38,8 @@ class PodcastRepository @Inject constructor(
     private val queueDao: QueueDao
 ) {
     val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts()
-    val listeningQueue: Flow<List<Episode>> = queueDao.getQueueEpisodes()
-    val unplayedEpisodes: Flow<List<Episode>> = episodeDao.getUnplayedEpisodes()
+    val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast()
+    val unplayedEpisodes: Flow<List<EpisodeWithPodcast>> = episodeDao.getUnplayedEpisodesWithPodcast()
 
     fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl)
 
@@ -162,5 +164,17 @@ class PodcastRepository @Inject constructor(
         }
         
         queueDao.updateQueue(updatedQueue)
+    }
+
+    suspend fun removeFromQueue(episodeId: String) {
+        queueDao.removeFromQueue(episodeId)
+        val episode = episodeDao.getEpisodeById(episodeId)
+        episode?.localFilePath?.let { path ->
+            val file = File(path)
+            if (file.exists()) {
+                file.delete()
+            }
+        }
+        episodeDao.updateDownloadStatus(episodeId, 0, null)
     }
 }

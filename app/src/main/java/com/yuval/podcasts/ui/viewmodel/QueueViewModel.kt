@@ -3,6 +3,7 @@ package com.yuval.podcasts.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.media.PlayerManager
@@ -24,7 +25,7 @@ class QueueViewModel @Inject constructor(
     private val playerManager: PlayerManager
 ) : ViewModel() {
 
-    val queue: StateFlow<List<Episode>> = repository.listeningQueue
+    val queue: StateFlow<List<EpisodeWithPodcast>> = repository.listeningQueue
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val isPlaying = playerManager.isPlaying
@@ -81,6 +82,12 @@ class QueueViewModel @Inject constructor(
     fun reorderItem(from: Int, to: Int) {
         viewModelScope.launch {
             repository.reorderQueue(from, to)
+        }
+    }
+
+    fun removeFromQueue(episodeId: String) {
+        viewModelScope.launch {
+            repository.removeFromQueue(episodeId)
         }
     }
 

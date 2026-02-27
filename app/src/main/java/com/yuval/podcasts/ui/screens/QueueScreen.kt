@@ -25,6 +25,7 @@ import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QueueScreen(
     viewModel: QueueViewModel = hiltViewModel()
@@ -56,26 +57,51 @@ fun QueueScreen(
                 .detectReorderAfterLongPress(state),
             contentPadding = PaddingValues(16.dp)
         ) {
-            items(queue, key = { it.id }) { episode ->
-                ReorderableItem(state, key = episode.id) { isDragging ->
+            items(queue, key = { it.episode.id }) { episodeWithPodcast ->
+                ReorderableItem(state, key = episodeWithPodcast.episode.id) { isDragging ->
                     val elevation = if (isDragging) 8.dp else 0.dp
-                    Surface(tonalElevation = elevation) {
-                        EpisodeItem(
-                            episode = episode,
-                            trailingContent = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(onClick = { viewModel.play(episode) }) {
-                                        Icon(Icons.Default.PlayArrow, contentDescription = "Play")
-                                    }
-                                    Icon(
-                                        Icons.Default.DragHandle,
-                                        contentDescription = "Reorder",
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
+                    
+                    SwipeToDismissBox(
+                        state = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd) {
+                                    viewModel.removeFromQueue(episodeWithPodcast.episode.id)
+                                    true
+                                } else {
+                                    false
                                 }
                             }
-                        )
-                    }
+                        ),
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(vertical = 4.dp),
+                            ) {
+                                // Background colors handled by Box depending on direction
+                            }
+                        },
+                        content = {
+                            Surface(tonalElevation = elevation) {
+                                EpisodeItem(
+                                    episode = episodeWithPodcast.episode,
+                                    imageUrl = episodeWithPodcast.podcast.imageUrl,
+                                    trailingContent = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            IconButton(onClick = { viewModel.play(episodeWithPodcast.episode) }) {
+                                                Icon(Icons.Default.PlayArrow, contentDescription = "Play")
+                                            }
+                                            Icon(
+                                                Icons.Default.DragHandle,
+                                                contentDescription = "Reorder",
+                                                modifier = Modifier.padding(start = 8.dp)
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    )
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.yuval.podcasts.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.PodcastRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,8 +26,11 @@ class FeedsViewModel @Inject constructor(
     val podcasts: StateFlow<List<Podcast>> = repository.allPodcasts
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val unplayedEpisodes: StateFlow<List<Episode>> = repository.unplayedEpisodes
+    val unplayedEpisodes: StateFlow<List<EpisodeWithPodcast>> = repository.unplayedEpisodes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     fun refreshPodcast(feedUrl: String) {
         viewModelScope.launch {
@@ -40,10 +44,13 @@ class FeedsViewModel @Inject constructor(
 
     fun refreshAll() {
         viewModelScope.launch {
+            _isRefreshing.value = true
             try {
                 repository.refreshAll()
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to refresh all podcasts: ${e.message}"
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }
