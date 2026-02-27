@@ -31,8 +31,8 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 
 ## Phase 2: Data & Networking Layer
 - [x] **Room Database setup:** Create tables for `Podcast` (subscription), `Episode` (metadata, download status), and `QueueState` (ordering).
-- [ ] **Playback History:** Add `isPlayed` (Boolean) and `lastPlayedPosition` (Long) to the `Episode` entity.
-- [ ] **Data Access:** Add DAO methods to fetch "New/Unplayed Episodes" across all podcasts and "All Episodes" for a specific podcast with playback status.
+- [x] **Playback History:** Add `isPlayed` (Boolean) and `lastPlayedPosition` (Long) to the `Episode` entity.
+- [x] **Data Access:** Add DAO methods to fetch "New/Unplayed Episodes" across all podcasts and "All Episodes" for a specific podcast with playback status.
 - [x] **RSS Fetching:** Set up network calls to fetch and parse podcast XML feeds.
 - [x] **Manual Refresh logic:** Build the repository logic to manually fetch and merge new episodes without overwriting the queue state.
 
@@ -46,12 +46,12 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [ ] **Completion Logic:** Update `isPlayed = true` and reset `lastPlayedPosition` in the database when an episode finishes.
 
 ## Phase 4: UI Implementation (Jetpack Compose)
-- [ ] **Navigation:** Set the **Queue Screen** as the default start destination.
-- [ ] **Queue Screen (Default):** Implement a drag-and-drop reorderable list for the active listening queue.
-- [ ] **New Episodes Screen:** Aggregated list of recent unplayed episodes from all podcasts with a 'Refresh' button and 'Add to Queue' action.
-- [ ] **Subscriptions Screen:** List view of all subscribed podcasts.
-- [ ] **Podcast Detail Screen:** Detailed list of all episodes for a specific podcast with "Played" markers and progress bars for partially played items.
-- [ ] **Player UI:** Build a persistent mini-player and full-screen player with speed controls.
+- [x] **Navigation:** Set the **Queue Screen** as the default start destination.
+- [x] **Queue Screen (Default):** Implement a drag-and-drop reorderable list for the active listening queue.
+- [x] **New Episodes Screen:** Aggregated list of recent unplayed episodes from all podcasts with a 'Refresh' button and 'Add to Queue' action.
+- [x] **Subscriptions Screen:** List view of all subscribed podcasts.
+- [x] **Podcast Detail Screen:** Detailed list of all episodes for a specific podcast with "Played" markers and progress bars for partially played items.
+- [x] **Player UI:** Build a persistent mini-player and full-screen player with speed controls.
 
 ## Phase 5: Import, Export, & Backup (Local/System)
 - [x] **Direct RSS Add:** Create a UI dialog to manually paste and validate an RSS feed URL.
