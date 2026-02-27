@@ -16,6 +16,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object PodcastDetail : Screen("podcast_detail/{feedUrl}", "Episodes", Icons.Default.List) {
         fun createRoute(feedUrl: String) = "podcast_detail/${java.net.URLEncoder.encode(feedUrl, "UTF-8")}"
     }
+    object EpisodeDetail : Screen("episode_detail/{episodeId}", "Episode Info", Icons.Default.Info) {
+        fun createRoute(episodeId: String) = "episode_detail/${java.net.URLEncoder.encode(episodeId, "UTF-8")}"
+    }
 }
 
 val bottomNavItems = listOf(

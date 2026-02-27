@@ -30,6 +30,10 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE id = :id")
     fun getEpisodeByIdFlow(id: String): Flow<Episode?>
 
+    @Transaction
+    @Query("SELECT * FROM episodes WHERE id = :id")
+    fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?>
+
     @Query("UPDATE episodes SET downloadStatus = :status, localFilePath = :path WHERE id = :id")
     suspend fun updateDownloadStatus(id: String, status: Int, path: String?)
 

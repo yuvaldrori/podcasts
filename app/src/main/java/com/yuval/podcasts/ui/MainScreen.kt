@@ -68,8 +68,16 @@ fun MainScreen(
             startDestination = Screen.Queue.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Queue.route) { QueueScreen() }
-            composable(Screen.NewEpisodes.route) { NewEpisodesScreen() }
+            composable(Screen.Queue.route) { 
+                QueueScreen(onEpisodeClick = { episodeId -> 
+                    navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                }) 
+            }
+            composable(Screen.NewEpisodes.route) { 
+                NewEpisodesScreen(onEpisodeClick = { episodeId -> 
+                    navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                }) 
+            }
             composable(Screen.Subscriptions.route) {
                 SubscriptionsScreen(onPodcastClick = { feedUrl ->
                     navController.navigate(Screen.PodcastDetail.createRoute(feedUrl))
@@ -81,7 +89,22 @@ fun MainScreen(
                 arguments = listOf(navArgument("feedUrl") { type = NavType.StringType })
             ) { backStackEntry ->
                 val feedUrl = backStackEntry.arguments?.getString("feedUrl") ?: ""
-                PodcastDetailScreen(feedUrl = java.net.URLDecoder.decode(feedUrl, "UTF-8"))
+                PodcastDetailScreen(
+                    feedUrl = java.net.URLDecoder.decode(feedUrl, "UTF-8"),
+                    onEpisodeClick = { episodeId -> 
+                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                    }
+                )
+            }
+            composable(
+                route = Screen.EpisodeDetail.route,
+                arguments = listOf(navArgument("episodeId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val episodeId = backStackEntry.arguments?.getString("episodeId") ?: ""
+                com.yuval.podcasts.ui.screens.EpisodeDetailScreen(
+                    episodeId = java.net.URLDecoder.decode(episodeId, "UTF-8"),
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }

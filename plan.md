@@ -86,3 +86,4 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Swipe-to-Dismiss / Swipe-to-Queue:** Implement Jetpack Compose `SwipeToDismiss` gestures in the "New Episodes" and "Queue" tabs for faster management.
 - [x] **Pull to Refresh:** Wrap the "New Episodes" list with a `pullRefresh` modifier to allow drag-to-refresh for podcast feeds.
 - [x] **Artwork/Images in UI:** Utilize the Coil library to display podcast cover art thumbnails inside the `EpisodeItem` component.
+- [x] **Episode Details Screen:** When tapping an episode item, navigate to a dedicated screen showing extended details from the RSS feed, including episode-specific artwork.

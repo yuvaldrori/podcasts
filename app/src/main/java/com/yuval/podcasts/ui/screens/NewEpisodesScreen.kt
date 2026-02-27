@@ -1,6 +1,7 @@
 package com.yuval.podcasts.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,6 +26,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewEpisodesScreen(
+    onEpisodeClick: (String) -> Unit,
     viewModel: FeedsViewModel = hiltViewModel()
 ) {
     val episodes by viewModel.unplayedEpisodes.collectAsState()
@@ -113,6 +115,7 @@ fun NewEpisodesScreen(
                         content = {
                             EpisodeItem(
                                 episode = episodeWithPodcast.episode,
+                                modifier = Modifier.clickable { onEpisodeClick(episodeWithPodcast.episode.id) },
                                 imageUrl = episodeWithPodcast.podcast.imageUrl,
                                 trailingContent = {
                                     Row {

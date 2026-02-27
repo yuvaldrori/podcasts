@@ -1,5 +1,6 @@
 package com.yuval.podcasts.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +19,7 @@ import com.yuval.podcasts.ui.viewmodel.FeedsViewModel
 @Composable
 fun PodcastDetailScreen(
     feedUrl: String,
+    onEpisodeClick: (String) -> Unit,
     viewModel: FeedsViewModel = hiltViewModel()
 ) {
     val episodes by viewModel.getEpisodesForPodcast(feedUrl).collectAsState(emptyList())
@@ -34,6 +36,8 @@ fun PodcastDetailScreen(
             items(episodes) { episode ->
                 EpisodeItem(
                     episode = episode,
+                    modifier = Modifier.clickable { onEpisodeClick(episode.id) },
+                    imageUrl = episode.imageUrl,
                     showProgress = true,
                     showPlayedMarker = true,
                     trailingContent = {

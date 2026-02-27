@@ -22,13 +22,14 @@ import java.util.Locale
 @Composable
 fun EpisodeItem(
     episode: Episode,
+    modifier: Modifier = Modifier,
     imageUrl: String? = null,
     showProgress: Boolean = false,
     showPlayedMarker: Boolean = false,
     trailingContent: (@Composable () -> Unit)? = null
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
     ) {

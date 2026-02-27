@@ -45,6 +45,8 @@ class PodcastRepository @Inject constructor(
 
     fun getEpisodeByIdFlow(id: String): Flow<Episode?> = episodeDao.getEpisodeByIdFlow(id)
 
+    fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?> = episodeDao.getEpisodeWithPodcastFlow(id)
+
     suspend fun fetchAndStorePodcast(feedUrl: String) {
         val response = podcastApi.fetchRss(feedUrl)
         val body = response.body() ?: return

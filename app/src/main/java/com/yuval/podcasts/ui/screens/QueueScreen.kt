@@ -1,5 +1,6 @@
 package com.yuval.podcasts.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,6 +29,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QueueScreen(
+    onEpisodeClick: (String) -> Unit,
     viewModel: QueueViewModel = hiltViewModel()
 ) {
     val queue by viewModel.queue.collectAsState()
@@ -85,6 +87,7 @@ fun QueueScreen(
                             Surface(tonalElevation = elevation) {
                                 EpisodeItem(
                                     episode = episodeWithPodcast.episode,
+                                    modifier = Modifier.clickable { onEpisodeClick(episodeWithPodcast.episode.id) },
                                     imageUrl = episodeWithPodcast.podcast.imageUrl,
                                     trailingContent = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {

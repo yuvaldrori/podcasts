@@ -11,6 +11,7 @@ data class Episode(
     val title: String,
     val description: String,
     val audioUrl: String,
+    val imageUrl: String? = null,
     val pubDate: Long,
     val duration: Long,
     val downloadStatus: Int, // 0 = Not Downloaded, 1 = Downloading, 2 = Downloaded
