@@ -22,9 +22,7 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri ->
             uri?.let {
-                context.contentResolver.openInputStream(it)?.use { stream ->
-                    viewModel.importOpml(stream)
-                }
+                viewModel.importOpml(context, it)
             }
         }
     )
@@ -42,9 +40,7 @@ fun SettingsScreen(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream"),
         onResult = { uri ->
             uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { stream ->
-                    viewModel.backupDatabase(stream)
-                }
+                viewModel.backupDatabase(context, it)
             }
         }
     )
@@ -53,9 +49,7 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri ->
             uri?.let {
-                context.contentResolver.openInputStream(it)?.use { stream ->
-                    viewModel.restoreDatabase(stream)
-                }
+                viewModel.restoreDatabase(context, it)
             }
         }
     )

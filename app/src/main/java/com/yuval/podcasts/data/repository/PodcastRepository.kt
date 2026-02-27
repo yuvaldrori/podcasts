@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.yuval.podcasts.data.db.AppDatabase
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.QueueDao
@@ -19,6 +20,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.io.File
@@ -26,10 +29,12 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.system.exitProcess
 
 @Singleton
 class PodcastRepository @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val database: AppDatabase,
     private val podcastApi: PodcastApi,
     private val rssParser: RssParser,
     private val opmlManager: OpmlManager,
@@ -88,7 +93,11 @@ class PodcastRepository @Inject constructor(
         opmlManager.export(podcasts, outputStream)
     }
 
-    suspend fun backupDatabase(outputStream: OutputStream) {
+    suspend fun backupDatabase(outputStream: OutputStream): Nothing = withContext(Dispatchers.IO) {
+        // Force SQLite to write all WAL changes into the main DB file
+        database.query("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() }
+        database.close()
+        
         val dbFile = context.getDatabasePath("podcasts_db")
         val walFile = context.getDatabasePath("podcasts_db-wal")
         val shmFile = context.getDatabasePath("podcasts_db-shm")
@@ -102,9 +111,15 @@ class PodcastRepository @Inject constructor(
                 }
             }
         }
+        
+        // Force restart after backup since we closed the DB
+        exitProcess(0)
     }
 
-    suspend fun restoreDatabase(inputStream: InputStream) {
+    suspend fun restoreDatabase(inputStream: InputStream): Nothing = withContext(Dispatchers.IO) {
+        // Close the database to release file locks
+        database.close()
+        
         java.util.zip.ZipInputStream(inputStream).use { zipIn ->
             var entry = zipIn.nextEntry
             while (entry != null) {
@@ -114,6 +129,9 @@ class PodcastRepository @Inject constructor(
                 entry = zipIn.nextEntry
             }
         }
+        
+        // Force an app restart to reload the new database file cleanly
+        exitProcess(0)
     }
 
     suspend fun enqueueEpisode(episode: Episode) {

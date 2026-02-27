@@ -33,10 +33,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun importOpml(inputStream: InputStream) {
+    fun importOpml(context: Context, uri: Uri) {
         viewModelScope.launch {
             try {
-                repository.importOpml(inputStream)
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    repository.importOpml(stream)
+                }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to import OPML: ${e.message}"
             }
@@ -56,20 +58,24 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun backupDatabase(outputStream: OutputStream) {
+    fun backupDatabase(context: Context, uri: Uri) {
         viewModelScope.launch {
             try {
-                repository.backupDatabase(outputStream)
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    repository.backupDatabase(stream)
+                }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to backup database: ${e.message}"
             }
         }
     }
 
-    fun restoreDatabase(inputStream: InputStream) {
+    fun restoreDatabase(context: Context, uri: Uri) {
         viewModelScope.launch {
             try {
-                repository.restoreDatabase(inputStream)
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    repository.restoreDatabase(stream)
+                }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to restore database: ${e.message}"
             }
