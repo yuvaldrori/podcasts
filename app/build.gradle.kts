@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.yuval.podcasts"
-    compileSdk = 36
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.yuval.podcasts"
-        minSdk = 36
-        targetSdk = 36
+        minSdk = 34
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
