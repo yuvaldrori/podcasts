@@ -15,10 +15,10 @@ interface EpisodeDao {
     fun getEpisodesForPodcast(feedUrl: String): Flow<List<Episode>>
 
     @Transaction
-    @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC")
+    @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC LIMIT 150")
     fun getUnplayedEpisodesWithPodcast(): Flow<List<EpisodeWithPodcast>>
 
-    @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC")
+    @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC LIMIT 150")
     fun getUnplayedEpisodes(): Flow<List<Episode>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

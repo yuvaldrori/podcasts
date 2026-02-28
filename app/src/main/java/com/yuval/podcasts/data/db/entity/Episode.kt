@@ -1,9 +1,16 @@
 package com.yuval.podcasts.data.db.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "episodes")
+@Entity(
+    tableName = "episodes",
+    indices = [
+        Index(value = ["isPlayed", "pubDate"]),
+        Index(value = ["podcastFeedUrl"])
+    ]
+)
 data class Episode(
     @PrimaryKey
     val id: String, // Guid or url
