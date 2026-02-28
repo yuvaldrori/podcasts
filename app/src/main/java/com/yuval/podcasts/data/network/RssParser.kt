@@ -150,6 +150,7 @@ class RssParser {
             when (parser.next()) {
                 XmlPullParser.END_TAG -> depth--
                 XmlPullParser.START_TAG -> depth++
+                XmlPullParser.END_DOCUMENT -> return // Break to avoid infinite loops on malformed XML
             }
         }
     }

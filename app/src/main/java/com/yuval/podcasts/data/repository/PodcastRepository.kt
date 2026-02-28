@@ -59,10 +59,14 @@ class PodcastRepository @Inject constructor(
         val response = podcastApi.fetchRss(feedUrl)
         val body = response.body() ?: return
         
-        val (podcast, episodes) = rssParser.parse(body.byteStream(), feedUrl)
-        
-        podcastDao.insertPodcast(podcast)
-        episodeDao.insertEpisodes(episodes)
+        try {
+            val (podcast, episodes) = rssParser.parse(body.byteStream(), feedUrl)
+            podcastDao.insertPodcast(podcast)
+            episodeDao.insertEpisodes(episodes)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            // Ignore parse errors or OOMs for a single bad feed
+        }
     }
 
     suspend fun refreshAll() = coroutineScope {
@@ -71,7 +75,7 @@ class PodcastRepository @Inject constructor(
             async {
                 try {
                     fetchAndStorePodcast(podcast.feedUrl)
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     e.printStackTrace()
                 }
             }
