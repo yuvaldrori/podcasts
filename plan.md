@@ -94,5 +94,12 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Parsers & Data Managers:** Add tests for `OpmlManager` to ensure accurate parsing of OPML XML into subscription lists and correct generation of OPML XML from entities.
 - [x] **Player State Logic:** Add tests for `PlayerManager` by mocking the underlying player to verify state management (e.g., play, pause, next) and event handling.
 ## Phase 11: Subscription Management
-- [ ] **Unsubscribe Functionality:** Add a "Remove" or "Unsubscribe" button/action in the Subscriptions tab for each podcast.
-- [ ] **Cascading Deletes:** Ensure that removing a podcast deletes its database record, removes all its episodes from the 'episodes' table, removes any associated items from the listening queue, and deletes downloaded audio files associated with those episodes.
+- [x] **Unsubscribe Functionality:** Add a "Remove" or "Unsubscribe" button/action in the Subscriptions tab for each podcast.
+- [x] **Cascading Deletes:** Ensure that removing a podcast deletes its database record, removes all its episodes from the 'episodes' table, removes any associated items from the listening queue, and deletes downloaded audio files associated with those episodes.
+
+## Phase 12: Build System & Tooling Modernization
+- [x] **Gradle Upgrade:** Upgraded Gradle wrapper to 9.1.0.
+- [x] **AGP 9.0 Migration:** Upgraded Android Gradle Plugin to 9.0.1, leveraging built-in Kotlin support and the new DSL.
+- [x] **Kotlin 2.2 Upgrade:** Upgraded Kotlin to 2.2.10 and migrated the project to use the official Compose Compiler Gradle plugin.
+- [x] **KSP Migration:** Migrated from KAPT to KSP (Kotlin Symbol Processing) for Room and Hilt to improve compilation speed and compatibility with Kotlin 2.0+.
+- [x] **Dependency Refresh:** Updated core libraries (Compose BOM, Lifecycle, Activity, Navigation, WorkManager, Hilt, Room) to their latest stable releases.
