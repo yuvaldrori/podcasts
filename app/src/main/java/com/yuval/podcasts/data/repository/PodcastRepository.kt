@@ -58,10 +58,12 @@ class PodcastRepository @Inject constructor(
 
     suspend fun fetchAndStorePodcast(feedUrl: String) {
         try {
-            val inputStream = podcastApi.fetchRss(feedUrl)
-            val (podcast, episodes) = rssParser.parse(inputStream, feedUrl)
-            podcastDao.insertPodcast(podcast)
-            episodeDao.insertEpisodes(episodes)
+            withContext(Dispatchers.IO) {
+                val inputStream = podcastApi.fetchRss(feedUrl)
+                val (podcast, episodes) = rssParser.parse(inputStream, feedUrl)
+                podcastDao.insertPodcast(podcast)
+                episodeDao.insertEpisodes(episodes)
+            }
         } catch (e: Throwable) {
             e.printStackTrace()
             // Ignore parse errors or OOMs for a single bad feed
