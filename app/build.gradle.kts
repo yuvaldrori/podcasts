@@ -119,5 +119,4 @@ dependencies {
 }
 
 dependencies {
-    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
 }
