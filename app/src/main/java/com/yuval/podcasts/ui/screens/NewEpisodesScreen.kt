@@ -12,7 +12,8 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,17 +37,7 @@ fun NewEpisodesScreen(
     val pullToRefreshState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
 
-    if (pullToRefreshState.isRefreshing) {
-        LaunchedEffect(true) {
-            viewModel.refreshAll()
-        }
-    }
 
-    LaunchedEffect(isRefreshing) {
-        if (!isRefreshing) {
-            pullToRefreshState.endRefresh()
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -56,22 +47,20 @@ fun NewEpisodesScreen(
                     IconButton(onClick = { viewModel.dismissAll() }) {
                         Icon(Icons.Default.Clear, contentDescription = "Dismiss All")
                     }
-                    IconButton(onClick = { 
-                        coroutineScope.launch {
-                            pullToRefreshState.startRefresh()
-                        }
-                     }) {
+                    IconButton(onClick = { viewModel.refreshAll() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 }
             )
         }
     ) { padding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refreshAll() },
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .nestedScroll(pullToRefreshState.nestedScrollConnection)
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -140,10 +129,7 @@ fun NewEpisodesScreen(
                 }
             }
 
-            PullToRefreshContainer(
-                state = pullToRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
+
         }
     }
 }
