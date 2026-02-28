@@ -9,17 +9,16 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 @HiltWorker
 class DownloadWorker @AssistedInject constructor(
     @Assisted private val appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val episodeDao: EpisodeDao,
-    private val okHttpClient: OkHttpClient
+    private val episodeDao: EpisodeDao
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -30,15 +29,14 @@ class DownloadWorker @AssistedInject constructor(
             // Update status to Downloading
             updateDownloadStatus(episodeId, 1, null)
 
-            val request = Request.Builder().url(audioUrl).build()
-            val response = okHttpClient.newCall(request).execute()
+            val url = URL(audioUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 30000
+            connection.readTimeout = 30000
+            connection.connect()
 
-            if (!response.isSuccessful) {
-                updateDownloadStatus(episodeId, 0, null)
-                return@withContext Result.failure()
-            }
-
-            val body = response.body ?: run {
+            if (connection.responseCode !in 200..299) {
                 updateDownloadStatus(episodeId, 0, null)
                 return@withContext Result.failure()
             }
@@ -48,7 +46,7 @@ class DownloadWorker @AssistedInject constructor(
             val outputFile = File(downloadsDir, fileName)
 
             FileOutputStream(outputFile).use { outputStream ->
-                body.byteStream().use { inputStream ->
+                connection.inputStream.use { inputStream ->
                     inputStream.copyTo(outputStream, 64 * 1024) // 64KB buffer for large audio files
                 }
             }

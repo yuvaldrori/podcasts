@@ -6,8 +6,6 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import okhttp3.OkHttpClient
-import retrofit2.Retrofit
 import javax.inject.Singleton
 
 @Module
@@ -16,23 +14,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder().build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl("https://example.com/") // Base URL is required but we use @Url
-            .client(okHttpClient)
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    fun providePodcastApi(retrofit: Retrofit): PodcastApi {
-        return retrofit.create(PodcastApi::class.java)
+    fun providePodcastApi(): PodcastApi {
+        return PodcastApi()
     }
 
     @Provides

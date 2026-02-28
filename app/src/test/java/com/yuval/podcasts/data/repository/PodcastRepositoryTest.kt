@@ -20,12 +20,10 @@ import io.mockk.mockk
 import io.mockk.mockkStatic
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import kotlinx.coroutines.test.runTest
-import retrofit2.Response
 
 class PodcastRepositoryTest {
 
@@ -79,10 +77,9 @@ class PodcastRepositoryTest {
     @Test
     fun fetchAndStorePodcast_success_insertsToDb() = runTest {
         val feedUrl = "http://example.com/feed"
-        val responseBody = "mock xml".toResponseBody()
-        val mockResponse = Response.success(responseBody)
+        val mockInputStream = "mock xml".byteInputStream()
         
-        coEvery { podcastApi.fetchRss(feedUrl) } returns mockResponse
+        coEvery { podcastApi.fetchRss(feedUrl) } returns mockInputStream
         
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
         val episodes = listOf(Episode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L, 0, null, false, 0L))
@@ -102,9 +99,7 @@ class PodcastRepositoryTest {
         )
         every { podcastDao.getAllPodcasts() } returns flowOf(podcasts)
         
-        val responseBody = "mock xml".toResponseBody()
-        val mockResponse = Response.success(responseBody)
-        coEvery { podcastApi.fetchRss(any()) } returns mockResponse
+        coEvery { podcastApi.fetchRss(any()) } answers { "mock xml".byteInputStream() }
         coEvery { rssParser.parse(any(), any()) } returns Pair(podcasts[0], emptyList())
 
         repository.refreshAll()
