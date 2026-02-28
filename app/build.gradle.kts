@@ -23,17 +23,28 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(System.getProperty("user.home") + "/tmp/android.jks")
+            storePassword = System.getenv("JKS_PASSWORD") ?: ""
+            keyAlias = System.getenv("JKS_ALIAS") ?: ""
+            keyPassword = System.getenv("JKS_PASSWORD") ?: ""
+        }
+    }
+
     buildTypes {
         debug {
             // Optimize debug build speed by disabling PNG crunching
             isCrunchPngs = false
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
