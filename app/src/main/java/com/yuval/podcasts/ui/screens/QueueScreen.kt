@@ -33,7 +33,10 @@ fun QueueScreen(
     onEpisodeClick: (String) -> Unit,
     viewModel: QueueViewModel = hiltViewModel()
 ) {
-    val queue by viewModel.queue.collectAsStateWithLifecycle()
+    val dbQueue by viewModel.queue.collectAsStateWithLifecycle()
+    var queue by remember { mutableStateOf(emptyList<com.yuval.podcasts.data.db.entity.EpisodeWithPodcast>()) }
+    LaunchedEffect(dbQueue) { queue = dbQueue }
+    
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
     val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
@@ -47,9 +50,16 @@ fun QueueScreen(
         }
     }
 
-    val state = rememberReorderableLazyListState(onMove = { from, to ->
-        viewModel.reorderItem(from.index, to.index)
-    })
+    val state = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            queue = queue.toMutableList().apply { 
+                add(to.index, removeAt(from.index)) 
+            }
+        },
+        onDragEnd = { startIndex, endIndex ->
+            viewModel.reorderItem(startIndex, endIndex)
+        }
+    )
 
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
