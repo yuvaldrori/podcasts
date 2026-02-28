@@ -105,4 +105,41 @@ class EpisodeDaoTest {
         val unplayed = episodeDao.getUnplayedEpisodesWithPodcast().first()
         assertEquals(0, unplayed.size)
     }
+
+
+    @Test
+    fun getEpisodesForPodcastSync_returnsCorrectList() = runBlocking {
+        val podcast = Podcast("url2", "P2", "D2", "I2", "W2")
+        podcastDao.insertPodcast(podcast)
+
+        val episode1 = Episode("ep3", "url2", "E3", "D", "A", null, 1000L, 0L, 0, null, false, 0L)
+        val episode2 = Episode("ep4", "url2", "E4", "D", "A", null, 2000L, 0L, 0, null, false, 0L)
+        
+        episodeDao.insertEpisodes(listOf(episode1, episode2))
+
+        val episodes = episodeDao.getEpisodesForPodcastSync("url2")
+        assertEquals(2, episodes.size)
+        // Ensure they match the inserted data
+        assertEquals("url2", episodes[0].podcastFeedUrl)
+    }
+
+    @Test
+    fun deleteEpisodesByPodcast_removesOnlyMatchingEpisodes() = runBlocking {
+        val podcast1 = Podcast("url1", "P1", "D1", "I1", "W1")
+        val podcast2 = Podcast("url2", "P2", "D2", "I2", "W2")
+        podcastDao.insertPodcast(podcast1)
+        podcastDao.insertPodcast(podcast2)
+
+        val ep1 = Episode("ep1", "url1", "E1", "D", "A", null, 1000L, 0L, 0, null, false, 0L)
+        val ep2 = Episode("ep2", "url2", "E2", "D", "A", null, 2000L, 0L, 0, null, false, 0L)
+        episodeDao.insertEpisodes(listOf(ep1, ep2))
+
+        episodeDao.deleteEpisodesByPodcast("url1")
+
+        val remainingEp1 = episodeDao.getEpisodeById("ep1")
+        val remainingEp2 = episodeDao.getEpisodeById("ep2")
+        
+        org.junit.Assert.assertNull(remainingEp1)
+        assertNotNull(remainingEp2)
+    }
 }

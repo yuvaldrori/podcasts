@@ -81,8 +81,8 @@ fun NewEpisodesScreen(
                     items = episodes,
                     key = { it.episode.id }
                 ) { episodeWithPodcast ->
-                    val state = rememberSwipeToDismissBoxState(
-                        confirmValueChange = { value ->
+                    val onDismiss = remember(episodeWithPodcast.episode.id) {
+                        { value: SwipeToDismissBoxValue ->
                             when (value) {
                                 SwipeToDismissBoxValue.EndToStart -> {
                                     viewModel.dismissEpisode(episodeWithPodcast.episode)
@@ -95,6 +95,9 @@ fun NewEpisodesScreen(
                                 else -> false
                             }
                         }
+                    }
+                    val state = rememberSwipeToDismissBoxState(
+                        confirmValueChange = onDismiss
                     )
                     SwipeToDismissBox(
                         state = state,
@@ -121,10 +124,12 @@ fun NewEpisodesScreen(
                                 imageUrl = episodeWithPodcast.podcast.imageUrl,
                                 trailingContent = {
                                     Row {
-                                        IconButton(onClick = { viewModel.dismissEpisode(episodeWithPodcast.episode) }) {
+                                        val onDismissClick = remember(episodeWithPodcast.episode.id) { { viewModel.dismissEpisode(episodeWithPodcast.episode) } }
+                                        val onAddClick = remember(episodeWithPodcast.episode.id) { { viewModel.addToQueue(episodeWithPodcast.episode) } }
+                                        IconButton(onClick = onDismissClick) {
                                             Icon(Icons.Default.Delete, contentDescription = "Dismiss")
                                         }
-                                        IconButton(onClick = { viewModel.addToQueue(episodeWithPodcast.episode) }) {
+                                        IconButton(onClick = onAddClick) {
                                             Icon(Icons.Default.Add, contentDescription = "Add to Queue")
                                         }
                                     }

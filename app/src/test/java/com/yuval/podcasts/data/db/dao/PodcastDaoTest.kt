@@ -74,4 +74,21 @@ class PodcastDaoTest {
         assertEquals("url2", allPodcasts[0].feedUrl)
         assertEquals("url1", allPodcasts[1].feedUrl)
     }
+
+
+    @Test
+    fun deletePodcast_removesOnlyMatchingPodcast() = runBlocking {
+        val podcast1 = Podcast("url1", "P1", "D1", "I1", "W1")
+        val podcast2 = Podcast("url2", "P2", "D2", "I2", "W2")
+
+        podcastDao.insertPodcast(podcast1)
+        podcastDao.insertPodcast(podcast2)
+
+        podcastDao.deletePodcast("url1")
+
+        val allPodcasts = podcastDao.getAllPodcasts().first()
+
+        assertEquals(1, allPodcasts.size)
+        assertEquals("url2", allPodcasts[0].feedUrl)
+    }
 }

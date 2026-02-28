@@ -106,9 +106,9 @@ fun EpisodeItem(
     }
 }
 
-private val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+private val dateFormat = java.lang.ThreadLocal.withInitial { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
 private fun formatDate(timestamp: Long): String {
     if (timestamp == 0L) return ""
-    return dateFormat.format(Date(timestamp))
+    return dateFormat.get()?.format(Date(timestamp)) ?: ""
 }

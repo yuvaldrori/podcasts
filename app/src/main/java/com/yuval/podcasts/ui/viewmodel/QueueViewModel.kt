@@ -80,7 +80,6 @@ class QueueViewModel @Inject constructor(
     }
 
     fun reorderQueue(newOrderIds: List<String>) {
-        android.util.Log.d("DragAndDrop", "reorderQueue called with list: $newOrderIds")
         viewModelScope.launch {
             repository.reorderQueue(newOrderIds)
         }

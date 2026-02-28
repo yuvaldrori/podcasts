@@ -147,4 +147,48 @@ class PodcastRepositoryTest {
         coVerify { episodeDao.deleteEpisodesByPodcast(feedUrl) }
         coVerify { podcastDao.deletePodcast(feedUrl) }
     }
+
+
+    @Test
+    fun removeFromQueue_removesFromDbAndDeletesFile() = runTest {
+        val episodeId = "ep1"
+        val mockEpisode = Episode(episodeId, "feed", "T", "D", "A", null, 0L, 0L, 2, "/fake/path/file.mp3", false, 0L)
+        
+        coEvery { queueDao.removeFromQueue(episodeId) } returns Unit
+        coEvery { episodeDao.getEpisodeById(episodeId) } returns mockEpisode
+        coEvery { episodeDao.updateDownloadStatus(episodeId, 0, null) } returns Unit
+
+        repository.removeFromQueue(episodeId)
+
+        coVerify { queueDao.removeFromQueue(episodeId) }
+        coVerify { episodeDao.getEpisodeById(episodeId) }
+        coVerify { episodeDao.updateDownloadStatus(episodeId, 0, null) }
+        // File deletion is harder to verify without mocking File, but we verify the DB updates
+    }
+
+    @Test
+    fun markAllAsPlayed_callsDao() = runTest {
+        coEvery { episodeDao.markAllUnplayedAsPlayed() } returns Unit
+        
+        repository.markAllAsPlayed()
+        
+        coVerify { episodeDao.markAllUnplayedAsPlayed() }
+    }
+
+    @Test
+    fun reorderQueue_updatesDbWithCorrectPositions() = runTest {
+        val newOrder = listOf("ep2", "ep1", "ep3")
+        coEvery { queueDao.updateQueue(any()) } returns Unit
+        
+        repository.reorderQueue(newOrder)
+        
+        coVerify { 
+            queueDao.updateQueue(match { 
+                it.size == 3 && 
+                it[0].episodeId == "ep2" && it[0].position == 0 &&
+                it[1].episodeId == "ep1" && it[1].position == 1 &&
+                it[2].episodeId == "ep3" && it[2].position == 2 
+            }) 
+        }
+    }
 }

@@ -56,7 +56,8 @@ fun PodcastDetailScreen(
                     showProgress = true,
                     showPlayedMarker = true,
                     trailingContent = {
-                        IconButton(onClick = { viewModel.addToQueue(episode) }) {
+                        val onAddClick = remember(episode.id) { { viewModel.addToQueue(episode) } }
+                        IconButton(onClick = onAddClick) {
                             Icon(Icons.Default.Add, contentDescription = "Add to Queue")
                         }
                     }

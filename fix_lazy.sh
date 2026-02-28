@@ -1,0 +1,1 @@
+sed -i 's/contentPadding = PaddingValues(16.dp)/contentPadding = PaddingValues(16.dp),\n                modifier = Modifier.fillMaxSize()/' app/src/main/java/com/yuval/podcasts/ui/screens/SubscriptionsScreen.kt

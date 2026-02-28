@@ -76,16 +76,19 @@ fun QueueScreen(
                 ReorderableItem(state, key = episodeWithPodcast.episode.id) { isDragging ->
                     val elevation = if (isDragging) 8.dp else 0.dp
                     
+                    val onDismiss = remember(episodeWithPodcast.episode.id) {
+                        { value: SwipeToDismissBoxValue ->
+                            if (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd) {
+                                viewModel.removeFromQueue(episodeWithPodcast.episode.id)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    }
                     SwipeToDismissBox(
                         state = rememberSwipeToDismissBoxState(
-                            confirmValueChange = { value ->
-                                if (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd) {
-                                    viewModel.removeFromQueue(episodeWithPodcast.episode.id)
-                                    true
-                                } else {
-                                    false
-                                }
-                            }
+                            confirmValueChange = onDismiss
                         ),
                         backgroundContent = {
                             Box(
