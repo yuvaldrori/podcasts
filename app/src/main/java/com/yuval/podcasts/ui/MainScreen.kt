@@ -7,6 +7,8 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -38,7 +40,9 @@ fun MainScreen(
         bottomBar = {
             Column {
                 UnifiedPlayer(viewModel = queueViewModel)
-                NavigationBar {
+                NavigationBar(
+                    modifier = Modifier.height(64.dp) // Reduced height from default ~80dp
+                ) {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
                     bottomNavItems.forEach { screen ->
@@ -46,6 +50,7 @@ fun MainScreen(
                             icon = { Icon(screen.icon, contentDescription = null) },
                             label = { Text(screen.title) },
                             selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            alwaysShowLabel = false, // Hide label when not selected to save vertical space
                             onClick = {
                                 if (currentDestination?.hierarchy?.any { it.route == screen.route } == true) {
                                     navController.popBackStack(screen.route, false)
