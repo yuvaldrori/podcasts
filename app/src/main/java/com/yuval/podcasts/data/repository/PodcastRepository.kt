@@ -43,7 +43,8 @@ class PodcastRepository @Inject constructor(
     private val opmlManager: OpmlManager,
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
-    private val queueDao: QueueDao
+    private val queueDao: QueueDao,
+    private val workManager: WorkManager
 ) {
     val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
     val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast().distinctUntilChanged()
@@ -169,7 +170,7 @@ class PodcastRepository @Inject constructor(
             .setInputData(downloadData)
             .build()
 
-        WorkManager.getInstance(context).enqueueUniqueWork(
+        workManager.enqueueUniqueWork(
             "download_${episode.id}",
             androidx.work.ExistingWorkPolicy.KEEP,
             downloadWorkRequest

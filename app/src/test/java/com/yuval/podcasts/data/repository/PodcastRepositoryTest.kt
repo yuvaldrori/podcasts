@@ -40,6 +40,7 @@ class PodcastRepositoryTest {
     private lateinit var podcastDao: PodcastDao
     private lateinit var episodeDao: EpisodeDao
     private lateinit var queueDao: QueueDao
+    private lateinit var workManager: WorkManager
     private lateinit var repository: PodcastRepository
 
     @Before
@@ -52,6 +53,7 @@ class PodcastRepositoryTest {
         podcastDao = mockk(relaxed = true)
         episodeDao = mockk(relaxed = true)
         queueDao = mockk(relaxed = true)
+        workManager = mockk(relaxed = true)
 
         val podcasts = listOf(
             Podcast("url1", "T1", "D1", "I1", "W1"),
@@ -69,7 +71,8 @@ class PodcastRepositoryTest {
             opmlManager = opmlManager,
             podcastDao = podcastDao,
             episodeDao = episodeDao,
-            queueDao = queueDao
+            queueDao = queueDao,
+            workManager = workManager
         )
     }
 
@@ -112,10 +115,6 @@ class PodcastRepositoryTest {
 
     @Test
     fun enqueueEpisode_updatesQueueAndWorkManager() = runTest {
-        mockkStatic(WorkManager::class)
-        val workManager = mockk<WorkManager>(relaxed = true)
-        every { WorkManager.getInstance(context) } returns workManager
-
         val episode = Episode("ep1", "feed", "Ep1", "Desc", "audio", null, 0L, 0L, 0, null, false, 0L)
         val currentQueue = listOf(QueueState("ep2", 0))
         every { queueDao.getQueue() } returns flowOf(currentQueue)
@@ -124,7 +123,7 @@ class PodcastRepositoryTest {
 
         coVerify { queueDao.updateQueue(match { it.size == 2 && it.find { state -> state.episodeId == "ep1" }?.position == 0 }) }
         coVerify { episodeDao.updatePlaybackStatus("ep1", true) }
-        coVerify { workManager.enqueueUniqueWork(any<String>(), any<androidx.work.ExistingWorkPolicy>(), any<androidx.work.OneTimeWorkRequest>()) }
+        io.mockk.verify { workManager.enqueueUniqueWork(any<String>(), any<androidx.work.ExistingWorkPolicy>(), any<androidx.work.OneTimeWorkRequest>()) }
     }
 
 
