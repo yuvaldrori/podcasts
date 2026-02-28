@@ -184,17 +184,10 @@ class PodcastRepository @Inject constructor(
         episodeDao.updatePlaybackStatus(id, true)
     }
 
-    suspend fun reorderQueue(fromIndex: Int, toIndex: Int) {
-        val currentQueue = queueDao.getQueue().first().toMutableList()
-        if (fromIndex < 0 || toIndex < 0 || fromIndex >= currentQueue.size || toIndex >= currentQueue.size) return
-        
-        val item = currentQueue.removeAt(fromIndex)
-        currentQueue.add(toIndex, item)
-        
-        val updatedQueue = currentQueue.mapIndexed { index, state -> 
-            state.copy(position = index) 
+    suspend fun reorderQueue(newOrderIds: List<String>) {
+        val updatedQueue = newOrderIds.mapIndexed { index, id ->
+            QueueState(episodeId = id, position = index)
         }
-        
         queueDao.updateQueue(updatedQueue)
     }
 

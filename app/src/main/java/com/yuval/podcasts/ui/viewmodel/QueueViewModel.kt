@@ -79,9 +79,10 @@ class QueueViewModel @Inject constructor(
         playerManager.updatePosition()
     }
 
-    fun reorderItem(from: Int, to: Int) {
+    fun reorderQueue(newOrderIds: List<String>) {
+        android.util.Log.d("DragAndDrop", "reorderQueue called with list: $newOrderIds")
         viewModelScope.launch {
-            repository.reorderQueue(from, to)
+            repository.reorderQueue(newOrderIds)
         }
     }
 

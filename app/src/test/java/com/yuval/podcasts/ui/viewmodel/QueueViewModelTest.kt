@@ -101,12 +101,13 @@ class QueueViewModelTest {
     }
 
     @Test
-    fun reorderItem_callsRepository() = runTest {
-        coEvery { repository.reorderQueue(0, 1) } returns Unit
+    fun reorderQueue_callsRepository() = runTest {
+        val newOrder = listOf("ep2", "ep1")
+        coEvery { repository.reorderQueue(newOrder) } returns Unit
         
-        viewModel.reorderItem(0, 1)
+        viewModel.reorderQueue(newOrder)
 
-        coVerify { repository.reorderQueue(0, 1) }
+        coVerify { repository.reorderQueue(newOrder) }
     }
 
     @Test

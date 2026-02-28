@@ -35,7 +35,6 @@ fun QueueScreen(
 ) {
     val dbQueue by viewModel.queue.collectAsStateWithLifecycle()
     var queue by remember { mutableStateOf(emptyList<com.yuval.podcasts.data.db.entity.EpisodeWithPodcast>()) }
-    LaunchedEffect(dbQueue) { queue = dbQueue }
     
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
@@ -57,9 +56,16 @@ fun QueueScreen(
             }
         },
         onDragEnd = { startIndex, endIndex ->
-            viewModel.reorderItem(startIndex, endIndex)
+            viewModel.reorderQueue(queue.map { it.episode.id })
         }
     )
+
+
+    LaunchedEffect(dbQueue, state.draggingItemKey) { 
+        if (state.draggingItemKey == null) {
+            queue = dbQueue 
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(

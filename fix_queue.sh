@@ -1,0 +1,1 @@
+sed -i 's/LaunchedEffect(dbQueue) { queue = dbQueue }/LaunchedEffect(dbQueue, state.draggingItemKey) { if (state.draggingItemKey == null) queue = dbQueue }/' app/src/main/java/com/yuval/podcasts/ui/screens/QueueScreen.kt
