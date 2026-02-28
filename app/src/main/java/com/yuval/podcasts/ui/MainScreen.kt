@@ -44,30 +44,21 @@ fun MainScreen(
         bottomBar = {
             Column {
                 UnifiedPlayer(viewModel = queueViewModel)
-                NavigationBar(
-                    modifier = Modifier.height(64.dp) // Reduced height from default ~80dp
-                ) {
+                NavigationBar {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
                     bottomNavItems.forEach { screen ->
                         val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                         NavigationBarItem(
-                            icon = {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        imageVector = screen.icon,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp) // Slightly smaller icon
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp)) // Minimal space
-                                    Text(
-                                        text = screen.title,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        maxLines = 1
-                                    )
-                                }
+                            icon = { Icon(screen.icon, contentDescription = null) },
+                            label = { 
+                                Text(
+                                    text = screen.title, 
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1
+                                ) 
                             },
-                            label = null, // Disabling default label slot to use our custom Column in icon slot
+                            alwaysShowLabel = true,
                             selected = selected,
                             onClick = {
                                 if (currentDestination?.hierarchy?.any { it.route == screen.route } == true) {
