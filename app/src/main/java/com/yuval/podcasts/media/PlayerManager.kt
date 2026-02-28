@@ -19,7 +19,7 @@ import javax.inject.Singleton
 
 @Singleton
 class PlayerManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository
 ) {
     private var controllerFuture: ListenableFuture<MediaController>? = null

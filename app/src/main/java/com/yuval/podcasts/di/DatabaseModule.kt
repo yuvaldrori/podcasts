@@ -35,7 +35,7 @@ object DatabaseModule {
             "podcasts_db"
         )
         .addMigrations(MIGRATION_3_4)
-        .fallbackToDestructiveMigration()
+        .fallbackToDestructiveMigration(true)
         .build()
     }
 
