@@ -19,7 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.yuval.podcasts.ui.components.MiniPlayer
+import com.yuval.podcasts.ui.components.UnifiedPlayer
 import com.yuval.podcasts.ui.navigation.Screen
 import com.yuval.podcasts.ui.navigation.bottomNavItems
 import com.yuval.podcasts.ui.screens.NewEpisodesScreen
@@ -37,9 +37,7 @@ fun MainScreen(
     Scaffold(
         bottomBar = {
             Column {
-                MiniPlayer(viewModel = queueViewModel) {
-                    // TODO: Expand to full screen player
-                }
+                UnifiedPlayer(viewModel = queueViewModel)
                 NavigationBar {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination

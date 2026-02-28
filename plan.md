@@ -103,3 +103,7 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Kotlin 2.2 Upgrade:** Upgraded Kotlin to 2.2.10 and migrated the project to use the official Compose Compiler Gradle plugin.
 - [x] **KSP Migration:** Migrated from KAPT to KSP (Kotlin Symbol Processing) for Room and Hilt to improve compilation speed and compatibility with Kotlin 2.0+.
 - [x] **Dependency Refresh:** Updated core libraries (Compose BOM, Lifecycle, Activity, Navigation, WorkManager, Hilt, Room) to their latest stable releases.
+
+## Phase 13: UI Refactoring
+- [ ] **Unified Player UI:** Replace the mini-player (present on all screens) and the current larger player (in the queue screen) with a single, unified larger player that is visible on all screens.
+- [ ] **Episode Title in Player:** Add the name of the currently playing episode to the new unified player UI.

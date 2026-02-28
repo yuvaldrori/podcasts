@@ -86,62 +86,6 @@ fun QueueScreen(
                 )
             }
         }
-        
-        PlaybackControls(viewModel = viewModel)
-    }
-}
-
-@Composable
-fun PlaybackControls(viewModel: QueueViewModel) {
-    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
-    val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
-    val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
-    val duration by viewModel.duration.collectAsStateWithLifecycle()
-
-    Surface(tonalElevation = 8.dp) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = formatTime(currentPosition), style = MaterialTheme.typography.bodySmall)
-                Text(text = formatTime(duration), style = MaterialTheme.typography.bodySmall)
-            }
-            
-            val progress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
-            Slider(
-                value = progress,
-                onValueChange = { viewModel.seekTo((it * duration).toLong()) },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                TextButton(onClick = { viewModel.toggleSpeed() }) {
-                    Text(text = if (playbackSpeed >= 2f) "2x" else "1x")
-                }
-                IconButton(onClick = { viewModel.seekBackward() }) {
-                    Icon(Icons.Default.FastRewind, contentDescription = "-30s")
-                }
-                IconButton(onClick = { viewModel.playPause() }) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-                IconButton(onClick = { viewModel.seekForward() }) {
-                    Icon(Icons.Default.FastForward, contentDescription = "+30s")
-                }
-            }
-        }
     }
 }
 
