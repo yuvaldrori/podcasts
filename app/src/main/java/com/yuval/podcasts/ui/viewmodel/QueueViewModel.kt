@@ -92,8 +92,5 @@ class QueueViewModel @Inject constructor(
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        playerManager.release()
-    }
+    
 }

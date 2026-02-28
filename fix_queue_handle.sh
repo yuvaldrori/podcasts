@@ -1,0 +1,1 @@
+sed -i 's/modifier = Modifier.padding(start = 8.dp).detectReorder(state)/modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 16.dp, bottom = 16.dp).detectReorder(state)/' app/src/main/java/com/yuval/podcasts/ui/screens/QueueScreen.kt

@@ -4,7 +4,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
@@ -18,14 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.QueueViewModel
 import kotlinx.coroutines.delay
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
+import org.burnoutcrew.reorderable.*
 import java.util.Locale
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,12 +33,28 @@ fun QueueScreen(
     viewModel: QueueViewModel = hiltViewModel()
 ) {
     val dbQueue by viewModel.queue.collectAsStateWithLifecycle()
-    var queue by remember { mutableStateOf(emptyList<com.yuval.podcasts.data.db.entity.EpisodeWithPodcast>()) }
+    var queue by remember { mutableStateOf(emptyList<EpisodeWithPodcast>()) }
     
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
-    val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
-    val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
-    val duration by viewModel.duration.collectAsStateWithLifecycle()
+
+    val state = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            Log.d("QueueScreen", "onMove from ${from.index} to ${to.index}")
+            queue = queue.toMutableList().apply { 
+                add(to.index, removeAt(from.index)) 
+            }
+        },
+        onDragEnd = { startIndex, endIndex ->
+            Log.d("QueueScreen", "onDragEnd from $startIndex to $endIndex")
+            viewModel.reorderQueue(queue.map { it.episode.id })
+        }
+    )
+
+    LaunchedEffect(dbQueue) { 
+        if (state.draggingItemKey == null) {
+            queue = dbQueue 
+        }
+    }
 
     // Periodically update position when playing
     LaunchedEffect(isPlaying) {
@@ -49,34 +64,15 @@ fun QueueScreen(
         }
     }
 
-    val state = rememberReorderableLazyListState(
-        onMove = { from, to ->
-            queue = queue.toMutableList().apply { 
-                add(to.index, removeAt(from.index)) 
-            }
-        },
-        onDragEnd = { startIndex, endIndex ->
-            viewModel.reorderQueue(queue.map { it.episode.id })
-        }
-    )
-
-
-    LaunchedEffect(dbQueue, state.draggingItemKey) { 
-        if (state.draggingItemKey == null) {
-            queue = dbQueue 
-        }
-    }
-
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = state.listState,
             modifier = Modifier
                 .weight(1f)
-                .reorderable(state)
-                .detectReorderAfterLongPress(state),
+                .reorderable(state),
             contentPadding = PaddingValues(16.dp)
         ) {
-            items(queue, key = { it.episode.id }) { episodeWithPodcast ->
+            itemsIndexed(queue, key = { _, item -> item.episode.id }) { index, episodeWithPodcast ->
                 ReorderableItem(state, key = episodeWithPodcast.episode.id) { isDragging ->
                     val elevation = if (isDragging) 8.dp else 0.dp
                     
@@ -111,11 +107,17 @@ fun QueueScreen(
                                             IconButton(onClick = { viewModel.play(episodeWithPodcast.episode) }) {
                                                 Icon(Icons.Default.PlayArrow, contentDescription = "Play")
                                             }
-                                            Icon(
-                                                Icons.Default.DragHandle,
-                                                contentDescription = "Reorder",
-                                                modifier = Modifier.padding(start = 8.dp)
-                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(48.dp)
+                                                    .detectReorder(state),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.DragHandle,
+                                                    contentDescription = "Reorder"
+                                                )
+                                            }
                                         }
                                     }
                                 )
@@ -126,32 +128,17 @@ fun QueueScreen(
             }
         }
         
-        PlaybackControls(
-            isPlaying = isPlaying,
-            playbackSpeed = playbackSpeed,
-            currentPosition = currentPosition,
-            duration = duration,
-            onPlayPause = { viewModel.playPause() },
-            onSeekBackward = { viewModel.seekBackward() },
-            onSeekForward = { viewModel.seekForward() },
-            onToggleSpeed = { viewModel.toggleSpeed() },
-            onSeekTo = { viewModel.seekTo(it) }
-        )
+        PlaybackControls(viewModel = viewModel)
     }
 }
 
 @Composable
-fun PlaybackControls(
-    isPlaying: Boolean,
-    playbackSpeed: Float,
-    currentPosition: Long,
-    duration: Long,
-    onPlayPause: () -> Unit,
-    onSeekBackward: () -> Unit,
-    onSeekForward: () -> Unit,
-    onToggleSpeed: () -> Unit,
-    onSeekTo: (Long) -> Unit
-) {
+fun PlaybackControls(viewModel: QueueViewModel) {
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
+    val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
+    val duration by viewModel.duration.collectAsStateWithLifecycle()
+
     Surface(tonalElevation = 8.dp) {
         Column(
             modifier = Modifier
@@ -169,7 +156,7 @@ fun PlaybackControls(
             val progress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
             Slider(
                 value = progress,
-                onValueChange = { onSeekTo((it * duration).toLong()) },
+                onValueChange = { viewModel.seekTo((it * duration).toLong()) },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -178,20 +165,20 @@ fun PlaybackControls(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                TextButton(onClick = onToggleSpeed) {
+                TextButton(onClick = { viewModel.toggleSpeed() }) {
                     Text(text = if (playbackSpeed >= 2f) "2x" else "1x")
                 }
-                IconButton(onClick = onSeekBackward) {
+                IconButton(onClick = { viewModel.seekBackward() }) {
                     Icon(Icons.Default.FastRewind, contentDescription = "-30s")
                 }
-                IconButton(onClick = onPlayPause) {
+                IconButton(onClick = { viewModel.playPause() }) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp)
                     )
                 }
-                IconButton(onClick = onSeekForward) {
+                IconButton(onClick = { viewModel.seekForward() }) {
                     Icon(Icons.Default.FastForward, contentDescription = "+30s")
                 }
             }
@@ -210,4 +197,3 @@ private fun formatTime(ms: Long): String {
         String.format(Locale.US, "%02d:%02d", minutes, seconds)
     }
 }
-

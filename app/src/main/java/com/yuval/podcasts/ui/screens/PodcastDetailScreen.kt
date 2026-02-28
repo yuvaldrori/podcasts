@@ -23,7 +23,8 @@ fun PodcastDetailScreen(
     onEpisodeClick: (String) -> Unit,
     viewModel: FeedsViewModel = hiltViewModel()
 ) {
-    val episodes by viewModel.getEpisodesForPodcast(feedUrl).collectAsStateWithLifecycle(emptyList())
+    val episodesFlow = remember(feedUrl) { viewModel.getEpisodesForPodcast(feedUrl) }
+    val episodes by episodesFlow.collectAsStateWithLifecycle(emptyList())
 
     Scaffold(
         topBar = {
