@@ -34,14 +34,15 @@ fun SubscriptionsScreen(
             key = { it.feedUrl }
         ) { podcast ->
             var expanded by remember { mutableStateOf(false) }
+            val handlePodcastClick = remember(podcast.feedUrl) { { onPodcastClick(podcast.feedUrl) } }
 
             PodcastItem(
                 podcast = podcast,
-                onClick = { onPodcastClick(podcast.feedUrl) },
+                onClick = handlePodcastClick,
                 trailingContent = {
                     Box {
                         IconButton(onClick = { expanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                            Icon(Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(24.dp))
                         }
                         DropdownMenu(
                             expanded = expanded,

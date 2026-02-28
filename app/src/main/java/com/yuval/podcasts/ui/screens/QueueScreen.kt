@@ -98,9 +98,10 @@ fun QueueScreen(
                         },
                         content = {
                             Surface(tonalElevation = elevation) {
+                                val clickHandler = remember(episodeWithPodcast.episode.id) { { onEpisodeClick(episodeWithPodcast.episode.id) } }
                                 EpisodeItem(
                                     episode = episodeWithPodcast.episode,
-                                    modifier = Modifier.clickable { onEpisodeClick(episodeWithPodcast.episode.id) },
+                                    modifier = Modifier.clickable(onClick = clickHandler),
                                     imageUrl = episodeWithPodcast.podcast.imageUrl,
                                     trailingContent = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {

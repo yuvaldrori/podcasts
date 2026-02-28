@@ -49,12 +49,16 @@ fun MainScreen(
                             label = { Text(screen.title) },
                             selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                             onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                                if (currentDestination?.hierarchy?.any { it.route == screen.route } == true) {
+                                    navController.popBackStack(screen.route, false)
+                                } else {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
                             }
                         )
@@ -91,6 +95,7 @@ fun MainScreen(
                 val feedUrl = backStackEntry.arguments?.getString("feedUrl") ?: ""
                 PodcastDetailScreen(
                     feedUrl = java.net.URLDecoder.decode(feedUrl, "UTF-8"),
+                    onBack = { navController.popBackStack() },
                     onEpisodeClick = { episodeId -> 
                         navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
                     }

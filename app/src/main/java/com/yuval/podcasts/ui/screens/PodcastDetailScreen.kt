@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -20,6 +21,7 @@ import com.yuval.podcasts.ui.viewmodel.FeedsViewModel
 @Composable
 fun PodcastDetailScreen(
     feedUrl: String,
+    onBack: () -> Unit,
     onEpisodeClick: (String) -> Unit,
     viewModel: FeedsViewModel = hiltViewModel()
 ) {
@@ -28,7 +30,14 @@ fun PodcastDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Episodes") })
+            TopAppBar(
+                title = { Text("Episodes") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
         }
     ) { padding ->
         LazyColumn(
@@ -39,9 +48,10 @@ fun PodcastDetailScreen(
                 items = episodes,
                 key = { it.id }
             ) { episode ->
+                val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
                 EpisodeItem(
                     episode = episode,
-                    modifier = Modifier.clickable { onEpisodeClick(episode.id) },
+                    modifier = Modifier.clickable(onClick = clickHandler),
                     imageUrl = episode.imageUrl,
                     showProgress = true,
                     showPlayedMarker = true,
