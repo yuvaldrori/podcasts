@@ -1,4 +1,5 @@
 package com.yuval.podcasts.ui.screens
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,11 +33,11 @@ fun QueueScreen(
     onEpisodeClick: (String) -> Unit,
     viewModel: QueueViewModel = hiltViewModel()
 ) {
-    val queue by viewModel.queue.collectAsState()
-    val isPlaying by viewModel.isPlaying.collectAsState()
-    val playbackSpeed by viewModel.playbackSpeed.collectAsState()
-    val currentPosition by viewModel.currentPosition.collectAsState()
-    val duration by viewModel.duration.collectAsState()
+    val queue by viewModel.queue.collectAsStateWithLifecycle()
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
+    val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
+    val duration by viewModel.duration.collectAsStateWithLifecycle()
 
     // Periodically update position when playing
     LaunchedEffect(isPlaying) {

@@ -10,7 +10,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,8 +23,8 @@ fun MiniPlayer(
     viewModel: QueueViewModel,
     onClick: () -> Unit
 ) {
-    val isPlaying by viewModel.isPlaying.collectAsState()
-    val currentEpisode by viewModel.currentlyPlayingEpisode.collectAsState()
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val currentEpisode by viewModel.currentlyPlayingEpisode.collectAsStateWithLifecycle()
 
     Surface(
         tonalElevation = 4.dp,

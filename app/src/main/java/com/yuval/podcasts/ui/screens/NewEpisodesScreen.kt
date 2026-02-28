@@ -1,4 +1,5 @@
 package com.yuval.podcasts.ui.screens
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,8 +30,8 @@ fun NewEpisodesScreen(
     onEpisodeClick: (String) -> Unit,
     viewModel: FeedsViewModel = hiltViewModel()
 ) {
-    val episodes by viewModel.unplayedEpisodes.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val episodes by viewModel.unplayedEpisodes.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
     val pullToRefreshState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()

@@ -1,4 +1,5 @@
 package com.yuval.podcasts.ui.screens
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,7 +19,7 @@ fun SubscriptionsScreen(
     viewModel: FeedsViewModel = hiltViewModel(),
     onPodcastClick: (String) -> Unit
 ) {
-    val podcasts by viewModel.podcasts.collectAsState()
+    val podcasts by viewModel.podcasts.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),

@@ -2,6 +2,8 @@ package com.yuval.podcasts.data.repository
 
 import android.content.Context
 import androidx.work.Data
+import androidx.work.Constraints
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.yuval.podcasts.data.db.AppDatabase
@@ -24,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -42,15 +45,15 @@ class PodcastRepository @Inject constructor(
     private val episodeDao: EpisodeDao,
     private val queueDao: QueueDao
 ) {
-    val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts()
-    val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast()
-    val unplayedEpisodes: Flow<List<EpisodeWithPodcast>> = episodeDao.getUnplayedEpisodesWithPodcast()
+    val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
+    val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast().distinctUntilChanged()
+    val unplayedEpisodes: Flow<List<EpisodeWithPodcast>> = episodeDao.getUnplayedEpisodesWithPodcast().distinctUntilChanged()
 
-    fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl)
+    fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl).distinctUntilChanged()
 
-    fun getEpisodeByIdFlow(id: String): Flow<Episode?> = episodeDao.getEpisodeByIdFlow(id)
+    fun getEpisodeByIdFlow(id: String): Flow<Episode?> = episodeDao.getEpisodeByIdFlow(id).distinctUntilChanged()
 
-    fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?> = episodeDao.getEpisodeWithPodcastFlow(id)
+    fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?> = episodeDao.getEpisodeWithPodcastFlow(id).distinctUntilChanged()
 
     suspend fun fetchAndStorePodcast(feedUrl: String) {
         val response = podcastApi.fetchRss(feedUrl)
@@ -153,7 +156,12 @@ class PodcastRepository @Inject constructor(
             .putString(DownloadWorker.KEY_AUDIO_URL, episode.audioUrl)
             .build()
 
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
         val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
+            .setConstraints(constraints)
             .setInputData(downloadData)
             .build()
 

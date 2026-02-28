@@ -1,4 +1,5 @@
 package com.yuval.podcasts.ui.screens
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,7 +23,7 @@ fun PodcastDetailScreen(
     onEpisodeClick: (String) -> Unit,
     viewModel: FeedsViewModel = hiltViewModel()
 ) {
-    val episodes by viewModel.getEpisodesForPodcast(feedUrl).collectAsState(emptyList())
+    val episodes by viewModel.getEpisodesForPodcast(feedUrl).collectAsStateWithLifecycle(emptyList())
 
     Scaffold(
         topBar = {

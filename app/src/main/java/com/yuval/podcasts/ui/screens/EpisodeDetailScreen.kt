@@ -1,4 +1,5 @@
 package com.yuval.podcasts.ui.screens
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import android.text.Html
 import androidx.compose.foundation.layout.*
@@ -34,7 +35,7 @@ fun EpisodeDetailScreen(
         viewModel.loadEpisode(episodeId)
     }
 
-    val episodeWithPodcast by viewModel.episode.collectAsState()
+    val episodeWithPodcast by viewModel.episode.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
