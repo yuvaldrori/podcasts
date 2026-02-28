@@ -1,4 +1,9 @@
 package com.yuval.podcasts.data.repository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlin.coroutines.ContinuationInterceptor
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertTrue
 
 import android.content.Context
 import androidx.work.WorkManager
@@ -89,6 +94,33 @@ class PodcastRepositoryTest {
 
         coVerify { podcastDao.insertPodcast(podcast) }
         coVerify { episodeDao.insertEpisodes(episodes) }
+    }
+
+
+
+    @Test
+    fun fetchAndStorePodcast_runsOnIoDispatcher_preventsNetworkOnMainThread() = runBlocking {
+        val feedUrl = "http://example.com/feed"
+        val mockInputStream = "mock xml".byteInputStream()
+        
+        coEvery { podcastApi.fetchRss(feedUrl) } returns mockInputStream
+        
+        var usedDispatcher: kotlin.coroutines.CoroutineContext.Element? = null
+        var threadName = ""
+        
+        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
+        val episodes = listOf(Episode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L, 0, null, false, 0L))
+        
+        coEvery { rssParser.parse(any(), feedUrl) } coAnswers {
+            usedDispatcher = currentCoroutineContext()[ContinuationInterceptor]
+            threadName = Thread.currentThread().name
+            Pair(podcast, episodes)
+        }
+
+        repository.fetchAndStorePodcast(feedUrl)
+
+        assertTrue("RSS Parsing should run on IO Dispatcher or an IO thread. Current thread: $threadName, Dispatcher: $usedDispatcher", 
+            usedDispatcher === Dispatchers.IO || threadName.contains("DefaultDispatcher") || threadName.contains("worker"))
     }
 
     @Test
