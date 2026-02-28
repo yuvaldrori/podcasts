@@ -25,7 +25,10 @@ fun SubscriptionsScreen(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {
-        items(podcasts) { podcast ->
+        items(
+            items = podcasts,
+            key = { it.feedUrl }
+        ) { podcast ->
             PodcastItem(podcast = podcast) {
                 onPodcastClick(podcast.feedUrl)
             }

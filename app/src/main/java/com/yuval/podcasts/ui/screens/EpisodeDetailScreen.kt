@@ -97,7 +97,7 @@ fun EpisodeDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = formatDate(data.episode.pubDate),
+                            text = formatLongDate(data.episode.pubDate),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -119,8 +119,9 @@ fun EpisodeDetailScreen(
     }
 }
 
-private fun formatDate(timestamp: Long): String {
+private val dateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
+
+private fun formatLongDate(timestamp: Long): String {
     if (timestamp == 0L) return ""
-    val sdf = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
-    return sdf.format(Date(timestamp))
+    return dateFormat.format(Date(timestamp))
 }

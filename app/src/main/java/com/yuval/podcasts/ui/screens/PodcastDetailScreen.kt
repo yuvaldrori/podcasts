@@ -34,7 +34,10 @@ fun PodcastDetailScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp)
         ) {
-            items(episodes) { episode ->
+            items(
+                items = episodes,
+                key = { it.id }
+            ) { episode ->
                 EpisodeItem(
                     episode = episode,
                     modifier = Modifier.clickable { onEpisodeClick(episode.id) },
