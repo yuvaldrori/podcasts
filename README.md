@@ -1,21 +1,24 @@
 # Podcasts App
 
-A simple and intuitive podcast player built for Android using Jetpack Compose, Media3, and Room.
+A fast, highly-optimized podcast player built for Android using modern Jetpack Compose, Media3, and Room.
 
 ## Features
 
-*   **Podcast Subscriptions:** Easily add and manage your favorite podcast RSS feeds.
-*   **Queue Management:** A dedicated listening queue. Swipe episodes to easily dismiss them. 
-*   **Background Playback:** Play podcasts while you multitask using other apps or when your screen is locked.
+*   **Unified Player UI:** A persistent, vertically compact media player available across all screens that displays the currently playing episode title and playback controls.
+*   **High-Density Queue Management:** A dedicated, easily re-orderable listening queue. Native drag-and-drop support and swipe-to-dismiss functionality allow you to manage your playlist seamlessly.
+*   **Background Playback:** Play podcasts while you multitask using other apps or when your screen is locked using a robust `MediaSessionService`.
 *   **Speed Controls:** Adjust the playback speed to suit your listening style.
-*   **Auto-Download:** Episodes can be queued for offline playback automatically.
+*   **Auto-Download:** Episodes can be queued for offline playback automatically via background WorkManager tasks.
 *   **OPML Import/Export:** Import your existing subscriptions from other apps or export them for backup.
 
 ## Screenshots
 
-<div style="display: flex; gap: 10px;">
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
   <img src="docs/images/queue_screen.png" alt="Listening Queue Screen" width="30%">
   <img src="docs/images/podcasts_screen.png" alt="Podcasts Management Screen" width="30%">
+  <img src="docs/images/podcast_detail_screen.png" alt="Podcast Detail Screen" width="30%">
+  <img src="docs/images/new_episodes_screen.png" alt="New Episodes Screen" width="30%">
+  <img src="docs/images/settings_screen.png" alt="Settings Screen" width="30%">
 </div>
 
 ## Permissions Explained
