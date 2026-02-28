@@ -35,57 +35,78 @@ fun UnifiedPlayer(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 12.dp, vertical = 4.dp)
         ) {
-            // Episode Title
-            Text(
-                text = currentEpisode?.title ?: "Not Playing",
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-
-            // Progress Slider and Times
+            // Top Row: Title and Controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Episode Title
+                Text(
+                    text = currentEpisode?.title ?: "Not Playing",
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                )
+
+                // Controls
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = { viewModel.toggleSpeed() },
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
+                    ) {
+                        Text(text = if (playbackSpeed >= 2f) "2x" else "1x", style = MaterialTheme.typography.labelLarge)
+                    }
+                    IconButton(
+                        onClick = { viewModel.seekBackward() },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.FastRewind, contentDescription = "-30s", modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(
+                        onClick = { viewModel.playPause() },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = { viewModel.seekForward() },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.FastForward, contentDescription = "+30s", modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+
+            // Bottom Row: Progress Slider and Times
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = (-8).dp), // Pull the slider up slightly to save space
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = formatTime(currentPosition), style = MaterialTheme.typography.bodySmall)
+                Text(text = formatTime(currentPosition), style = MaterialTheme.typography.labelSmall)
                 
                 val progress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
                 Slider(
                     value = progress,
                     onValueChange = { viewModel.seekTo((it * duration).toLong()) },
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(24.dp)
                 )
                 
-                Text(text = formatTime(duration), style = MaterialTheme.typography.bodySmall)
-            }
-
-            // Controls
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                TextButton(onClick = { viewModel.toggleSpeed() }) {
-                    Text(text = if (playbackSpeed >= 2f) "2x" else "1x")
-                }
-                IconButton(onClick = { viewModel.seekBackward() }) {
-                    Icon(Icons.Default.FastRewind, contentDescription = "-30s")
-                }
-                IconButton(onClick = { viewModel.playPause() }) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-                IconButton(onClick = { viewModel.seekForward() }) {
-                    Icon(Icons.Default.FastForward, contentDescription = "+30s")
-                }
+                Text(text = formatTime(duration), style = MaterialTheme.typography.labelSmall)
             }
         }
     }
