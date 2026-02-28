@@ -23,8 +23,6 @@ fun UnifiedPlayer(
 ) {
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
-    val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
-    val duration by viewModel.duration.collectAsStateWithLifecycle()
     val currentEpisode by viewModel.currentlyPlayingEpisode.collectAsStateWithLifecycle()
 
     Surface(
@@ -89,26 +87,37 @@ fun UnifiedPlayer(
                 }
             }
 
-            // Bottom Row: Progress Slider and Times
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = (-8).dp), // Pull the slider up slightly to save space
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = formatTime(currentPosition), style = MaterialTheme.typography.labelSmall)
-                
-                val progress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
-                Slider(
-                    value = progress,
-                    onValueChange = { viewModel.seekTo((it * duration).toLong()) },
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(24.dp)
-                )
-                
-                Text(text = formatTime(duration), style = MaterialTheme.typography.labelSmall)
-            }
+            // Bottom Row: Progress Slider and Times (Extracted to optimize state reads)
+            PlayerScrubber(viewModel = viewModel)
         }
+    }
+}
+
+@Composable
+private fun PlayerScrubber(viewModel: QueueViewModel) {
+    // These states update every 1 second. 
+    // By reading them here, only THIS tiny composable recomposes, 
+    // keeping the rest of the UnifiedPlayer (and the app) stable.
+    val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
+    val duration by viewModel.duration.collectAsStateWithLifecycle()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .offset(y = (-8).dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = formatTime(currentPosition), style = MaterialTheme.typography.labelSmall)
+        
+        val progress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
+        Slider(
+            value = progress,
+            onValueChange = { viewModel.seekTo((it * duration).toLong()) },
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(24.dp)
+        )
+        
+        Text(text = formatTime(duration), style = MaterialTheme.typography.labelSmall)
     }
 }
 

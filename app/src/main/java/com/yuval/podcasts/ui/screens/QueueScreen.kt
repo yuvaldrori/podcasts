@@ -89,6 +89,7 @@ fun QueueScreen(
                             if (isDragging) {
                                 translationY = dragDropState.draggingItemOffset
                             }
+                            shadowElevation = elevation.toPx()
                         }
                         .animateItem(), // Native Compose 1.7+ feature for layout animations
                     backgroundContent = {
@@ -99,53 +100,51 @@ fun QueueScreen(
                         )
                     },
                     content = {
-                        Surface(tonalElevation = elevation) {
-                            val clickHandler = remember(episodeWithPodcast.episode.id) { 
-                                { onEpisodeClick(episodeWithPodcast.episode.id) } 
-                            }
-                            EpisodeItem(
-                                episode = episodeWithPodcast.episode,
-                                modifier = Modifier.clickable(onClick = clickHandler),
-                                imageUrl = episodeWithPodcast.podcast.imageUrl,
-                                trailingContent = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        IconButton(onClick = { viewModel.play(episodeWithPodcast.episode) }) {
-                                            Icon(Icons.Default.PlayArrow, contentDescription = "Play")
-                                        }
-                                        Box(
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                                .pointerInput(episodeWithPodcast.episode.id) {
-                                                    detectVerticalDragGestures(
-                                                        onDragStart = { 
-                                                            // Dynamically find index to avoid stale captures
-                                                            val currentIndex = queue.indexOfFirst { it.episode.id == episodeWithPodcast.episode.id }
-                                                            if (currentIndex != -1) {
-                                                                dragDropState.onDragStart(currentIndex)
-                                                            }
-                                                        },
-                                                        onDragEnd = { 
-                                                            dragDropState.onDragEnd()
-                                                            viewModel.reorderQueue(queue.map { it.episode.id })
-                                                        },
-                                                        onDragCancel = { dragDropState.onDragEnd() },
-                                                        onVerticalDrag = { change, dragAmount ->
-                                                            change.consume()
-                                                            dragDropState.onDrag(dragAmount)
+                        val clickHandler = remember(episodeWithPodcast.episode.id) { 
+                            { onEpisodeClick(episodeWithPodcast.episode.id) } 
+                        }
+                        EpisodeItem(
+                            episode = episodeWithPodcast.episode,
+                            modifier = Modifier.clickable(onClick = clickHandler),
+                            imageUrl = episodeWithPodcast.podcast.imageUrl,
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { viewModel.play(episodeWithPodcast.episode) }) {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = "Play")
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .pointerInput(episodeWithPodcast.episode.id) {
+                                                detectVerticalDragGestures(
+                                                    onDragStart = { 
+                                                        // Dynamically find index to avoid stale captures
+                                                        val currentIndex = queue.indexOfFirst { it.episode.id == episodeWithPodcast.episode.id }
+                                                        if (currentIndex != -1) {
+                                                            dragDropState.onDragStart(currentIndex)
                                                         }
-                                                    )
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                Icons.Default.DragHandle,
-                                                contentDescription = "Reorder"
-                                            )
-                                        }
+                                                    },
+                                                    onDragEnd = { 
+                                                        dragDropState.onDragEnd()
+                                                        viewModel.reorderQueue(queue.map { it.episode.id })
+                                                    },
+                                                    onDragCancel = { dragDropState.onDragEnd() },
+                                                    onVerticalDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        dragDropState.onDrag(dragAmount)
+                                                    }
+                                                )
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.DragHandle,
+                                            contentDescription = "Reorder"
+                                        )
                                     }
                                 }
-                            )
-                        }
+                            }
+                        )
                     }
                 )
             }
