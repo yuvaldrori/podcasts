@@ -24,6 +24,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import kotlinx.coroutines.test.runTest
 import retrofit2.Response
 
 class PodcastRepositoryTest {
@@ -124,5 +125,26 @@ class PodcastRepositoryTest {
         coVerify { queueDao.updateQueue(match { it.size == 2 && it.find { state -> state.episodeId == "ep1" }?.position == 0 }) }
         coVerify { episodeDao.updatePlaybackStatus("ep1", true) }
         coVerify { workManager.enqueueUniqueWork(any<String>(), any<androidx.work.ExistingWorkPolicy>(), any<androidx.work.OneTimeWorkRequest>()) }
+    }
+
+
+    @Test
+    fun unsubscribePodcast_deletesAllData() = runTest {
+        val feedUrl = "http://test.com/feed"
+        val ep1 = Episode("ep1", feedUrl, "E1", "D", "A", null, 0L, 0L, 0, null, false, 0L)
+        val ep2 = Episode("ep2", feedUrl, "E2", "D", "A", null, 0L, 0L, 0, null, false, 0L)
+        
+        coEvery { episodeDao.getEpisodesForPodcastSync(feedUrl) } returns listOf(ep1, ep2)
+        coEvery { queueDao.removeFromQueue(any()) } returns Unit
+        coEvery { episodeDao.deleteEpisodesByPodcast(feedUrl) } returns Unit
+        coEvery { podcastDao.deletePodcast(feedUrl) } returns Unit
+
+        repository.unsubscribePodcast(feedUrl)
+
+        coVerify { episodeDao.getEpisodesForPodcastSync(feedUrl) }
+        coVerify { queueDao.removeFromQueue("ep1") }
+        coVerify { queueDao.removeFromQueue("ep2") }
+        coVerify { episodeDao.deleteEpisodesByPodcast(feedUrl) }
+        coVerify { podcastDao.deletePodcast(feedUrl) }
     }
 }

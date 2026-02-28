@@ -93,4 +93,6 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Repositories:** Add tests for `PodcastRepository` and `SettingsRepository` to verify offline-first logic, network error handling, and preference management.
 - [x] **Parsers & Data Managers:** Add tests for `OpmlManager` to ensure accurate parsing of OPML XML into subscription lists and correct generation of OPML XML from entities.
 - [x] **Player State Logic:** Add tests for `PlayerManager` by mocking the underlying player to verify state management (e.g., play, pause, next) and event handling.
-- [x] **Room Database DAOs:** Add local JVM tests using Robolectric for `PodcastDao`, `EpisodeDao`, and `QueueDao` to verify custom SQL queries, cascading deletes, and correct ordering logic without needing an emulator.
+## Phase 11: Subscription Management
+- [ ] **Unsubscribe Functionality:** Add a "Remove" or "Unsubscribe" button/action in the Subscriptions tab for each podcast.
+- [ ] **Cascading Deletes:** Ensure that removing a podcast deletes its database record, removes all its episodes from the 'episodes' table, removes any associated items from the listening queue, and deletes downloaded audio files associated with those episodes.

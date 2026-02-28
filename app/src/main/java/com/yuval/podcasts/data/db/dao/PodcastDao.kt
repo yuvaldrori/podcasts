@@ -19,4 +19,7 @@ interface PodcastDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPodcast(podcast: Podcast)
+
+    @Query("DELETE FROM podcasts WHERE feedUrl = :feedUrl")
+    suspend fun deletePodcast(feedUrl: String)
 }

@@ -78,4 +78,10 @@ class FeedsViewModel @Inject constructor(
     fun clearError() {
         _errorMessage.value = null
     }
+
+    fun unsubscribePodcast(feedUrl: String) {
+        viewModelScope.launch {
+            repository.unsubscribePodcast(feedUrl)
+        }
+    }
 }

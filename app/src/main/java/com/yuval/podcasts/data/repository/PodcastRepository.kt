@@ -202,4 +202,24 @@ class PodcastRepository @Inject constructor(
         }
         episodeDao.updateDownloadStatus(episodeId, 0, null)
     }
+
+    suspend fun unsubscribePodcast(feedUrl: String) {
+        // 1. Get all episodes for this podcast
+        val episodes = episodeDao.getEpisodesForPodcastSync(feedUrl)
+        
+        // 2. Remove all downloaded files and queue entries
+        episodes.forEach { episode ->
+            queueDao.removeFromQueue(episode.id)
+            episode.localFilePath?.let { path ->
+                val file = File(path)
+                if (file.exists()) file.delete()
+            }
+        }
+        
+        // 3. Delete the episodes from DB
+        episodeDao.deleteEpisodesByPodcast(feedUrl)
+        
+        // 4. Delete the podcast from DB
+        podcastDao.deletePodcast(feedUrl)
+    }
 }
