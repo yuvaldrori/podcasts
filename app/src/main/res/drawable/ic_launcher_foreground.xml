@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -6,29 +7,50 @@
     android:viewportHeight="108">
     <path
         android:fillType="evenOdd"
-        android:pathData="M32,64C32,64 38.39,52.99 44.13,50.95C51.37,48.37 70.14,49.57 70.14,49.57L108.26,87.69L108,109.01L75.97,107.97L31.98,64.02L32,64Z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000">
+        android:pathData="M 54 20 C 35.22 20 20 35.22 20 54 C 20 72.78 35.22 88 54 88 C 72.78 88 88 72.78 88 54 C 88 35.22 72.78 20 54 20 Z M 54 28 C 68.36 28 80 39.64 80 54 C 80 68.36 68.36 80 54 80 C 39.64 80 28 68.36 28 54 C 28 39.64 39.64 28 54 28 Z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="78.5885"
-                android:endY="90.9159"
-                android:startX="48.7653"
-                android:startY="61.0927"
+            <gradient 
+                android:startY="20" 
+                android:startX="54" 
+                android:endY="88" 
+                android:endX="54" 
                 android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
+                <item android:offset="0" android:color="#FFFFFFFF"/>
+                <item android:offset="1" android:color="#FFE0E0E0"/>
             </gradient>
         </aapt:attr>
     </path>
+
+    <path
+        android:fillType="evenOdd"
+        android:pathData="M 54 36 C 44.06 36 36 44.06 36 54 C 36 63.94 44.06 72 54 72 C 63.94 72 72 63.94 72 54 C 72 44.06 63.94 36 54 36 Z M 54 44 C 59.52 44 64 48.48 64 54 C 64 59.52 59.52 64 54 64 C 48.48 64 44 59.52 44 54 C 44 48.48 48.48 44 54 44 Z">
+         <aapt:attr name="android:fillColor">
+            <gradient 
+                android:startY="36" 
+                android:startX="54" 
+                android:endY="72" 
+                android:endX="54" 
+                android:type="linear">
+                <item android:offset="0" android:color="#FFFFFFFF"/>
+                <item android:offset="1" android:color="#FFEEEEEE"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
     <path
         android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8-6.6c0.2-0.4 0.1-0.9 -0.3-1.1c-0.4-0.2 -0.9-0.1 -1.1,0.3l-3.9,6.7c-6.3-2.8 -13.4-2.8 -19.7,0l-3.9-6.7c-0.2-0.4 -0.7-0.5 -1.1-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.5,-1.3c0,-0.8 0.6,-1.3 1.5,-1.3c0.8,0 1.5,0.5 1.5,1.3C44.9,56.828 44.2,57.328 43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.5,-1.3c0,-0.8 0.6,-1.3 1.5,-1.3s1.5,0.5 1.5,1.3C66.1,56.828 65.4,57.328 64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:fillType="evenOdd"
+        android:pathData="M 54 49 A 5 5 0 1 0 54 59 A 5 5 0 1 0 54 49 Z" />
+
+    <!-- Radio Waves -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 39 39 C 47.28 30.72 60.72 30.72 69 39" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 31 31 C 43.7 18.3 64.3 18.3 77 31" />
 </vector>
