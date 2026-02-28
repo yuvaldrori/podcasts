@@ -13,11 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+ 
 import com.yuval.podcasts.data.db.entity.Episode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
 
 @Composable
 fun EpisodeItem(
@@ -31,10 +33,10 @@ fun EpisodeItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 2.dp) // Reduced outer margin from 4.dp to 2.dp
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(8.dp), // Reduced inner padding from 12.dp to 8.dp
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (imageUrl != null) {
@@ -43,12 +45,12 @@ fun EpisodeItem(
                     contentDescription = "Podcast Cover",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(48.dp) // Reduced image size from 56.dp to 48.dp
                         .clip(RoundedCornerShape(8.dp))
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp)) // Reduced spacing from 12.dp to 8.dp
             }
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (showPlayedMarker && episode.isPlayed) {
@@ -58,10 +60,16 @@ fun EpisodeItem(
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
-                    Text(text = episode.title, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = episode.title, 
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 2, // Added constraint to prevent massive vertical bloat
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-                
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
+
                     val downloadIcon = when (episode.downloadStatus) {
                         1 -> Icons.Default.HourglassTop // Downloading
                         2 -> Icons.Default.CheckCircle // Downloaded
