@@ -90,6 +90,7 @@ class RssParser {
                     pubDate = try {
                         dateFormat.get()?.parse(dateStr)?.time ?: 0L
                     } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
                         0L
                     }
                 }
@@ -164,7 +165,10 @@ class RssParser {
                 3 -> parts[0].toLong() * 3600 + parts[1].toLong() * 60 + parts[2].toLong()
                 else -> 0L
             }
+        } catch (e: NumberFormatException) {
+            0L
         } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
             0L
         }
     }

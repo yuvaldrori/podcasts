@@ -23,14 +23,14 @@ fun SubscriptionsScreen(
     viewModel: FeedsViewModel = hiltViewModel(),
     onPodcastClick: (String) -> Unit
 ) {
-    val podcasts by viewModel.podcasts.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {
         items(
-            items = podcasts,
+            items = uiState.podcasts,
             key = { it.feedUrl }
         ) { podcast ->
             var expanded by remember { mutableStateOf(false) }

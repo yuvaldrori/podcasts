@@ -1,0 +1,1 @@
+sed -i '/implementation(composeBom)/a \    implementation("androidx.compose.foundation:foundation:1.6.8")\n    implementation("androidx.compose.foundation:foundation-layout:1.6.8")\n    implementation("androidx.compose.animation:animation:1.6.8")' app/build.gradle.kts

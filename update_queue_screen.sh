@@ -1,1 +1,2 @@
-sed -i 's/val queue by viewModel.queue.collectAsStateWithLifecycle()/val dbQueue by viewModel.queue.collectAsStateWithLifecycle()\n    var queue by remember { mutableStateOf(emptyList<com.yuval.podcasts.data.db.entity.EpisodeWithPodcast>()) }\n    LaunchedEffect(dbQueue) { queue = dbQueue }/g' app/src/main/java/com/yuval/podcasts/ui/screens/QueueScreen.kt
+#!/bin/bash
+sed -i '/val currentIndex = currentQueueState.indexOfFirst { it.episode.id == episodeId }/,/}/c\                skipToNextEpisodeUseCase()' app/src/main/java/com/yuval/podcasts/ui/viewmodel/QueueViewModel.kt

@@ -15,18 +15,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
-import com.yuval.podcasts.ui.viewmodel.FeedsViewModel
+import com.yuval.podcasts.ui.viewmodel.PodcastDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PodcastDetailScreen(
-    feedUrl: String,
     onBack: () -> Unit,
     onEpisodeClick: (String) -> Unit,
-    viewModel: FeedsViewModel = hiltViewModel()
+    viewModel: PodcastDetailViewModel = hiltViewModel()
 ) {
-    val episodesFlow = remember(feedUrl) { viewModel.getEpisodesForPodcast(feedUrl) }
-    val episodes by episodesFlow.collectAsStateWithLifecycle(emptyList())
+    val episodes by viewModel.episodes.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {

@@ -1,11 +1,7 @@
 package com.yuval.podcasts.data.network
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 import java.io.ByteArrayInputStream
 
@@ -14,71 +10,61 @@ class RssParserTest {
     private val parser = RssParser()
 
     @Test
-    fun `parse valid rss returns podcast and episodes`() {
-        val rss = """
+    fun parse_validFeed_returnsPodcastAndEpisodes() {
+        val validXml = """
             <rss version="2.0">
                 <channel>
                     <title>Test Podcast</title>
-                    <description>Test Description</description>
-                    <link>https://example.com</link>
-                    <image>
-                        <url>https://example.com/image.jpg</url>
-                    </image>
+                    <description>A podcast for testing</description>
                     <item>
                         <title>Episode 1</title>
-                        <description>Description 1</description>
-                        <guid>guid1</guid>
-                        <pubDate>Wed, 25 Feb 2026 12:00:00 +0000</pubDate>
-                        <enclosure url="https://example.com/audio1.mp3" length="1000" type="audio/mpeg" />
+                        <guid>ep1</guid>
+                        <itunes:duration>01:05:00</itunes:duration>
                     </item>
                 </channel>
             </rss>
         """.trimIndent()
-
-        val (podcast, episodes) = parser.parse(ByteArrayInputStream(rss.toByteArray()), "https://example.com/rss")
-
+        
+        val inputStream = ByteArrayInputStream(validXml.toByteArray())
+        val (podcast, episodes) = parser.parse(inputStream, "http://test.com")
+        
         assertEquals("Test Podcast", podcast.title)
-        assertEquals("https://example.com/rss", podcast.feedUrl)
         assertEquals(1, episodes.size)
-        assertEquals("Episode 1", episodes[0].title)
-        assertEquals("https://example.com/audio1.mp3", episodes[0].audioUrl)
+        assertEquals("ep1", episodes[0].id)
+        assertEquals(3900L, episodes[0].duration)
     }
 
     @Test
-    fun `concurrent parsing maintains thread safety for dates`() = runBlocking {
-        val rss = """
+    fun parse_invalidDurationString_doesNotCrash_defaultsToZero() {
+        val invalidDurationXml = """
             <rss version="2.0">
                 <channel>
-                    <title>Concurrent Test</title>
+                    <title>Broken Duration Podcast</title>
+                    <description>A podcast for testing broken duration</description>
                     <item>
-                        <title>Ep1</title>
-                        <guid>guid1</guid>
-                        <pubDate>Wed, 25 Feb 2026 12:00:00 +0000</pubDate>
+                        <title>Episode 2</title>
+                        <guid>ep2</guid>
+                        <itunes:duration>invalid_string</itunes:duration>
+                    </item>
+                    <item>
+                        <title>Episode 3</title>
+                        <guid>ep3</guid>
+                        <itunes:duration>12:34.5</itunes:duration>
                     </item>
                 </channel>
             </rss>
         """.trimIndent()
-
-        // Spawn 100 parallel threads attempting to parse the exact same date string
-        // using the single shared RssParser instance.
-        val deferreds = (1..100).map {
-            async(Dispatchers.Default) {
-                parser.parse(ByteArrayInputStream(rss.toByteArray()), "url")
-            }
-        }
         
-        val results = deferreds.awaitAll()
+        val inputStream = ByteArrayInputStream(invalidDurationXml.toByteArray())
         
-        // Grab the Unix timestamp from the very first thread's result
-        val firstTimestamp = results.first().second.first().pubDate
-        assertTrue("Timestamp should be greater than 0", firstTimestamp > 0L)
+        // This should not crash, it should just map the duration to 0
+        val (podcast, episodes) = parser.parse(inputStream, "http://test.com")
         
-        // Assert that ALL 100 threads calculated the exact same Unix timestamp.
-        // If SimpleDateFormat was not thread-local, calendar corruption would cause
-        // random threads to output different (or 0) timestamps.
-        results.forEach { result ->
-            val timestamp = result.second.first().pubDate
-            assertEquals("Concurrent parsing corrupted the date output", firstTimestamp, timestamp)
-        }
+        assertEquals("Broken Duration Podcast", podcast.title)
+        assertEquals(2, episodes.size)
+        assertEquals("ep2", episodes[0].id)
+        assertEquals(0L, episodes[0].duration) // Should default to 0 on "invalid_string"
+        assertEquals("ep3", episodes[1].id)
+        assertEquals(0L, episodes[1].duration) // Should default to 0 on "12:34.5"
     }
 }

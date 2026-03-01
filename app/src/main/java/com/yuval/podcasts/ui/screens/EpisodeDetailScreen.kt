@@ -27,14 +27,9 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodeDetailScreen(
-    episodeId: String,
     onBack: () -> Unit,
     viewModel: EpisodeDetailViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(episodeId) {
-        viewModel.loadEpisode(episodeId)
-    }
-
     val episodeWithPodcast by viewModel.episode.collectAsStateWithLifecycle()
 
     Scaffold(

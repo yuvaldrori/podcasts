@@ -24,6 +24,7 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.ui.components.EpisodeItem
+import com.yuval.podcasts.ui.viewmodel.PlayerViewModel
 import com.yuval.podcasts.ui.viewmodel.QueueViewModel
 import kotlinx.coroutines.delay
 
@@ -31,11 +32,12 @@ import kotlinx.coroutines.delay
 @Composable
 fun QueueScreen(
     onEpisodeClick: (String) -> Unit,
-    viewModel: QueueViewModel = hiltViewModel()
+    viewModel: QueueViewModel = hiltViewModel(),
+    playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val dbQueue by viewModel.queue.collectAsStateWithLifecycle()
     var queue by remember { mutableStateOf(emptyList<EpisodeWithPodcast>()) }
-    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val isPlaying by playerViewModel.isPlaying.collectAsStateWithLifecycle()
 
     val listState = rememberLazyListState()
     val dragDropState = rememberDragDropState(listState) { fromIndex, toIndex ->
@@ -48,14 +50,6 @@ fun QueueScreen(
         // Only refresh the list from the database if we are NOT currently dragging
         if (dragDropState.draggedItemIndex == null) {
             queue = dbQueue 
-        }
-    }
-
-    // Periodically update position when playing
-    LaunchedEffect(isPlaying) {
-        while (isPlaying) {
-            viewModel.updatePosition()
-            delay(1000)
         }
     }
 
@@ -110,7 +104,13 @@ fun QueueScreen(
                             imageUrl = episodeWithPodcast.podcast.imageUrl,
                             trailingContent = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(onClick = { viewModel.play(episodeWithPodcast.episode) }) {
+                                    IconButton(onClick = { 
+                                        val episodes = queue.map { it.episode }
+                                        val startIndex = episodes.indexOfFirst { it.id == episodeWithPodcast.episode.id }
+                                        if (startIndex != -1) {
+                                            playerViewModel.playQueue(episodes, startIndex, episodeWithPodcast.episode.lastPlayedPosition)
+                                        }
+                                    }) {
                                         Icon(Icons.Default.PlayArrow, contentDescription = "Play")
                                     }
                                     IconButton(onClick = { viewModel.removeFromQueue(episodeWithPodcast.episode.id) }) {

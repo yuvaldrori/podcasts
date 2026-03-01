@@ -100,6 +100,25 @@ class PlayerManager @Inject constructor(
         }
     }
 
+    fun playQueue(episodes: List<com.yuval.podcasts.data.db.entity.Episode>, startIndex: Int, startPositionMs: Long = 0L) {
+        if (episodes.isEmpty() || startIndex !in episodes.indices) return
+        val currentEp = episodes[startIndex]
+        _currentMediaId.value = currentEp.id
+        
+        controller?.let {
+            val mediaItems = episodes.map { ep ->
+                val uri = ep.localFilePath ?: ep.audioUrl
+                MediaItem.Builder()
+                    .setMediaId(ep.id)
+                    .setUri(uri)
+                    .build()
+            }
+            it.setMediaItems(mediaItems, startIndex, startPositionMs)
+            it.prepare()
+            it.play()
+        }
+    }
+
     fun togglePlayPause() {
         controller?.let {
             if (it.isPlaying) {
@@ -135,6 +154,16 @@ class PlayerManager @Inject constructor(
         settingsRepository.savePlaybackSpeed(speed)
         controller?.setPlaybackParameters(PlaybackParameters(speed))
         _playbackSpeed.value = speed
+    }
+
+    fun seekToNextMediaItem() {
+        controller?.let {
+            if (it.hasNextMediaItem()) {
+                it.seekToNextMediaItem()
+            } else {
+                stopAndClear()
+            }
+        }
     }
 
     fun stopAndClear() {

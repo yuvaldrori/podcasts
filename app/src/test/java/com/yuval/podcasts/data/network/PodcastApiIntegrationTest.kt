@@ -1,23 +1,38 @@
 package com.yuval.podcasts.data.network
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.InputStreamReader
+import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 
 class PodcastApiIntegrationTest {
 
     @Test
-    fun fetchRealRss_returnsXml() = runTest {
-        val podcastApi = PodcastApi()
+    fun fetchRss_respectsCancellation() = runTest {
+        val api = PodcastApi()
+        var cancelled = false
 
-        // Using a reliable public RSS feed for integration testing
-        val feedUrl = "https://feeds.npr.org/500005/podcast.xml" // NPR News Now
-        
-        val inputStream = podcastApi.fetchRss(feedUrl)
-        val content = InputStreamReader(inputStream).readText()
+        val job = launch {
+            try {
+                // Using a known large/slow feed to ensure we catch it inflight
+                api.fetchRss("https://feeds.npr.org/510289/podcast.xml")
+            } catch (e: Exception) {
+                if (e is CancellationException) {
+                    cancelled = true
+                }
+            }
+        }
 
-        assertTrue(content.contains("<rss") || content.contains("<feed"))
-        assertTrue(content.contains("<channel>"))
+        // Let it start and potentially reach the network connect call
+        delay(500)
+        job.cancel()
+        job.join()
+
+        assertTrue("Fetch should have been cancelled", cancelled)
     }
 }

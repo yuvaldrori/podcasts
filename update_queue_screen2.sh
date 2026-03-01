@@ -1,1 +1,14 @@
-sed -i 's/val state = rememberReorderableLazyListState(onMove = { from, to ->/val state = rememberReorderableLazyListState(onMove = { from, to ->\n        queue = queue.toMutableList().apply { add(to.index, removeAt(from.index)) }\n    }, onDragEnd = { startIndex, endIndex ->\n        viewModel.reorderItem(startIndex, endIndex)\n    })/g' app/src/main/java/com/yuval/podcasts/ui/screens/QueueScreen.kt
+#!/bin/bash
+awk '
+/if \(isPlayingDismissed\)/ {
+    print $0
+    print "                skipToNextEpisodeUseCase()"
+    print "            }"
+    print "        }"
+    print "    }"
+    print ""
+    print "}"
+    exit
+}
+{ print }
+' app/src/main/java/com/yuval/podcasts/ui/viewmodel/QueueViewModel.kt > app/src/main/java/com/yuval/podcasts/ui/viewmodel/QueueViewModel.kt.tmp && mv app/src/main/java/com/yuval/podcasts/ui/viewmodel/QueueViewModel.kt.tmp app/src/main/java/com/yuval/podcasts/ui/viewmodel/QueueViewModel.kt

@@ -1,8 +1,15 @@
 package com.yuval.podcasts.work
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import dagger.assisted.Assisted
@@ -24,8 +31,10 @@ class DownloadWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val episodeId = inputData.getString(KEY_EPISODE_ID) ?: return@withContext Result.failure()
         val audioUrl = inputData.getString(KEY_AUDIO_URL) ?: return@withContext Result.failure()
+        val title = inputData.getString(KEY_EPISODE_TITLE) ?: "Episode"
 
         try {
+            setForeground(createForegroundInfo(title))
             // Update status to Downloading
             updateDownloadStatus(episodeId, 1, null)
 
@@ -56,6 +65,7 @@ class DownloadWorker @AssistedInject constructor(
             
             Result.success()
         } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
             e.printStackTrace()
             android.util.Log.e("DownloadWorker", "Download failed: ${e.message}", e)
             // Revert status on failure
@@ -68,8 +78,37 @@ class DownloadWorker @AssistedInject constructor(
         episodeDao.updateDownloadStatus(episodeId, status, path)
     }
 
+    private fun createForegroundInfo(title: String): ForegroundInfo {
+        val notificationId = 1
+        val channelId = "download_channel"
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Downloads",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(appContext, channelId)
+            .setContentTitle("Downloading Podcast")
+            .setContentText(title)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setOngoing(true)
+            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            return ForegroundInfo(notificationId, notification)
+        }
+    }
+
     companion object {
         const val KEY_EPISODE_ID = "episode_id"
         const val KEY_AUDIO_URL = "audio_url"
+        const val KEY_EPISODE_TITLE = "episode_title"
     }
 }

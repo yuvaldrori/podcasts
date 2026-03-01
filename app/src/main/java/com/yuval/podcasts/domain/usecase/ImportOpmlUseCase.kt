@@ -19,6 +19,7 @@ class ImportOpmlUseCase @Inject constructor(
                 try {
                     repository.fetchAndStorePodcast(url)
                 } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
                     e.printStackTrace()
                 }
             }

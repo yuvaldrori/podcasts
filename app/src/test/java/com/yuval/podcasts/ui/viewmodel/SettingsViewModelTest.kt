@@ -31,8 +31,6 @@ class SettingsViewModelTest {
     private lateinit var outputStream: OutputStream
     private lateinit var importOpmlUseCase: com.yuval.podcasts.domain.usecase.ImportOpmlUseCase
     private lateinit var exportOpmlUseCase: com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
-    private lateinit var backupDatabaseUseCase: com.yuval.podcasts.domain.usecase.BackupDatabaseUseCase
-    private lateinit var restoreDatabaseUseCase: com.yuval.podcasts.domain.usecase.RestoreDatabaseUseCase
     private lateinit var viewModel: SettingsViewModel
 
     @Before
@@ -40,8 +38,6 @@ class SettingsViewModelTest {
         repository = mockk()
         importOpmlUseCase = mockk()
         exportOpmlUseCase = mockk()
-        backupDatabaseUseCase = mockk()
-        restoreDatabaseUseCase = mockk()
         context = mockk()
         contentResolver = mockk()
         uri = mockk()
@@ -50,7 +46,7 @@ class SettingsViewModelTest {
 
         every { context.contentResolver } returns contentResolver
         
-        viewModel = SettingsViewModel(repository, importOpmlUseCase, exportOpmlUseCase, backupDatabaseUseCase, restoreDatabaseUseCase)
+        viewModel = SettingsViewModel(repository, importOpmlUseCase, exportOpmlUseCase)
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.yuval.podcasts.media
 
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.media3.common.MediaItem
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -7,6 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.yuval.podcasts.MainActivity
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.QueueDao
 import dagger.hilt.android.AndroidEntryPoint
@@ -15,7 +18,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import javax.inject.Inject
@@ -44,7 +46,19 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .build()
             
-        mediaSession = MediaSession.Builder(this, player).build()
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+            
+        mediaSession = MediaSession.Builder(this, player)
+            .setSessionActivity(pendingIntent)
+            .build()
+
+        var currentlyPlayingId: String? = null
 
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -53,33 +67,15 @@ class PlaybackService : MediaSessionService() {
                 }
             }
 
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) {
-                    val mediaItem = player.currentMediaItem ?: return
-                    val episodeId = mediaItem.mediaId
-                    
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val prevId = currentlyPlayingId
+                currentlyPlayingId = mediaItem?.mediaId
+                
+                // If it transitioned automatically because the track ended, mark the previous as played
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && prevId != null) {
                     serviceScope.launch {
-                        // Mark as played and reset position, then delete file and remove from queue
-                        removeEpisodeUseCase(episodeId, markAsPlayed = true)
-                        
-                        // Proceed to next episode if available
-                        // Auto-play next
-                        val nextEpisode = queueDao.getNextEpisode()
-                        if (nextEpisode != null) {
-                            withContext(Dispatchers.Main) {
-                                val uri = nextEpisode.localFilePath ?: nextEpisode.audioUrl
-                                val nextMediaItem = MediaItem.Builder()
-                                    .setMediaId(nextEpisode.id)
-                                    .setUri(uri)
-                                    .build()
-                                player.setMediaItem(nextMediaItem)
-                                if (nextEpisode.lastPlayedPosition > 0) {
-                                    player.seekTo(nextEpisode.lastPlayedPosition)
-                                }
-                                player.prepare()
-                                player.play()
-                            }
-                        }
+                        // Mark as played, reset position, delete file and remove from queue
+                        removeEpisodeUseCase(prevId, markAsPlayed = true)
                     }
                 }
             }

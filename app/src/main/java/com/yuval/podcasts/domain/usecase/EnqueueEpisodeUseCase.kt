@@ -11,7 +11,6 @@ import com.yuval.podcasts.data.db.dao.QueueDao
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.work.DownloadWorker
-import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class EnqueueEpisodeUseCase @Inject constructor(
@@ -20,14 +19,11 @@ class EnqueueEpisodeUseCase @Inject constructor(
     private val workManager: WorkManager
 ) {
     suspend operator fun invoke(episode: Episode) {
-        val currentQueue = queueDao.getQueue().first()
+        // Shift all existing items down by 1 in the database directly
+        queueDao.shiftQueuePositionsUp()
         
-        // Shift all existing items down by 1
-        val updatedQueue = currentQueue.map { it.copy(position = it.position + 1) }.toMutableList()
         // Add new item at position 0
-        updatedQueue.add(QueueState(episode.id, 0))
-        
-        queueDao.updateQueue(updatedQueue)
+        queueDao.insertQueueItem(QueueState(episode.id, 0))
         
         // Dismiss from "New" tab
         episodeDao.updatePlaybackStatus(episode.id, true)
@@ -36,6 +32,7 @@ class EnqueueEpisodeUseCase @Inject constructor(
         val downloadData = Data.Builder()
             .putString(DownloadWorker.KEY_EPISODE_ID, episode.id)
             .putString(DownloadWorker.KEY_AUDIO_URL, episode.audioUrl)
+            .putString(DownloadWorker.KEY_EPISODE_TITLE, episode.title)
             .build()
 
         val constraints = Constraints.Builder()

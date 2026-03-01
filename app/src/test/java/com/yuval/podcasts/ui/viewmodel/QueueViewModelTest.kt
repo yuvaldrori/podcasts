@@ -8,6 +8,8 @@ import com.yuval.podcasts.data.db.entity.Podcast
 import kotlinx.coroutines.test.advanceUntilIdle
 import com.yuval.podcasts.media.PlayerManager
 import com.yuval.podcasts.utils.MainDispatcherRule
+import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
+import com.yuval.podcasts.domain.usecase.SkipToNextEpisodeUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -27,7 +29,8 @@ class QueueViewModelTest {
 
     private lateinit var repository: PodcastRepository
     private lateinit var playerManager: PlayerManager
-    private lateinit var removeEpisodeUseCase: com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
+    private lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
+    private lateinit var skipToNextEpisodeUseCase: SkipToNextEpisodeUseCase
     private lateinit var viewModel: QueueViewModel
 
     @Before
@@ -35,75 +38,12 @@ class QueueViewModelTest {
         repository = mockk()
         playerManager = mockk()
         removeEpisodeUseCase = mockk()
+        skipToNextEpisodeUseCase = mockk()
 
         every { repository.listeningQueue } returns flowOf(emptyList())
-        
-        every { playerManager.isPlaying } returns MutableStateFlow(false)
-        every { playerManager.currentPosition } returns MutableStateFlow(0L)
-        every { playerManager.duration } returns MutableStateFlow(0L)
-        every { playerManager.playbackSpeed } returns MutableStateFlow(1f)
         every { playerManager.currentMediaId } returns MutableStateFlow(null)
-        every { playerManager.initialize() } returns Unit
 
-        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase)
-    }
-
-    @Test
-    fun initialization_callsPlayerManagerInit() {
-        verify { playerManager.initialize() }
-    }
-
-    @Test
-    fun playPause_togglesPlayerManager() {
-        every { playerManager.togglePlayPause() } returns Unit
-        viewModel.playPause()
-        verify { playerManager.togglePlayPause() }
-    }
-
-    @Test
-    fun play_localFilePath_callsPlayerManager() {
-        every { playerManager.play(any(), any(), any()) } returns Unit
-        val episode = Episode(
-            id = "ep1",
-            podcastFeedUrl = "url",
-            title = "title",
-            description = "desc",
-            audioUrl = "remoteUrl",
-            imageUrl = null,
-            pubDate = 0L,
-            duration = 0L,
-            downloadStatus = 0,
-            localFilePath = "localUrl",
-            isPlayed = false,
-            lastPlayedPosition = 1000L
-        )
-
-        viewModel.play(episode)
-
-        verify { playerManager.play("ep1", "localUrl", 1000L) }
-    }
-
-    @Test
-    fun play_noLocalFilePath_callsPlayerManager() {
-        every { playerManager.play(any(), any(), any()) } returns Unit
-        val episode = Episode(
-            id = "ep1",
-            podcastFeedUrl = "url",
-            title = "title",
-            description = "desc",
-            audioUrl = "remoteUrl",
-            imageUrl = null,
-            pubDate = 0L,
-            duration = 0L,
-            downloadStatus = 0,
-            localFilePath = null, // No local path
-            isPlayed = false,
-            lastPlayedPosition = 1000L
-        )
-
-        viewModel.play(episode)
-
-        verify { playerManager.play("ep1", "remoteUrl", 1000L) }
+        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
     }
 
     @Test
@@ -121,11 +61,11 @@ class QueueViewModelTest {
     @Test
     fun removeFromQueue_nonPlayingEpisode_onlyCallsRepository() = runTest {
         val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
-        coEvery { removeEpisodeUseCase("ep2") } returns Unit
+        coEvery { removeEpisodeUseCase("ep2", false) } returns Unit
         every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
         
         every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
-        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase)
+        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
         
         val job2 = backgroundScope.launch { viewModel.queue.collect {} }
         advanceUntilIdle()
@@ -133,28 +73,27 @@ class QueueViewModelTest {
         viewModel.removeFromQueue("ep2")
         advanceUntilIdle()
 
-        coVerify { removeEpisodeUseCase("ep2") }
-        verify(exactly = 0) { playerManager.stopAndClear() }
-        verify(exactly = 0) { playerManager.play(any(), any(), any()) }
+        coVerify { removeEpisodeUseCase("ep2", false) }
+        verify(exactly = 0) { skipToNextEpisodeUseCase() }
         job2.cancel()
     }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
-    fun removeFromQueue_playingEpisode_withNext_playsNext() = runTest {
+    fun removeFromQueue_playingEpisode_callsSkipToNext() = runTest {
         val podcast = Podcast("feed", "Title", "Desc", "Img", "Web")
         val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
         val ep2 = Episode("ep2", "feed", "E2", "D", "audio2", null, 0L, 0L, 0, null, false, 0L)
         
-        coEvery { removeEpisodeUseCase("ep1") } returns Unit
+        coEvery { removeEpisodeUseCase("ep1", false) } returns Unit
+        every { skipToNextEpisodeUseCase() } returns Unit
         every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
-        every { playerManager.play(any(), any(), any()) } returns Unit
         every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
         
         val queueList = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
         every { repository.listeningQueue } returns flowOf(queueList)
 
-        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase)
+        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
         
         val job2 = backgroundScope.launch { viewModel.queue.collect {} }
         advanceUntilIdle()
@@ -162,37 +101,8 @@ class QueueViewModelTest {
         viewModel.removeFromQueue("ep1")
         advanceUntilIdle()
 
-        coVerify { removeEpisodeUseCase("ep1") }
-        verify { playerManager.play("ep2", "audio2", 0L) }
-        verify(exactly = 0) { playerManager.stopAndClear() }
-        job2.cancel()
-    }
-
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    @Test
-    fun removeFromQueue_playingEpisode_noNext_stopsPlayer() = runTest {
-        val podcast = Podcast("feed", "Title", "Desc", "Img", "Web")
-        val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
-
-        coEvery { removeEpisodeUseCase("ep1") } returns Unit
-        every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
-        every { playerManager.stopAndClear() } returns Unit
-        every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
-        
-        val queueList = listOf(EpisodeWithPodcast(ep1, podcast))
-        every { repository.listeningQueue } returns flowOf(queueList)
-
-        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase)
-        
-        val job2 = backgroundScope.launch { viewModel.queue.collect {} }
-        advanceUntilIdle()
-
-        viewModel.removeFromQueue("ep1")
-        advanceUntilIdle()
-
-        coVerify { removeEpisodeUseCase("ep1") }
-        verify { playerManager.stopAndClear() }
-        verify(exactly = 0) { playerManager.play(any(), any(), any()) }
+        coVerify { removeEpisodeUseCase("ep1", false) }
+        verify { skipToNextEpisodeUseCase() }
         job2.cancel()
     }
 }

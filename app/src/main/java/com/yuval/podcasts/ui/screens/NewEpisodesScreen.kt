@@ -31,8 +31,7 @@ fun NewEpisodesScreen(
     onEpisodeClick: (String) -> Unit,
     viewModel: FeedsViewModel = hiltViewModel()
 ) {
-    val episodes by viewModel.unplayedEpisodes.collectAsStateWithLifecycle()
-    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val pullToRefreshState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
@@ -55,7 +54,7 @@ fun NewEpisodesScreen(
         }
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = isRefreshing,
+            isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refreshAll() },
             state = pullToRefreshState,
             modifier = Modifier
@@ -67,7 +66,7 @@ fun NewEpisodesScreen(
                 contentPadding = PaddingValues(16.dp)
             ) {
                 items(
-                    items = episodes,
+                    items = uiState.unplayedEpisodes,
                     key = { it.episode.id }
                 ) { episodeWithPodcast ->
                     val onDismiss = remember(episodeWithPodcast.episode.id) {

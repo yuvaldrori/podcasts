@@ -22,6 +22,9 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 *   **Command Line Interface:** Use the provided `Makefile` for all build, test, and verification tasks. 
 *   **Maintenance:** Always keep the `Makefile` up-to-date with any new build configurations, testing suites, or deployment steps added to the project.
 
+## General Instructions
+*   **Bug Fixing:** Every time you find a bug or issue, first add a failing test to show the problem, then present a plan to fix the issue. After implementing the fix, make sure the failing test is working.
+
 ---
 
 ## Phase 1: Project Setup & Architecture
@@ -56,7 +59,6 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 ## Phase 5: Import, Export, & Backup (Local/System)
 - [x] **Direct RSS Add:** Create a UI dialog to manually paste and validate an RSS feed URL.
 - [x] **OPML Import/Export:** Implement logic to parse an imported `.opml` file into Room DB subscriptions, and generate an `.opml` file using the system file picker (`Storage Access Framework`).
-- [x] **Manual DB Backup/Restore:** Use the system file picker (`ACTION_CREATE_DOCUMENT` and `ACTION_OPEN_DOCUMENT`) to let the user export a backup of their app state (subscriptions and queue) and restore it later.
 
 ## Phase 6: Polish & Testing
 - [x] Handle permissions (`POST_NOTIFICATIONS` for Android 13+, Foreground Service types for playback and downloading).
@@ -105,5 +107,5 @@ It supports importing/exporting RSS feeds via OPML, direct RSS URL input, 1x/2x 
 - [x] **Dependency Refresh:** Updated core libraries (Compose BOM, Lifecycle, Activity, Navigation, WorkManager, Hilt, Room) to their latest stable releases.
 
 ## Phase 13: UI Refactoring
-- [ ] **Unified Player UI:** Replace the mini-player (present on all screens) and the current larger player (in the queue screen) with a single, unified larger player that is visible on all screens.
-- [ ] **Episode Title in Player:** Add the name of the currently playing episode to the new unified player UI.
+- [x] **Unified Player UI:** Replace the mini-player (present on all screens) and the current larger player (in the queue screen) with a single, unified larger player that is visible on all screens.
+- [x] **Episode Title in Player:** Add the name of the currently playing episode to the new unified player UI.

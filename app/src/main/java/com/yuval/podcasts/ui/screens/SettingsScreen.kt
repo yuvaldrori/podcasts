@@ -37,24 +37,6 @@ fun SettingsScreen(
         }
     )
 
-    val backupLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/octet-stream"),
-        onResult = { uri ->
-            uri?.let {
-                viewModel.backupDatabase(context, it)
-            }
-        }
-    )
-
-    val restoreLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-        onResult = { uri ->
-            uri?.let {
-                viewModel.restoreDatabase(context, it)
-            }
-        }
-    )
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -98,26 +80,6 @@ fun SettingsScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Export")
-            }
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
-
-        Text(text = "Database Backup", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = { backupLauncher.launch("podcasts_backup.db") },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Backup")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = { restoreLauncher.launch(arrayOf("*/*")) },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Restore")
             }
         }
     }

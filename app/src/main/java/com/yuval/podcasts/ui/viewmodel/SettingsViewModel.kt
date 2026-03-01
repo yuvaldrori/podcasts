@@ -3,10 +3,8 @@ package com.yuval.podcasts.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.repository.PodcastRepository
-import com.yuval.podcasts.domain.usecase.BackupDatabaseUseCase
 import com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
 import com.yuval.podcasts.domain.usecase.ImportOpmlUseCase
-import com.yuval.podcasts.domain.usecase.RestoreDatabaseUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,9 +19,7 @@ import android.net.Uri
 class SettingsViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val importOpmlUseCase: ImportOpmlUseCase,
-    private val exportOpmlUseCase: ExportOpmlUseCase,
-    private val backupDatabaseUseCase: BackupDatabaseUseCase,
-    private val restoreDatabaseUseCase: RestoreDatabaseUseCase
+    private val exportOpmlUseCase: ExportOpmlUseCase
 ) : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -34,6 +30,7 @@ class SettingsViewModel @Inject constructor(
             try {
                 repository.fetchAndStorePodcast(url)
             } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
                 _errorMessage.value = "Failed to add podcast: ${e.message}"
             }
         }
@@ -46,6 +43,7 @@ class SettingsViewModel @Inject constructor(
                     importOpmlUseCase(stream)
                 }
             } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
                 _errorMessage.value = "Failed to import OPML: ${e.message}"
             }
         }
@@ -58,32 +56,9 @@ class SettingsViewModel @Inject constructor(
                     exportOpmlUseCase(stream)
                 }
             } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
                 e.printStackTrace()
                 _errorMessage.value = "Failed to export OPML: ${e.message}"
-            }
-        }
-    }
-
-    fun backupDatabase(context: Context, uri: Uri) {
-        viewModelScope.launch {
-            try {
-                context.contentResolver.openOutputStream(uri)?.use { stream ->
-                    backupDatabaseUseCase(stream)
-                }
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to backup database: ${e.message}"
-            }
-        }
-    }
-
-    fun restoreDatabase(context: Context, uri: Uri) {
-        viewModelScope.launch {
-            try {
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    restoreDatabaseUseCase(stream)
-                }
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to restore database: ${e.message}"
             }
         }
     }

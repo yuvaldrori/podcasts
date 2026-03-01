@@ -60,7 +60,8 @@ class PodcastRepository @Inject constructor(
                 podcastDao.insertPodcast(podcast)
                 episodeDao.upsertEpisodes(episodes)
             }
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
             e.printStackTrace()
             // Ignore parse errors or OOMs for a single bad feed
         }
@@ -68,15 +69,16 @@ class PodcastRepository @Inject constructor(
 
     suspend fun refreshAll() = coroutineScope {
         val podcasts = allPodcasts.first()
-        podcasts.map { podcast ->
-            async {
-                try {
-                    fetchAndStorePodcast(podcast.feedUrl)
-                } catch (e: Throwable) {
-                    e.printStackTrace()
-                }
+        // Process sequentially or in bounded batches instead of launching 50 parallel downloads
+        // This prevents networking exhaustion and socket timeout storms on slow devices
+        for (podcast in podcasts) {
+            try {
+                fetchAndStorePodcast(podcast.feedUrl)
+            } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
+                e.printStackTrace()
             }
-        }.awaitAll()
+        }
     }
 
     suspend fun markAllAsPlayed() {

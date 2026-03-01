@@ -10,6 +10,8 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,38 +43,51 @@ class FeedsViewModelTest {
 
     @Test
     fun refreshAll_success_updatesIsRefreshing() = runTest {
-        coEvery { repository.refreshAll() } returns emptyList()
+        coEvery { repository.refreshAll() } returns Unit
 
-        assertFalse(viewModel.isRefreshing.value)
+        assertFalse(viewModel.uiState.value.isRefreshing)
         viewModel.refreshAll()
         
         // UnconfinedTestDispatcher runs immediately, so we just check final states
-        assertFalse(viewModel.isRefreshing.value)
-        assertNull(viewModel.errorMessage.value)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        assertNull(viewModel.uiState.value.errorMessage)
         coVerify { repository.refreshAll() }
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
     fun refreshAll_failure_setsErrorMessage() = runTest {
         val errorMessage = "Network Error"
         coEvery { repository.refreshAll() } throws Exception(errorMessage)
 
-        viewModel.refreshAll()
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
 
-        assertEquals("Failed to refresh all podcasts: $errorMessage", viewModel.errorMessage.value)
-        assertFalse(viewModel.isRefreshing.value)
+        viewModel.refreshAll()
+        advanceUntilIdle()
+
+        assertEquals("Failed to refresh all podcasts: $errorMessage", viewModel.uiState.value.errorMessage)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        job.cancel()
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
     fun clearError_resetsErrorMessage() = runTest {
         val errorMessage = "Network Error"
         coEvery { repository.refreshAll() } throws Exception(errorMessage)
 
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
         viewModel.refreshAll()
-        assertEquals("Failed to refresh all podcasts: $errorMessage", viewModel.errorMessage.value)
+        advanceUntilIdle()
+        assertEquals("Failed to refresh all podcasts: $errorMessage", viewModel.uiState.value.errorMessage)
         
         viewModel.clearError()
-        assertNull(viewModel.errorMessage.value)
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.errorMessage)
+        job.cancel()
     }
 
     @Test

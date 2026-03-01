@@ -15,6 +15,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import kotlinx.coroutines.flow.combine
+
+data class FeedsUiState(
+    val podcasts: List<Podcast> = emptyList(),
+    val unplayedEpisodes: List<EpisodeWithPodcast> = emptyList(),
+    val isRefreshing: Boolean = false,
+    val errorMessage: String? = null
+)
+
 @HiltViewModel
 class FeedsViewModel @Inject constructor(
     private val repository: PodcastRepository,
@@ -22,22 +31,32 @@ class FeedsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-    val podcasts: StateFlow<List<Podcast>> = repository.allPodcasts
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val unplayedEpisodes: StateFlow<List<EpisodeWithPodcast>> = repository.unplayedEpisodes
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
     private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    val uiState: StateFlow<FeedsUiState> = combine(
+        repository.allPodcasts,
+        repository.unplayedEpisodes,
+        _isRefreshing,
+        _errorMessage
+    ) { podcasts, episodes, isRefreshing, error ->
+        FeedsUiState(
+            podcasts = podcasts,
+            unplayedEpisodes = episodes,
+            isRefreshing = isRefreshing,
+            errorMessage = error
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = FeedsUiState()
+    )
 
     fun refreshPodcast(feedUrl: String) {
         viewModelScope.launch {
             try {
                 repository.fetchAndStorePodcast(feedUrl)
             } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
                 _errorMessage.value = "Failed to refresh podcast: ${e.message}"
             }
         }
@@ -49,6 +68,7 @@ class FeedsViewModel @Inject constructor(
             try {
                 repository.refreshAll()
             } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
                 _errorMessage.value = "Failed to refresh all podcasts: ${e.message}"
             } finally {
                 _isRefreshing.value = false

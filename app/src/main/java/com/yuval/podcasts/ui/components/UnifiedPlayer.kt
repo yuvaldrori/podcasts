@@ -13,12 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.yuval.podcasts.ui.viewmodel.QueueViewModel
+import com.yuval.podcasts.ui.viewmodel.PlayerViewModel
 import java.util.Locale
 
 @Composable
 fun UnifiedPlayer(
-    viewModel: QueueViewModel,
+    viewModel: PlayerViewModel,
     modifier: Modifier = Modifier
 ) {
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
@@ -94,7 +94,7 @@ fun UnifiedPlayer(
 }
 
 @Composable
-private fun PlayerScrubber(viewModel: QueueViewModel) {
+private fun PlayerScrubber(viewModel: PlayerViewModel) {
     // These states update every 1 second. 
     // By reading them here, only THIS tiny composable recomposes, 
     // keeping the rest of the UnifiedPlayer (and the app) stable.
