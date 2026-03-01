@@ -2,6 +2,10 @@ package com.yuval.podcasts.ui.viewmodel
 
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.repository.PodcastRepository
+import kotlinx.coroutines.launch
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
+import com.yuval.podcasts.data.db.entity.Podcast
+import kotlinx.coroutines.test.advanceUntilIdle
 import com.yuval.podcasts.media.PlayerManager
 import com.yuval.podcasts.utils.MainDispatcherRule
 import io.mockk.coEvery
@@ -110,12 +114,89 @@ class QueueViewModelTest {
         coVerify { repository.reorderQueue(newOrder) }
     }
 
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
-    fun removeFromQueue_callsRepository() = runTest {
-        coEvery { repository.removeFromQueue("ep1") } returns Unit
+    fun removeFromQueue_nonPlayingEpisode_onlyCallsRepository() = runTest {
+        val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
+        coEvery { repository.removeFromQueue("ep2") } returns Unit
+        every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
         
+        every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
+        viewModel = QueueViewModel(repository, playerManager)
+        
+        val job = backgroundScope.launch { viewModel.currentlyPlayingEpisode.collect {} }
+        val job2 = backgroundScope.launch { viewModel.queue.collect {} }
+        advanceUntilIdle()
+
+        viewModel.removeFromQueue("ep2")
+        advanceUntilIdle()
+
+        coVerify { repository.removeFromQueue("ep2") }
+        verify(exactly = 0) { playerManager.stopAndClear() }
+        verify(exactly = 0) { playerManager.play(any(), any(), any()) }
+        job.cancel()
+        job2.cancel()
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun removeFromQueue_playingEpisode_withNext_playsNext() = runTest {
+        val podcast = Podcast("feed", "Title", "Desc", "Img", "Web")
+        val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
+        val ep2 = Episode("ep2", "feed", "E2", "D", "audio2", null, 0L, 0L, 0, null, false, 0L)
+        
+        coEvery { repository.removeFromQueue("ep1") } returns Unit
+        every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
+        every { playerManager.play(any(), any(), any()) } returns Unit
+        every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
+        
+        val queueList = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
+        every { repository.listeningQueue } returns flowOf(queueList)
+
+        viewModel = QueueViewModel(repository, playerManager)
+        
+        val job = backgroundScope.launch { viewModel.currentlyPlayingEpisode.collect {} }
+        val job2 = backgroundScope.launch { viewModel.queue.collect {} }
+        advanceUntilIdle()
+
         viewModel.removeFromQueue("ep1")
+        advanceUntilIdle()
 
         coVerify { repository.removeFromQueue("ep1") }
+        verify { playerManager.play("ep2", "audio2", 0L) }
+        verify(exactly = 0) { playerManager.stopAndClear() }
+        job.cancel()
+        job2.cancel()
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun removeFromQueue_playingEpisode_noNext_stopsPlayer() = runTest {
+        val podcast = Podcast("feed", "Title", "Desc", "Img", "Web")
+        val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
+
+        coEvery { repository.removeFromQueue("ep1") } returns Unit
+        every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
+        every { playerManager.stopAndClear() } returns Unit
+        every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
+        
+        val queueList = listOf(EpisodeWithPodcast(ep1, podcast))
+        every { repository.listeningQueue } returns flowOf(queueList)
+
+        viewModel = QueueViewModel(repository, playerManager)
+        
+        val job = backgroundScope.launch { viewModel.currentlyPlayingEpisode.collect {} }
+        val job2 = backgroundScope.launch { viewModel.queue.collect {} }
+        advanceUntilIdle()
+
+        viewModel.removeFromQueue("ep1")
+        advanceUntilIdle()
+
+        coVerify { repository.removeFromQueue("ep1") }
+        verify { playerManager.stopAndClear() }
+        verify(exactly = 0) { playerManager.play(any(), any(), any()) }
+        job.cancel()
+        job2.cancel()
     }
 }
