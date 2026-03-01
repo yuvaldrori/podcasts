@@ -103,6 +103,7 @@ dependencies {
     ksp("com.google.dagger:hilt-android-compiler:$hiltVersion")
     implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
     implementation("androidx.hilt:hilt-work:1.3.0")
+    ksp("androidx.hilt:hilt-compiler:1.2.0")
 
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.10.0")
