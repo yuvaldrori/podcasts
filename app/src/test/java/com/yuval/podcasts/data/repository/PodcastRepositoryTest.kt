@@ -80,20 +80,40 @@ class PodcastRepositoryTest {
     }
 
     @Test
-    fun fetchAndStorePodcast_success_insertsToDb() = runTest {
+    fun fetchAndStorePodcast_success_insertsToDb() = runBlocking {
         val feedUrl = "http://example.com/feed"
         val mockInputStream = "mock xml".byteInputStream()
-        
+
         coEvery { podcastApi.fetchRss(feedUrl) } returns mockInputStream
-        
+
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
-        val episodes = listOf(Episode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L, 0, null, false, 0L))
+        val episodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L))
         coEvery { rssParser.parse(any(), feedUrl) } returns Pair(podcast, episodes)
 
         repository.fetchAndStorePodcast(feedUrl)
 
         coVerify { podcastDao.insertPodcast(podcast) }
-        coVerify { episodeDao.insertEpisodes(episodes) }
+        coVerify { episodeDao.upsertEpisodes(episodes) }
+    }
+
+    @Test
+    fun fetchAndStorePodcast_usesUpsert_preventsOverwritingUserStates() = runBlocking {
+        val feedUrl = "http://test.com/feed"
+        val mockInputStream = "mock xml".byteInputStream()
+        coEvery { podcastApi.fetchRss(feedUrl) } returns mockInputStream
+
+        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
+        // The network parser returns a NetworkEpisode, which has NO isPlayed property
+        val networkEpisodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L))
+        coEvery { rssParser.parse(any(), feedUrl) } returns Pair(podcast, networkEpisodes)
+
+        repository.fetchAndStorePodcast(feedUrl)
+
+        // Verify that the DAO uses upsertEpisodes instead of insertEpisodes
+        // This implicitly proves the fix, because upsertEpisodes is hardcoded 
+        // to use the NetworkEpisode partial entity mapping in Room.
+        coVerify { episodeDao.upsertEpisodes(networkEpisodes) }
+        coVerify(exactly = 0) { episodeDao.testInsertEpisodes(any()) }
     }
 
 
@@ -109,7 +129,7 @@ class PodcastRepositoryTest {
         var threadName = ""
         
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
-        val episodes = listOf(Episode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L, 0, null, false, 0L))
+        val episodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L))
         
         coEvery { rssParser.parse(any(), feedUrl) } coAnswers {
             usedDispatcher = currentCoroutineContext()[ContinuationInterceptor]

@@ -3,6 +3,7 @@ package com.yuval.podcasts.data.db.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.ColumnInfo
 
 @Entity(
     tableName = "episodes",
@@ -21,8 +22,11 @@ data class Episode(
     val imageUrl: String? = null,
     val pubDate: Long,
     val duration: Long,
+    @ColumnInfo(defaultValue = "0")
     val downloadStatus: Int, // 0 = Not Downloaded, 1 = Downloading, 2 = Downloaded
     val localFilePath: String?,
+    @ColumnInfo(defaultValue = "0")
     val isPlayed: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
     val lastPlayedPosition: Long = 0L
 )

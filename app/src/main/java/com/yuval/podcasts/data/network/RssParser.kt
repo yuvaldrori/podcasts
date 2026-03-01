@@ -2,7 +2,7 @@ package com.yuval.podcasts.data.network
 
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
-import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.NetworkEpisode
 import com.yuval.podcasts.data.db.entity.Podcast
 import java.io.InputStream
 import java.text.SimpleDateFormat
@@ -11,7 +11,7 @@ import java.util.Locale
 class RssParser {
     private val dateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US)
 
-    fun parse(inputStream: InputStream, feedUrl: String): Pair<Podcast, List<Episode>> {
+    fun parse(inputStream: InputStream, feedUrl: String): Pair<Podcast, List<NetworkEpisode>> {
         val factory = XmlPullParserFactory.newInstance()
         factory.isNamespaceAware = false
         val parser = factory.newPullParser()
@@ -20,12 +20,12 @@ class RssParser {
         return readRss(parser, feedUrl)
     }
 
-    private fun readRss(parser: XmlPullParser, feedUrl: String): Pair<Podcast, List<Episode>> {
+    private fun readRss(parser: XmlPullParser, feedUrl: String): Pair<Podcast, List<NetworkEpisode>> {
         var podcastTitle = ""
         var podcastDescription = ""
         var podcastImageUrl = ""
         var podcastWebsite = ""
-        val episodes = mutableListOf<Episode>()
+        val episodes = mutableListOf<NetworkEpisode>()
 
         parser.require(XmlPullParser.START_TAG, null, "rss")
         while (parser.next() != XmlPullParser.END_TAG) {
@@ -62,7 +62,7 @@ class RssParser {
         return Pair(podcast, episodes)
     }
 
-    private fun readItem(parser: XmlPullParser, feedUrl: String): Episode {
+    private fun readItem(parser: XmlPullParser, feedUrl: String): NetworkEpisode {
         var id = ""
         var title = ""
         var description = ""
@@ -104,7 +104,7 @@ class RssParser {
         }
         if (id.isEmpty()) id = audioUrl
 
-        return Episode(
+        return NetworkEpisode(
             id = id,
             podcastFeedUrl = feedUrl,
             title = title,
@@ -112,9 +112,7 @@ class RssParser {
             audioUrl = audioUrl,
             imageUrl = imageUrl,
             pubDate = pubDate,
-            duration = duration,
-            downloadStatus = 0,
-            localFilePath = null
+            duration = duration
         )
     }
 

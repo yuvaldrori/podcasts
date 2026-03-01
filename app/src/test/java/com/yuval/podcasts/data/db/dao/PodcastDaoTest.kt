@@ -67,7 +67,7 @@ class PodcastDaoTest {
         val episode1 = Episode("ep1", "url1", "E1", "D", "A", null, 1000L, 0L, 0, null, false, 0L)
         val episode2 = Episode("ep2", "url2", "E2", "D", "A", null, 2000L, 0L, 0, null, false, 0L)
         
-        episodeDao.insertEpisodes(listOf(episode1, episode2))
+        episodeDao.testInsertEpisodes(listOf(episode1, episode2))
 
         val allPodcasts = podcastDao.getAllPodcasts().first()
 

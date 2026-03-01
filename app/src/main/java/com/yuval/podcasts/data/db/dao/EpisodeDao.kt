@@ -1,10 +1,12 @@
 package com.yuval.podcasts.data.db.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import com.yuval.podcasts.data.db.entity.NetworkEpisode
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import kotlinx.coroutines.flow.Flow
@@ -21,8 +23,10 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC LIMIT 150")
     fun getUnplayedEpisodes(): Flow<List<Episode>>
 
+    @Upsert(entity = Episode::class)
+    suspend fun upsertEpisodes(episodes: List<NetworkEpisode>)
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEpisodes(episodes: List<Episode>)
+    suspend fun testInsertEpisodes(episodes: List<Episode>)
 
     @Query("SELECT * FROM episodes WHERE podcastFeedUrl = :feedUrl")
     suspend fun getEpisodesForPodcastSync(feedUrl: String): List<Episode>
