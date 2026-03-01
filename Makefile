@@ -32,8 +32,7 @@ lint:
 	./gradlew lintDebug -PwarningsAsErrors=true --warning-mode all --no-daemon
 
 deps:
-	./gradlew dependencyUpdates --no-daemon
-
+	# ./gradlew dependencyUpdates # Fails in Gradle 9.1.0 due to ben-manes plugin bug --no-daemon --no-parallel --no-configuration-cache
 clean:
 	./gradlew clean --no-daemon
 
