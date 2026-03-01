@@ -62,7 +62,7 @@ class PodcastRepository @Inject constructor(
                 val inputStream = podcastApi.fetchRss(feedUrl)
                 val (podcast, episodes) = rssParser.parse(inputStream, feedUrl)
                 podcastDao.insertPodcast(podcast)
-                episodeDao.insertEpisodes(episodes)
+                episodeDao.upsertEpisodes(episodes)
             }
         } catch (e: Throwable) {
             e.printStackTrace()

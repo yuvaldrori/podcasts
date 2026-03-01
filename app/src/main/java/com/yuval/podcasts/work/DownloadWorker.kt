@@ -57,6 +57,7 @@ class DownloadWorker @AssistedInject constructor(
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()
+            android.util.Log.e("DownloadWorker", "Download failed: ${e.message}", e)
             // Revert status on failure
             updateDownloadStatus(episodeId, 0, null)
             Result.failure()
