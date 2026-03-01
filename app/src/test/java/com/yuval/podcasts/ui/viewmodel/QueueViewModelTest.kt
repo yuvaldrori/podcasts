@@ -125,7 +125,6 @@ class QueueViewModelTest {
         every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
         viewModel = QueueViewModel(repository, playerManager)
         
-        val job = backgroundScope.launch { viewModel.currentlyPlayingEpisode.collect {} }
         val job2 = backgroundScope.launch { viewModel.queue.collect {} }
         advanceUntilIdle()
 
@@ -135,7 +134,6 @@ class QueueViewModelTest {
         coVerify { repository.removeFromQueue("ep2") }
         verify(exactly = 0) { playerManager.stopAndClear() }
         verify(exactly = 0) { playerManager.play(any(), any(), any()) }
-        job.cancel()
         job2.cancel()
     }
 
@@ -156,7 +154,6 @@ class QueueViewModelTest {
 
         viewModel = QueueViewModel(repository, playerManager)
         
-        val job = backgroundScope.launch { viewModel.currentlyPlayingEpisode.collect {} }
         val job2 = backgroundScope.launch { viewModel.queue.collect {} }
         advanceUntilIdle()
 
@@ -166,7 +163,6 @@ class QueueViewModelTest {
         coVerify { repository.removeFromQueue("ep1") }
         verify { playerManager.play("ep2", "audio2", 0L) }
         verify(exactly = 0) { playerManager.stopAndClear() }
-        job.cancel()
         job2.cancel()
     }
 
@@ -186,7 +182,6 @@ class QueueViewModelTest {
 
         viewModel = QueueViewModel(repository, playerManager)
         
-        val job = backgroundScope.launch { viewModel.currentlyPlayingEpisode.collect {} }
         val job2 = backgroundScope.launch { viewModel.queue.collect {} }
         advanceUntilIdle()
 
@@ -196,7 +191,6 @@ class QueueViewModelTest {
         coVerify { repository.removeFromQueue("ep1") }
         verify { playerManager.stopAndClear() }
         verify(exactly = 0) { playerManager.play(any(), any(), any()) }
-        job.cancel()
         job2.cancel()
     }
 }
