@@ -142,40 +142,6 @@ class PodcastRepository @Inject constructor(
         exitProcess(0)
     }
 
-    suspend fun enqueueEpisode(episode: Episode) {
-        val currentQueue = queueDao.getQueue().first()
-        
-        // Shift all existing items down by 1
-        val updatedQueue = currentQueue.map { it.copy(position = it.position + 1) }.toMutableList()
-        // Add new item at position 0
-        updatedQueue.add(QueueState(episode.id, 0))
-        
-        queueDao.updateQueue(updatedQueue)
-        
-        // Dismiss from "New" tab
-        episodeDao.updatePlaybackStatus(episode.id, true)
-
-        // Trigger background download
-        val downloadData = Data.Builder()
-            .putString(DownloadWorker.KEY_EPISODE_ID, episode.id)
-            .putString(DownloadWorker.KEY_AUDIO_URL, episode.audioUrl)
-            .build()
-
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-        val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setConstraints(constraints)
-            .setInputData(downloadData)
-            .build()
-
-        workManager.enqueueUniqueWork(
-            "download_${episode.id}",
-            androidx.work.ExistingWorkPolicy.KEEP,
-            downloadWorkRequest
-        )
-    }
 
     suspend fun markAllAsPlayed() {
         episodeDao.markAllUnplayedAsPlayed()

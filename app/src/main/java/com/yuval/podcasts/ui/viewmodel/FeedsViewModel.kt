@@ -17,7 +17,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class FeedsViewModel @Inject constructor(
-    private val repository: PodcastRepository
+    private val repository: PodcastRepository,
+    private val enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
 ) : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -57,7 +58,7 @@ class FeedsViewModel @Inject constructor(
 
     fun addToQueue(episode: Episode) {
         viewModelScope.launch {
-            repository.enqueueEpisode(episode)
+            enqueueEpisodeUseCase(episode)
         }
     }
 

@@ -160,18 +160,6 @@ class PodcastRepositoryTest {
         coVerify { podcastApi.fetchRss("url2") }
     }
 
-    @Test
-    fun enqueueEpisode_updatesQueueAndWorkManager() = runTest {
-        val episode = Episode("ep1", "feed", "Ep1", "Desc", "audio", null, 0L, 0L, 0, null, false, 0L)
-        val currentQueue = listOf(QueueState("ep2", 0))
-        every { queueDao.getQueue() } returns flowOf(currentQueue)
-        
-        repository.enqueueEpisode(episode)
-
-        coVerify { queueDao.updateQueue(match { it.size == 2 && it.find { state -> state.episodeId == "ep1" }?.position == 0 }) }
-        coVerify { episodeDao.updatePlaybackStatus("ep1", true) }
-        io.mockk.verify { workManager.enqueueUniqueWork(any<String>(), any<androidx.work.ExistingWorkPolicy>(), any<androidx.work.OneTimeWorkRequest>()) }
-    }
 
 
     @Test

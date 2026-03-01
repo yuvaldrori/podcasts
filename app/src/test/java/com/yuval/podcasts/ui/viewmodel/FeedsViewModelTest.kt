@@ -25,16 +25,18 @@ class FeedsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repository: PodcastRepository
+    private lateinit var enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
     private lateinit var viewModel: FeedsViewModel
 
     @Before
     fun setup() {
         repository = mockk()
+        enqueueEpisodeUseCase = mockk()
         // Default returns for flows to avoid initialization errors
         every { repository.allPodcasts } returns flowOf(emptyList())
         every { repository.unplayedEpisodes } returns flowOf(emptyList())
         
-        viewModel = FeedsViewModel(repository)
+        viewModel = FeedsViewModel(repository, enqueueEpisodeUseCase)
     }
 
     @Test
@@ -89,11 +91,11 @@ class FeedsViewModelTest {
             isPlayed = false,
             lastPlayedPosition = 0L
         )
-        coEvery { repository.enqueueEpisode(episode) } returns Unit
+        coEvery { enqueueEpisodeUseCase(episode) } returns Unit
 
         viewModel.addToQueue(episode)
 
-        coVerify { repository.enqueueEpisode(episode) }
+        coVerify { enqueueEpisodeUseCase(episode) }
     }
 
     @Test

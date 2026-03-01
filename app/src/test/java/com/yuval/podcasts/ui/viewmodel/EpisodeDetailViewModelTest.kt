@@ -22,12 +22,14 @@ class EpisodeDetailViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repository: PodcastRepository
+    private lateinit var enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
     private lateinit var viewModel: EpisodeDetailViewModel
 
     @Before
     fun setup() {
         repository = mockk()
-        viewModel = EpisodeDetailViewModel(repository)
+        enqueueEpisodeUseCase = mockk()
+        viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase)
     }
 
     @Test
@@ -46,10 +48,10 @@ class EpisodeDetailViewModelTest {
     @Test
     fun addToQueue_callsRepository() = runTest {
         val episode = Episode("ep1", "url", "title", "desc", "url", null, 0L, 0L, 0, null, false, 0L)
-        coEvery { repository.enqueueEpisode(episode) } returns Unit
+        coEvery { enqueueEpisodeUseCase(episode) } returns Unit
 
         viewModel.addToQueue(episode)
 
-        coVerify { repository.enqueueEpisode(episode) }
+        coVerify { enqueueEpisodeUseCase(episode) }
     }
 }

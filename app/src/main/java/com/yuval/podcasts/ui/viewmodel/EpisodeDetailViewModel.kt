@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class EpisodeDetailViewModel @Inject constructor(
-    private val repository: PodcastRepository
+    private val repository: PodcastRepository,
+    private val enqueueEpisodeUseCase: EnqueueEpisodeUseCase
 ) : ViewModel() {
 
     private val _episode = MutableStateFlow<EpisodeWithPodcast?>(null)
@@ -30,7 +32,7 @@ class EpisodeDetailViewModel @Inject constructor(
 
     fun addToQueue(episode: Episode) {
         viewModelScope.launch {
-            repository.enqueueEpisode(episode)
+            enqueueEpisodeUseCase(episode)
         }
     }
 }
