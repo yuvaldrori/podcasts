@@ -27,12 +27,14 @@ class QueueViewModelTest {
 
     private lateinit var repository: PodcastRepository
     private lateinit var playerManager: PlayerManager
+    private lateinit var removeEpisodeUseCase: com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
     private lateinit var viewModel: QueueViewModel
 
     @Before
     fun setup() {
         repository = mockk()
         playerManager = mockk()
+        removeEpisodeUseCase = mockk()
 
         every { repository.listeningQueue } returns flowOf(emptyList())
         
@@ -43,7 +45,7 @@ class QueueViewModelTest {
         every { playerManager.currentMediaId } returns MutableStateFlow(null)
         every { playerManager.initialize() } returns Unit
 
-        viewModel = QueueViewModel(repository, playerManager)
+        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase)
     }
 
     @Test
@@ -119,11 +121,11 @@ class QueueViewModelTest {
     @Test
     fun removeFromQueue_nonPlayingEpisode_onlyCallsRepository() = runTest {
         val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
-        coEvery { repository.removeFromQueue("ep2") } returns Unit
+        coEvery { removeEpisodeUseCase("ep2") } returns Unit
         every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
         
         every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
-        viewModel = QueueViewModel(repository, playerManager)
+        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase)
         
         val job2 = backgroundScope.launch { viewModel.queue.collect {} }
         advanceUntilIdle()
@@ -131,7 +133,7 @@ class QueueViewModelTest {
         viewModel.removeFromQueue("ep2")
         advanceUntilIdle()
 
-        coVerify { repository.removeFromQueue("ep2") }
+        coVerify { removeEpisodeUseCase("ep2") }
         verify(exactly = 0) { playerManager.stopAndClear() }
         verify(exactly = 0) { playerManager.play(any(), any(), any()) }
         job2.cancel()
@@ -144,7 +146,7 @@ class QueueViewModelTest {
         val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
         val ep2 = Episode("ep2", "feed", "E2", "D", "audio2", null, 0L, 0L, 0, null, false, 0L)
         
-        coEvery { repository.removeFromQueue("ep1") } returns Unit
+        coEvery { removeEpisodeUseCase("ep1") } returns Unit
         every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
         every { playerManager.play(any(), any(), any()) } returns Unit
         every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
@@ -152,7 +154,7 @@ class QueueViewModelTest {
         val queueList = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
         every { repository.listeningQueue } returns flowOf(queueList)
 
-        viewModel = QueueViewModel(repository, playerManager)
+        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase)
         
         val job2 = backgroundScope.launch { viewModel.queue.collect {} }
         advanceUntilIdle()
@@ -160,7 +162,7 @@ class QueueViewModelTest {
         viewModel.removeFromQueue("ep1")
         advanceUntilIdle()
 
-        coVerify { repository.removeFromQueue("ep1") }
+        coVerify { removeEpisodeUseCase("ep1") }
         verify { playerManager.play("ep2", "audio2", 0L) }
         verify(exactly = 0) { playerManager.stopAndClear() }
         job2.cancel()
@@ -172,7 +174,7 @@ class QueueViewModelTest {
         val podcast = Podcast("feed", "Title", "Desc", "Img", "Web")
         val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
 
-        coEvery { repository.removeFromQueue("ep1") } returns Unit
+        coEvery { removeEpisodeUseCase("ep1") } returns Unit
         every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
         every { playerManager.stopAndClear() } returns Unit
         every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
@@ -180,7 +182,7 @@ class QueueViewModelTest {
         val queueList = listOf(EpisodeWithPodcast(ep1, podcast))
         every { repository.listeningQueue } returns flowOf(queueList)
 
-        viewModel = QueueViewModel(repository, playerManager)
+        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase)
         
         val job2 = backgroundScope.launch { viewModel.queue.collect {} }
         advanceUntilIdle()
@@ -188,7 +190,7 @@ class QueueViewModelTest {
         viewModel.removeFromQueue("ep1")
         advanceUntilIdle()
 
-        coVerify { repository.removeFromQueue("ep1") }
+        coVerify { removeEpisodeUseCase("ep1") }
         verify { playerManager.stopAndClear() }
         verify(exactly = 0) { playerManager.play(any(), any(), any()) }
         job2.cancel()

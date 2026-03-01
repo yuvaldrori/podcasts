@@ -186,22 +186,10 @@ class PodcastRepository @Inject constructor(
     }
 
     suspend fun reorderQueue(newOrderIds: List<String>) {
-        val updatedQueue = newOrderIds.mapIndexed { index, id ->
-            QueueState(episodeId = id, position = index)
+        val newQueue = newOrderIds.mapIndexed { index, id ->
+            QueueState(id, index)
         }
-        queueDao.updateQueue(updatedQueue)
-    }
-
-    suspend fun removeFromQueue(episodeId: String) {
-        queueDao.removeFromQueue(episodeId)
-        val episode = episodeDao.getEpisodeById(episodeId)
-        episode?.localFilePath?.let { path ->
-            val file = File(path)
-            if (file.exists()) {
-                file.delete()
-            }
-        }
-        episodeDao.updateDownloadStatus(episodeId, 0, null)
+        queueDao.updateQueue(newQueue)
     }
 
     suspend fun unsubscribePodcast(feedUrl: String) {

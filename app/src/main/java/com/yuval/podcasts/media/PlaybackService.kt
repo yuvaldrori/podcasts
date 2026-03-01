@@ -17,6 +17,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -25,6 +26,7 @@ class PlaybackService : MediaSessionService() {
     private lateinit var player: ExoPlayer
     @Inject lateinit var episodeDao: EpisodeDao
     @Inject lateinit var queueDao: QueueDao
+    @Inject lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
 
     private var mediaSession: MediaSession? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -57,25 +59,10 @@ class PlaybackService : MediaSessionService() {
                     val episodeId = mediaItem.mediaId
                     
                     serviceScope.launch {
-                        // Mark as played and reset position
-                        episodeDao.updatePlaybackStatus(episodeId, true)
-                        episodeDao.updateLastPlayedPosition(episodeId, 0L)
-
-                        // Delete local file and remove from queue
-                        val episode = episodeDao.getEpisodeById(episodeId)
-                        episode?.localFilePath?.let { path ->
-                            val file = File(path)
-                            if (file.exists()) {
-                                file.delete()
-                            }
-                        }
+                        // Mark as played and reset position, then delete file and remove from queue
+                        removeEpisodeUseCase(episodeId, markAsPlayed = true)
                         
-                        // Update status to 0 (Not Downloaded) and clear path
-                        episodeDao.updateDownloadStatus(episodeId, 0, null)
-                        
-                        // Remove from Queue
-                        queueDao.removeFromQueue(episodeId)
-                        
+                        // Proceed to next episode if available
                         // Auto-play next
                         val nextEpisode = queueDao.getNextEpisode()
                         if (nextEpisode != null) {

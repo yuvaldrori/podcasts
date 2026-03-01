@@ -6,6 +6,7 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import com.yuval.podcasts.media.PlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class QueueViewModel @Inject constructor(
     private val repository: PodcastRepository,
-    private val playerManager: PlayerManager
+    private val playerManager: PlayerManager,
+    private val removeEpisodeUseCase: RemoveEpisodeUseCase
 ) : ViewModel() {
 
     val queue: StateFlow<List<EpisodeWithPodcast>> = repository.listeningQueue
@@ -92,9 +94,8 @@ class QueueViewModel @Inject constructor(
             val isPlayingDismissed = playerManager.currentMediaId.value == episodeId
             val currentQueueState = queue.value
 
-
             // Actually remove it from the DB and file system
-            repository.removeFromQueue(episodeId)
+            removeEpisodeUseCase(episodeId, markAsPlayed = false)
 
             if (isPlayingDismissed) {
                 // Find what was immediately after the removed episode in the old state

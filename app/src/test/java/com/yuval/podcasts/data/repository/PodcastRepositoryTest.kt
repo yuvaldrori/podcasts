@@ -196,23 +196,6 @@ class PodcastRepositoryTest {
 
 
     @Test
-    fun removeFromQueue_removesFromDbAndDeletesFile() = runTest {
-        val episodeId = "ep1"
-        val mockEpisode = Episode(episodeId, "feed", "T", "D", "A", null, 0L, 0L, 2, "/fake/path/file.mp3", false, 0L)
-        
-        coEvery { queueDao.removeFromQueue(episodeId) } returns Unit
-        coEvery { episodeDao.getEpisodeById(episodeId) } returns mockEpisode
-        coEvery { episodeDao.updateDownloadStatus(episodeId, 0, null) } returns Unit
-
-        repository.removeFromQueue(episodeId)
-
-        coVerify { queueDao.removeFromQueue(episodeId) }
-        coVerify { episodeDao.getEpisodeById(episodeId) }
-        coVerify { episodeDao.updateDownloadStatus(episodeId, 0, null) }
-        // File deletion is harder to verify without mocking File, but we verify the DB updates
-    }
-
-    @Test
     fun markAllAsPlayed_callsDao() = runTest {
         coEvery { episodeDao.markAllUnplayedAsPlayed() } returns Unit
         
