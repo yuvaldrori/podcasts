@@ -3,13 +3,15 @@ package com.yuval.podcasts.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.domain.usecase.BackupDatabaseUseCase
+import com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
+import com.yuval.podcasts.domain.usecase.ImportOpmlUseCase
+import com.yuval.podcasts.domain.usecase.RestoreDatabaseUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.io.InputStream
-import java.io.OutputStream
 import javax.inject.Inject
 
 import android.content.Context
@@ -17,7 +19,11 @@ import android.net.Uri
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val repository: PodcastRepository
+    private val repository: PodcastRepository,
+    private val importOpmlUseCase: ImportOpmlUseCase,
+    private val exportOpmlUseCase: ExportOpmlUseCase,
+    private val backupDatabaseUseCase: BackupDatabaseUseCase,
+    private val restoreDatabaseUseCase: RestoreDatabaseUseCase
 ) : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -37,7 +43,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 context.contentResolver.openInputStream(uri)?.use { stream ->
-                    repository.importOpml(stream)
+                    importOpmlUseCase(stream)
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to import OPML: ${e.message}"
@@ -49,7 +55,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 context.contentResolver.openOutputStream(uri)?.use { stream ->
-                    repository.exportOpml(stream)
+                    exportOpmlUseCase(stream)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -62,7 +68,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 context.contentResolver.openOutputStream(uri)?.use { stream ->
-                    repository.backupDatabase(stream)
+                    backupDatabaseUseCase(stream)
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to backup database: ${e.message}"
@@ -74,7 +80,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 context.contentResolver.openInputStream(uri)?.use { stream ->
-                    repository.restoreDatabase(stream)
+                    restoreDatabaseUseCase(stream)
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to restore database: ${e.message}"

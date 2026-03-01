@@ -29,11 +29,19 @@ class SettingsViewModelTest {
     private lateinit var uri: Uri
     private lateinit var inputStream: InputStream
     private lateinit var outputStream: OutputStream
+    private lateinit var importOpmlUseCase: com.yuval.podcasts.domain.usecase.ImportOpmlUseCase
+    private lateinit var exportOpmlUseCase: com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
+    private lateinit var backupDatabaseUseCase: com.yuval.podcasts.domain.usecase.BackupDatabaseUseCase
+    private lateinit var restoreDatabaseUseCase: com.yuval.podcasts.domain.usecase.RestoreDatabaseUseCase
     private lateinit var viewModel: SettingsViewModel
 
     @Before
     fun setup() {
         repository = mockk()
+        importOpmlUseCase = mockk()
+        exportOpmlUseCase = mockk()
+        backupDatabaseUseCase = mockk()
+        restoreDatabaseUseCase = mockk()
         context = mockk()
         contentResolver = mockk()
         uri = mockk()
@@ -42,7 +50,7 @@ class SettingsViewModelTest {
 
         every { context.contentResolver } returns contentResolver
         
-        viewModel = SettingsViewModel(repository)
+        viewModel = SettingsViewModel(repository, importOpmlUseCase, exportOpmlUseCase, backupDatabaseUseCase, restoreDatabaseUseCase)
     }
 
     @Test
@@ -72,11 +80,11 @@ class SettingsViewModelTest {
         every { contentResolver.openInputStream(uri) } returns inputStream
         // InputStream.use extension function calls close
         every { inputStream.close() } returns Unit
-        coEvery { repository.importOpml(inputStream) } returns emptyList()
+        coEvery { importOpmlUseCase(inputStream) } returns emptyList()
 
         viewModel.importOpml(context, uri)
 
-        coVerify { repository.importOpml(inputStream) }
+        coVerify { importOpmlUseCase(inputStream) }
         assertNull(viewModel.errorMessage.value)
     }
 
@@ -84,11 +92,11 @@ class SettingsViewModelTest {
     fun exportOpml_success() = runTest {
         every { contentResolver.openOutputStream(uri) } returns outputStream
         every { outputStream.close() } returns Unit
-        coEvery { repository.exportOpml(outputStream) } returns Unit
+        coEvery { exportOpmlUseCase(outputStream) } returns Unit
 
         viewModel.exportOpml(context, uri)
 
-        coVerify { repository.exportOpml(outputStream) }
+        coVerify { exportOpmlUseCase(outputStream) }
         assertNull(viewModel.errorMessage.value)
     }
 

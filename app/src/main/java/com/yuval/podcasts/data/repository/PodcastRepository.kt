@@ -16,7 +16,6 @@ import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.network.PodcastApi
 import com.yuval.podcasts.data.network.RssParser
-import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.work.DownloadWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
@@ -28,11 +27,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.io.File
-import java.io.InputStream
-import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.system.exitProcess
 
 @Singleton
 class PodcastRepository @Inject constructor(
@@ -40,7 +36,7 @@ class PodcastRepository @Inject constructor(
     private val database: AppDatabase,
     private val podcastApi: PodcastApi,
     private val rssParser: RssParser,
-    private val opmlManager: OpmlManager,
+    
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
     private val queueDao: QueueDao,
@@ -82,66 +78,6 @@ class PodcastRepository @Inject constructor(
             }
         }.awaitAll()
     }
-
-    suspend fun importOpml(inputStream: InputStream) = coroutineScope {
-        val urls = opmlManager.parse(inputStream)
-        urls.map { url ->
-            async {
-                try {
-                    fetchAndStorePodcast(url)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }.awaitAll()
-    }
-
-    suspend fun exportOpml(outputStream: OutputStream) {
-        val podcasts = allPodcasts.first()
-        opmlManager.export(podcasts, outputStream)
-    }
-
-    suspend fun backupDatabase(outputStream: OutputStream): Nothing = withContext(Dispatchers.IO) {
-        // Force SQLite to write all WAL changes into the main DB file
-        database.query("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() }
-        database.close()
-        
-        val dbFile = context.getDatabasePath("podcasts_db")
-        val walFile = context.getDatabasePath("podcasts_db-wal")
-        val shmFile = context.getDatabasePath("podcasts_db-shm")
-
-        java.util.zip.ZipOutputStream(outputStream).use { zipOut ->
-            listOf(dbFile, walFile, shmFile).forEach { file ->
-                if (file.exists()) {
-                    zipOut.putNextEntry(java.util.zip.ZipEntry(file.name))
-                    file.inputStream().use { it.copyTo(zipOut) }
-                    zipOut.closeEntry()
-                }
-            }
-        }
-        
-        // Force restart after backup since we closed the DB
-        exitProcess(0)
-    }
-
-    suspend fun restoreDatabase(inputStream: InputStream): Nothing = withContext(Dispatchers.IO) {
-        // Close the database to release file locks
-        database.close()
-        
-        java.util.zip.ZipInputStream(inputStream).use { zipIn ->
-            var entry = zipIn.nextEntry
-            while (entry != null) {
-                val dbFile = context.getDatabasePath(entry.name)
-                dbFile.outputStream().use { zipIn.copyTo(it) }
-                zipIn.closeEntry()
-                entry = zipIn.nextEntry
-            }
-        }
-        
-        // Force an app restart to reload the new database file cleanly
-        exitProcess(0)
-    }
-
 
     suspend fun markAllAsPlayed() {
         episodeDao.markAllUnplayedAsPlayed()

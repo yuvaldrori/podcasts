@@ -39,7 +39,6 @@ class PodcastRepositoryTest {
     private lateinit var database: AppDatabase
     private lateinit var podcastApi: PodcastApi
     private lateinit var rssParser: RssParser
-    private lateinit var opmlManager: OpmlManager
     private lateinit var podcastDao: PodcastDao
     private lateinit var episodeDao: EpisodeDao
     private lateinit var queueDao: QueueDao
@@ -52,7 +51,6 @@ class PodcastRepositoryTest {
         database = mockk(relaxed = true)
         podcastApi = mockk()
         rssParser = mockk()
-        opmlManager = mockk()
         podcastDao = mockk(relaxed = true)
         episodeDao = mockk(relaxed = true)
         queueDao = mockk(relaxed = true)
@@ -71,7 +69,7 @@ class PodcastRepositoryTest {
             database = database,
             podcastApi = podcastApi,
             rssParser = rssParser,
-            opmlManager = opmlManager,
+            
             podcastDao = podcastDao,
             episodeDao = episodeDao,
             queueDao = queueDao,
