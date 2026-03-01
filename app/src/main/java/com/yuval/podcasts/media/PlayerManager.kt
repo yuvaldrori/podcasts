@@ -137,6 +137,17 @@ class PlayerManager @Inject constructor(
         _playbackSpeed.value = speed
     }
 
+    fun stopAndClear() {
+        controller?.let {
+            it.stop()
+            it.clearMediaItems()
+        }
+        _currentMediaId.value = null
+        _isPlaying.value = false
+        _currentPosition.value = 0L
+        _duration.value = 0L
+    }
+
     fun release() {
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null

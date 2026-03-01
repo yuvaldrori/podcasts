@@ -87,7 +87,25 @@ class QueueViewModel @Inject constructor(
 
     fun removeFromQueue(episodeId: String) {
         viewModelScope.launch {
+            // Check if the dismissed episode is currently playing
+            val isPlayingDismissed = currentlyPlayingEpisode.value?.id == episodeId
+            val currentQueueState = queue.value
+
+            // Actually remove it from the DB and file system
             repository.removeFromQueue(episodeId)
+
+            if (isPlayingDismissed) {
+                // Find what was immediately after the removed episode in the old state
+                val currentIndex = currentQueueState.indexOfFirst { it.episode.id == episodeId }
+                val hasNext = currentIndex != -1 && currentIndex + 1 < currentQueueState.size
+                
+                if (hasNext) {
+                    val nextEpisode = currentQueueState[currentIndex + 1].episode
+                    play(nextEpisode)
+                } else {
+                    playerManager.stopAndClear()
+                }
+            }
         }
     }
 

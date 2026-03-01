@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -111,6 +112,9 @@ fun QueueScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(onClick = { viewModel.play(episodeWithPodcast.episode) }) {
                                         Icon(Icons.Default.PlayArrow, contentDescription = "Play")
+                                    }
+                                    IconButton(onClick = { viewModel.removeFromQueue(episodeWithPodcast.episode.id) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Remove")
                                     }
                                     Box(
                                         modifier = Modifier
