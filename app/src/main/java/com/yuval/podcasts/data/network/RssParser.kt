@@ -9,7 +9,9 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 class RssParser {
-    private val dateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US)
+    private val dateFormat = java.lang.ThreadLocal.withInitial { 
+        SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US) 
+    }
 
     fun parse(inputStream: InputStream, feedUrl: String): Pair<Podcast, List<NetworkEpisode>> {
         val factory = XmlPullParserFactory.newInstance()
@@ -86,7 +88,7 @@ class RssParser {
                 "pubDate" -> {
                     val dateStr = readText(parser)
                     pubDate = try {
-                        dateFormat.parse(dateStr)?.time ?: 0L
+                        dateFormat.get()?.parse(dateStr)?.time ?: 0L
                     } catch (e: Exception) {
                         0L
                     }
