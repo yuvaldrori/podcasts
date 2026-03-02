@@ -146,6 +146,7 @@ class PlayerManagerTest {
         // Use reflection to set _currentMediaId internal state to "ep1"
         val currentMediaIdField = PlayerManager::class.java.getDeclaredField("_currentMediaId")
         currentMediaIdField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
         (currentMediaIdField.get(playerManager) as MutableStateFlow<String?>).value = "ep1"
 
         playerManager.playQueue(episodes, 0, 5000L)
@@ -167,6 +168,7 @@ class PlayerManagerTest {
         // Use reflection to set _currentMediaId internal state to "ep1"
         val currentMediaIdField = PlayerManager::class.java.getDeclaredField("_currentMediaId")
         currentMediaIdField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
         (currentMediaIdField.get(playerManager) as MutableStateFlow<String?>).value = "ep1"
 
         playerManager.playQueue(episodes, 0, 5000L)
