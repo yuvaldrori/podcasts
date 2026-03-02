@@ -26,6 +26,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,7 +45,10 @@ class PodcastRepository @Inject constructor(
     private val workManager: WorkManager
 ) {
     val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
-    val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast().distinctUntilChanged()
+    val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast()
+
+    // Limit concurrent network requests to prevent socket exhaustion
+    private val networkSemaphore = Semaphore(10)
     val unplayedEpisodes: Flow<List<EpisodeWithPodcast>> = episodeDao.getUnplayedEpisodesWithPodcast().distinctUntilChanged()
 
     fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl).distinctUntilChanged()
@@ -67,17 +72,21 @@ class PodcastRepository @Inject constructor(
         }
     }
 
-    suspend fun refreshAll() = coroutineScope {
-        val podcasts = allPodcasts.first()
-        // Process sequentially or in bounded batches instead of launching 50 parallel downloads
-        // This prevents networking exhaustion and socket timeout storms on slow devices
-        for (podcast in podcasts) {
-            try {
-                fetchAndStorePodcast(podcast.feedUrl)
-            } catch (e: Exception) {
-                        if (e is kotlinx.coroutines.CancellationException) throw e
-                e.printStackTrace()
-            }
+    suspend fun refreshAll() {
+        coroutineScope {
+            val podcasts = allPodcasts.first()
+            podcasts.map { podcast ->
+                async {
+                    networkSemaphore.withPermit {
+                        try {
+                            fetchAndStorePodcast(podcast.feedUrl)
+                        } catch (e: Exception) {
+                            if (e is kotlinx.coroutines.CancellationException) throw e
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }.awaitAll()
         }
     }
 

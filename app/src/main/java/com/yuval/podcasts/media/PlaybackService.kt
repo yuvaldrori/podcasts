@@ -67,6 +67,19 @@ class PlaybackService : MediaSessionService() {
                 }
             }
 
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                // If the entire playlist finishes (the last item ends), there is no 'transition' to a new item.
+                // We must catch STATE_ENDED to remove the final episode from the queue.
+                if (playbackState == Player.STATE_ENDED) {
+                    val lastId = currentlyPlayingId
+                    if (lastId != null) {
+                        serviceScope.launch {
+                            removeEpisodeUseCase(lastId, markAsPlayed = true)
+                        }
+                    }
+                }
+            }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val prevId = currentlyPlayingId
                 currentlyPlayingId = mediaItem?.mediaId
