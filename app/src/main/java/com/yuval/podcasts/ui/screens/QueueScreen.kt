@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -132,7 +133,10 @@ fun QueueScreen(
                                             playerViewModel.playQueue(episodes, startIndex, episodeWithPodcast.episode.lastPlayedPosition)
                                         }
                                     }) {
-                                        Icon(Icons.Default.PlayArrow, contentDescription = "Play")
+                                        Icon(
+                                            imageVector = if (isCurrentlyPlaying && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                            contentDescription = if (isCurrentlyPlaying && isPlaying) "Pause" else "Play"
+                                        )
                                     }
                                     IconButton(onClick = { viewModel.removeFromQueue(episodeWithPodcast.episode.id) }) {
                                         Icon(Icons.Default.Delete, contentDescription = "Remove")

@@ -110,6 +110,12 @@ class PlayerManager @Inject constructor(
     fun playQueue(episodes: List<com.yuval.podcasts.data.db.entity.Episode>, startIndex: Int, startPositionMs: Long = 0L) {
         if (episodes.isEmpty() || startIndex !in episodes.indices) return
         val currentEp = episodes[startIndex]
+        
+        if (_currentMediaId.value == currentEp.id) {
+            togglePlayPause()
+            return
+        }
+
         _currentMediaId.value = currentEp.id
         
         controller?.let {

@@ -3,11 +3,14 @@ package com.yuval.podcasts.media
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
 import androidx.media3.session.MediaBrowser
 import com.yuval.podcasts.data.repository.SettingsRepository
+import com.yuval.podcasts.data.db.entity.Episode
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -129,5 +132,47 @@ class PlayerManagerTest {
             mediaController.play()
         }
         assertEquals("ep1", playerManager.currentMediaId.value)
+    }
+
+    @Test
+    fun playQueue_whenCurrentItemMatchesAndPlaying_pauses() {
+        val episode = Episode("ep1", "feed", "T1", "D1", "http://audio1.mp3", null, 0L, 0L, 0, null, false, 5000L)
+        val episodes = listOf(episode)
+        
+        // Mock current state: ep1 is playing
+        every { mediaController.currentMediaItem?.mediaId } returns "ep1"
+        every { mediaController.isPlaying } returns true
+        
+        // Use reflection to set _currentMediaId internal state to "ep1"
+        val currentMediaIdField = PlayerManager::class.java.getDeclaredField("_currentMediaId")
+        currentMediaIdField.isAccessible = true
+        (currentMediaIdField.get(playerManager) as MutableStateFlow<String?>).value = "ep1"
+
+        playerManager.playQueue(episodes, 0, 5000L)
+        
+        // Should pause instead of setMediaItems
+        verify(exactly = 0) { mediaController.setMediaItems(any(), any(), any()) }
+        verify { mediaController.pause() }
+    }
+
+    @Test
+    fun playQueue_whenCurrentItemMatchesAndPaused_plays() {
+        val episode = Episode("ep1", "feed", "T1", "D1", "http://audio1.mp3", null, 0L, 0L, 0, null, false, 5000L)
+        val episodes = listOf(episode)
+        
+        // Mock current state: ep1 is paused
+        every { mediaController.currentMediaItem?.mediaId } returns "ep1"
+        every { mediaController.isPlaying } returns false
+        
+        // Use reflection to set _currentMediaId internal state to "ep1"
+        val currentMediaIdField = PlayerManager::class.java.getDeclaredField("_currentMediaId")
+        currentMediaIdField.isAccessible = true
+        (currentMediaIdField.get(playerManager) as MutableStateFlow<String?>).value = "ep1"
+
+        playerManager.playQueue(episodes, 0, 5000L)
+        
+        // Should play instead of setMediaItems
+        verify(exactly = 0) { mediaController.setMediaItems(any(), any(), any()) }
+        verify { mediaController.play() }
     }
 }
