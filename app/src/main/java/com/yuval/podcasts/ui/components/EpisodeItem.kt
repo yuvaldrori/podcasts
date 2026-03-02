@@ -94,12 +94,24 @@ fun EpisodeItem(
                     Spacer(modifier = Modifier.width(4.dp))
                     
                     Text(
-                        text = formatDate(episode.pubDate),
+                        text = buildString {
+                            append(formatDate(episode.pubDate))
+                            if (episode.duration > 0) {
+                                append(" • ")
+                                append(formatDurationForCard(episode.duration))
+                            }
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = episode.description, maxLines = 1, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    Text(
+                        text = episode.description, 
+                        maxLines = 1, 
+                        style = MaterialTheme.typography.bodySmall, 
+                        modifier = Modifier.weight(1f),
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 if (showProgress && episode.lastPlayedPosition > 0 && episode.duration > 0) {
@@ -123,4 +135,15 @@ private val dateFormat = java.lang.ThreadLocal.withInitial { SimpleDateFormat("M
 private fun formatDate(timestamp: Long): String {
     if (timestamp == 0L) return ""
     return dateFormat.get()?.format(Date(timestamp)) ?: ""
+}
+
+private fun formatDurationForCard(seconds: Long): String {
+    if (seconds <= 0) return ""
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    return if (hours > 0) {
+        "${hours}h ${minutes}m"
+    } else {
+        "${minutes}m"
+    }
 }
