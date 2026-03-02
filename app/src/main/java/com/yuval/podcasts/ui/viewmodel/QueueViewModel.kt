@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import kotlinx.coroutines.flow.combine
+
 @HiltViewModel
 class QueueViewModel @Inject constructor(
     private val repository: PodcastRepository,
@@ -24,6 +26,19 @@ class QueueViewModel @Inject constructor(
 
     val queue: StateFlow<List<EpisodeWithPodcast>> = repository.listeningQueue
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val queueTimeRemaining: StateFlow<Long> = combine(
+        queue,
+        playerManager.playbackSpeed
+    ) { currentQueue, speed ->
+        val totalMsRemaining = currentQueue.sumOf { item ->
+            // duration is in seconds, lastPlayedPosition is in ms
+            val durationMs = item.episode.duration * 1000L
+            val remainingMs = (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
+            remainingMs
+        }
+        (totalMsRemaining / speed).toLong()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
     fun reorderQueue(newOrderIds: List<String>) {
         viewModelScope.launch {

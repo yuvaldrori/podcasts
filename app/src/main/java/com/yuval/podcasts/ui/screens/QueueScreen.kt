@@ -39,6 +39,8 @@ fun QueueScreen(
     var queue by remember { mutableStateOf(emptyList<EpisodeWithPodcast>()) }
     val isPlaying by playerViewModel.isPlaying.collectAsStateWithLifecycle()
 
+    val queueTimeRemainingMs by viewModel.queueTimeRemaining.collectAsStateWithLifecycle()
+
     val listState = rememberLazyListState()
     val dragDropState = rememberDragDropState(listState) { fromIndex, toIndex ->
         queue = queue.toMutableList().apply { 
@@ -54,10 +56,26 @@ fun QueueScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        if (queue.isNotEmpty()) {
+            Text(
+                text = "${formatQueueTime(queueTimeRemainingMs)} of queue listening time",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(16.dp)
+            contentPadding = PaddingValues(
+                start = 16.dp, 
+                end = 16.dp, 
+                top = if (queue.isNotEmpty()) 0.dp else 16.dp, 
+                bottom = 16.dp
+            )
         ) {
             itemsIndexed(queue, key = { _, item -> item.episode.id }) { index, episodeWithPodcast ->
                 val isDragging = dragDropState.draggedItemIndex == index
@@ -209,5 +227,17 @@ fun rememberDragDropState(
 ): DragDropState {
     return remember(lazyListState) {
         DragDropState(lazyListState, onMove)
+    }
+}
+
+private fun formatQueueTime(ms: Long): String {
+    if (ms <= 0) return "0 mins"
+    val minutes = (ms / (1000 * 60)) % 60
+    val hours = ms / (1000 * 60 * 60)
+    
+    return when {
+        hours > 0 && minutes > 0 -> "$hours hrs $minutes mins"
+        hours > 0 -> "$hours hrs"
+        else -> "$minutes mins"
     }
 }
