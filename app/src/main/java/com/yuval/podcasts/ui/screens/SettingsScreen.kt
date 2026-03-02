@@ -12,18 +12,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.yuval.podcasts.ui.viewmodel.SettingsViewModel
 
+import androidx.work.WorkInfo
+
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     var rssUrl by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val importWorkInfo by viewModel.importWorkInfo.collectAsStateWithLifecycle()
 
     val opmlImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri ->
             uri?.let {
-                viewModel.importOpml(context, it)
+                viewModel.importOpml(it)
             }
         }
     )
@@ -67,10 +70,41 @@ fun SettingsScreen(
 
         Text(text = "OPML Import/Export", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
+        
+        // Show progress UI if an import is actively running
+        val isImporting = importWorkInfo?.state == WorkInfo.State.RUNNING || importWorkInfo?.state == WorkInfo.State.ENQUEUED
+        if (isImporting) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    val progress = importWorkInfo?.progress?.getInt("PROGRESS", 0) ?: 0
+                    val total = importWorkInfo?.progress?.getInt("TOTAL", 1) ?: 1
+                    
+                    Text(
+                        text = "Importing podcasts: $progress of $total",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { if (total > 0) progress.toFloat() / total.toFloat() else 0f },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                    )
+                }
+            }
+        }
+
         Row(modifier = Modifier.fillMaxWidth()) {
             Button(
                 onClick = { opmlImportLauncher.launch(arrayOf("*/*")) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = !isImporting
             ) {
                 Text("Import")
             }

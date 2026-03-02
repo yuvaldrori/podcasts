@@ -6,8 +6,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.yuval.podcasts.ui.MainScreen
 import com.yuval.podcasts.ui.theme.PodcastsTheme
+import com.yuval.podcasts.work.CleanupWorker
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -27,6 +31,14 @@ class MainActivity : ComponentActivity() {
 
         // Unconditionally request POST_NOTIFICATIONS since minSdk is 36 (Android 16)
         requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+
+        // Queue background cleanup task
+        val cleanupRequest = OneTimeWorkRequestBuilder<CleanupWorker>().build()
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "cleanup_orphaned_files",
+            ExistingWorkPolicy.KEEP,
+            cleanupRequest
+        )
 
         setContent {
             PodcastsTheme {

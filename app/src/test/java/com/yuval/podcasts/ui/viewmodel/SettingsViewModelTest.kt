@@ -8,6 +8,7 @@ import com.yuval.podcasts.utils.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.verify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -15,6 +16,10 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -24,29 +29,32 @@ class SettingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repository: PodcastRepository
+    private lateinit var workManager: WorkManager
     private lateinit var context: Context
     private lateinit var contentResolver: ContentResolver
     private lateinit var uri: Uri
     private lateinit var inputStream: InputStream
     private lateinit var outputStream: OutputStream
-    private lateinit var importOpmlUseCase: com.yuval.podcasts.domain.usecase.ImportOpmlUseCase
     private lateinit var exportOpmlUseCase: com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
     private lateinit var viewModel: SettingsViewModel
 
     @Before
     fun setup() {
         repository = mockk()
-        importOpmlUseCase = mockk()
+        workManager = mockk(relaxed = true)
         exportOpmlUseCase = mockk()
         context = mockk()
         contentResolver = mockk()
-        uri = mockk()
+        uri = mockk(relaxed = true)
         inputStream = mockk()
         outputStream = mockk()
 
+        val liveData = MutableLiveData<List<WorkInfo>>(emptyList())
+        every { workManager.getWorkInfosForUniqueWorkLiveData(any()) } returns liveData
         every { context.contentResolver } returns contentResolver
+        every { uri.toString() } returns "content://test.opml"
         
-        viewModel = SettingsViewModel(repository, importOpmlUseCase, exportOpmlUseCase)
+        viewModel = SettingsViewModel(repository, workManager, exportOpmlUseCase)
     }
 
     @Test
@@ -72,16 +80,9 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun importOpml_success() = runTest {
-        every { contentResolver.openInputStream(uri) } returns inputStream
-        // InputStream.use extension function calls close
-        every { inputStream.close() } returns Unit
-        coEvery { importOpmlUseCase(inputStream) } returns emptyList()
-
-        viewModel.importOpml(context, uri)
-
-        coVerify { importOpmlUseCase(inputStream) }
-        assertNull(viewModel.errorMessage.value)
+    fun importOpml_enqueuesWorkManagerTask() = runTest {
+        viewModel.importOpml(uri)
+        verify { workManager.enqueueUniqueWork("opml_import", androidx.work.ExistingWorkPolicy.REPLACE, any<androidx.work.OneTimeWorkRequest>()) }
     }
 
     @Test

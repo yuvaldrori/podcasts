@@ -1,5 +1,6 @@
 package com.yuval.podcasts.domain.usecase
 
+import androidx.work.WorkManager
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.QueueDao
 import kotlinx.coroutines.Dispatchers
@@ -14,13 +15,17 @@ import javax.inject.Inject
  */
 class RemoveEpisodeUseCase @Inject constructor(
     private val episodeDao: EpisodeDao,
-    private val queueDao: QueueDao
+    private val queueDao: QueueDao,
+    private val workManager: WorkManager
 ) {
     suspend operator fun invoke(episodeId: String, markAsPlayed: Boolean = false) = withContext(Dispatchers.IO) {
         if (markAsPlayed) {
             episodeDao.updatePlaybackStatus(episodeId, true)
             episodeDao.updateLastPlayedPosition(episodeId, 0L)
         }
+
+        // Cancel any pending or active download for this episode
+        workManager.cancelUniqueWork("download_$episodeId")
 
         // Delete the physical audio file to reclaim storage
         val episode = episodeDao.getEpisodeById(episodeId)
