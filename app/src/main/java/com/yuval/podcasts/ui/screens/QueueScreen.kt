@@ -38,6 +38,7 @@ fun QueueScreen(
     val dbQueue by viewModel.queue.collectAsStateWithLifecycle()
     var queue by remember { mutableStateOf(emptyList<EpisodeWithPodcast>()) }
     val isPlaying by playerViewModel.isPlaying.collectAsStateWithLifecycle()
+    val currentMediaId by playerViewModel.currentMediaId.collectAsStateWithLifecycle()
 
     val queueTimeRemainingMs by viewModel.queueTimeRemaining.collectAsStateWithLifecycle()
 
@@ -116,10 +117,12 @@ fun QueueScreen(
                         val clickHandler = remember(episodeWithPodcast.episode.id) { 
                             { onEpisodeClick(episodeWithPodcast.episode.id) } 
                         }
+                        val isCurrentlyPlaying = episodeWithPodcast.episode.id == currentMediaId
                         EpisodeItem(
                             episode = episodeWithPodcast.episode,
                             modifier = Modifier.clickable(onClick = clickHandler),
                             imageUrl = episodeWithPodcast.podcast.imageUrl,
+                            containerColor = if (isCurrentlyPlaying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                             trailingContent = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(onClick = { 

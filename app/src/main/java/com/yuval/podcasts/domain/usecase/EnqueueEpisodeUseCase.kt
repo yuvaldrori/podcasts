@@ -13,17 +13,35 @@ import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.work.DownloadWorker
 import javax.inject.Inject
 
+import kotlinx.coroutines.flow.first
+
 class EnqueueEpisodeUseCase @Inject constructor(
     private val queueDao: QueueDao,
     private val episodeDao: EpisodeDao,
     private val workManager: WorkManager
 ) {
     suspend operator fun invoke(episode: Episode) {
-        // Shift all existing items down by 1 in the database directly
-        queueDao.shiftQueuePositionsUp()
-        
-        // Add new item at position 0
-        queueDao.insertQueueItem(QueueState(episode.id, 0))
+        // Fetch current queue
+        val currentQueue = queueDao.getQueueEpisodes().first()
+
+        // Find the correct insertion index
+        // We want older episodes to come before newer ones.
+        // So we scan from top to bottom (index 0 onwards) and find the FIRST episode
+        // that is NEWER than the one we are inserting. We insert right before it.
+        // If no episode is newer (i.e. all existing items are older), it goes to the end.
+        val insertionIndex = currentQueue.indexOfFirst { it.pubDate > episode.pubDate }.let {
+            if (it == -1) currentQueue.size else it
+        }
+
+        // Build the new ordered list in memory
+        val updatedList = currentQueue.toMutableList()
+        updatedList.add(insertionIndex, episode)
+
+        // Map back to QueueState and update the database in bulk
+        val newQueueStates = updatedList.mapIndexed { index, ep ->
+            QueueState(ep.id, index)
+        }
+        queueDao.updateQueue(newQueueStates)
         
         // Dismiss from "New" tab
         episodeDao.updatePlaybackStatus(episode.id, true)

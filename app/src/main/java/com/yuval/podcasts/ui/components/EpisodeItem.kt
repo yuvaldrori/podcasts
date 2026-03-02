@@ -21,6 +21,8 @@ import java.util.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 
+import androidx.compose.ui.graphics.Color
+
 @Composable
 fun EpisodeItem(
     episode: Episode,
@@ -28,9 +30,11 @@ fun EpisodeItem(
     imageUrl: String? = null,
     showProgress: Boolean = false,
     showPlayedMarker: Boolean = false,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     trailingContent: (@Composable () -> Unit)? = null
 ) {
     Card(
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp) // Reduced outer margin from 4.dp to 2.dp
