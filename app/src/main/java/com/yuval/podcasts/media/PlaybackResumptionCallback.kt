@@ -9,11 +9,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.future
 
+import androidx.media3.common.util.UnstableApi
+
 class PlaybackResumptionCallback(
     private val queueDao: QueueDao,
     private val scope: CoroutineScope
 ) : MediaSession.Callback {
 
+    @UnstableApi
     override fun onPlaybackResumption(
         mediaSession: MediaSession,
         controller: MediaSession.ControllerInfo

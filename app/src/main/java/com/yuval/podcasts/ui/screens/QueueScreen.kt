@@ -181,7 +181,7 @@ class DragDropState(
     var draggedItemIndex by mutableStateOf<Int?>(null)
         private set
         
-    var draggingItemOffset by mutableStateOf(0f)
+    var draggingItemOffset by mutableFloatStateOf(0f)
         private set
 
     fun onDragStart(index: Int) {

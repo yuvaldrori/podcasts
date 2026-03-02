@@ -3,7 +3,7 @@ package com.yuval.podcasts.media
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
-import androidx.media3.session.MediaController
+import androidx.media3.session.MediaBrowser
 import com.yuval.podcasts.data.repository.SettingsRepository
 import io.mockk.every
 import io.mockk.mockk
@@ -20,7 +20,7 @@ class PlayerManagerTest {
 
     private lateinit var context: Context
     private lateinit var settingsRepository: SettingsRepository
-    private lateinit var mediaController: MediaController
+    private lateinit var mediaController: MediaBrowser
     private lateinit var playerManager: PlayerManager
 
     @Before
@@ -33,7 +33,7 @@ class PlayerManagerTest {
         
         playerManager = PlayerManager(context, settingsRepository)
 
-        // Inject mock MediaController via reflection to bypass complex async initialization
+        // Inject mock MediaBrowser via reflection to bypass complex async initialization
         val controllerField: Field = PlayerManager::class.java.getDeclaredField("controller")
         controllerField.isAccessible = true
         controllerField.set(playerManager, mediaController)

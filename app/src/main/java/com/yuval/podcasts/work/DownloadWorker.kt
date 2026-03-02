@@ -82,15 +82,13 @@ class DownloadWorker @AssistedInject constructor(
         val notificationId = 1
         val channelId = "download_channel"
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Downloads",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            channelId,
+            "Downloads",
+            NotificationManager.IMPORTANCE_LOW
+        )
+        val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
 
         val notification = NotificationCompat.Builder(appContext, channelId)
             .setContentTitle("Downloading Podcast")
@@ -99,11 +97,7 @@ class DownloadWorker @AssistedInject constructor(
             .setOngoing(true)
             .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            return ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            return ForegroundInfo(notificationId, notification)
-        }
+        return ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     }
 
     companion object {

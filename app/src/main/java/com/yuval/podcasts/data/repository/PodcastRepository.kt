@@ -34,7 +34,7 @@ import javax.inject.Singleton
 
 @Singleton
 class PodcastRepository @Inject constructor(
-    @param:ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context,
     private val database: AppDatabase,
     private val podcastApi: PodcastApi,
     private val rssParser: RssParser,

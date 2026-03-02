@@ -2,6 +2,7 @@ package com.yuval.podcasts.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,6 +18,6 @@ class SettingsRepository @Inject constructor(
     }
 
     fun savePlaybackSpeed(speed: Float) {
-        prefs.edit().putFloat("playback_speed", speed).apply()
+        prefs.edit { putFloat("playback_speed", speed) }
     }
 }
