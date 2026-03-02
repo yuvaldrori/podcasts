@@ -6,6 +6,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import androidx.media3.session.MediaBrowser
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -22,8 +23,8 @@ class PlayerManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository
 ) {
-    private var controllerFuture: ListenableFuture<MediaController>? = null
-    private var controller: MediaController? = null
+    private var controllerFuture: ListenableFuture<MediaBrowser>? = null
+    private var controller: MediaBrowser? = null
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
@@ -44,7 +45,7 @@ class PlayerManager @Inject constructor(
         if (controllerFuture != null) return
 
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-        val future = MediaController.Builder(context, sessionToken).buildAsync()
+        val future = MediaBrowser.Builder(context, sessionToken).buildAsync()
         
         future.addListener({
             controller = future.get()
@@ -82,6 +83,12 @@ class PlayerManager @Inject constructor(
         _playbackSpeed.value = defaultSpeed
         _duration.value = player.duration.coerceAtLeast(0L)
         _currentMediaId.value = player.currentMediaItem?.mediaId
+
+        // If the player is totally empty on startup, trigger the Media3 onPlaybackResumption callback
+        // This will allow the service to read the database queue and push it down to us natively.
+        if (player.mediaItemCount == 0) {
+            player.prepare()
+        }
     }
 
     fun play(mediaId: String, uri: String, startPositionMs: Long = 0L) {

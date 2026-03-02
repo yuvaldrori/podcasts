@@ -56,6 +56,7 @@ class PlaybackService : MediaSessionService() {
             
         mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(pendingIntent)
+            .setCallback(PlaybackResumptionCallback(queueDao, serviceScope))
             .build()
 
         var currentlyPlayingId: String? = null
