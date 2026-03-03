@@ -22,6 +22,12 @@ import java.io.File
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import javax.inject.Inject
 
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+import android.view.KeyEvent
+
 @AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
 
@@ -32,6 +38,49 @@ class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private val mediaSessionCallback = object : MediaSession.Callback {
+        override fun onMediaButtonEvent(
+            session: MediaSession,
+            controllerInfo: MediaSession.ControllerInfo,
+            intent: Intent
+        ): Boolean {
+            val ke = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
+            if (ke != null && ke.action == KeyEvent.ACTION_DOWN) {
+                when (ke.keyCode) {
+                    KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                        // Double tap on many headphones
+                        seekForward()
+                        return true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                        // Triple tap on many headphones
+                        seekBackward()
+                        return true
+                    }
+                }
+            }
+            return super.onMediaButtonEvent(session, controllerInfo, intent)
+        }
+
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            return PlaybackResumptionCallback(queueDao, serviceScope)
+                .onPlaybackResumption(mediaSession, controller)
+        }
+    }
+
+    private fun seekForward(ms: Long = 30000L) {
+        val newPosition = (player.currentPosition + ms).coerceAtMost(player.duration.coerceAtLeast(0L))
+        player.seekTo(newPosition)
+    }
+
+    private fun seekBackward(ms: Long = 15000L) {
+        val newPosition = (player.currentPosition - ms).coerceAtLeast(0L)
+        player.seekTo(newPosition)
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -56,7 +105,7 @@ class PlaybackService : MediaSessionService() {
             
         mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(pendingIntent)
-            .setCallback(PlaybackResumptionCallback(queueDao, serviceScope))
+            .setCallback(mediaSessionCallback)
             .build()
 
         var currentlyPlayingId: String? = null

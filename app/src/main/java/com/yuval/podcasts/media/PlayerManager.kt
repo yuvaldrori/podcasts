@@ -22,7 +22,7 @@ import javax.inject.Singleton
 
 @Singleton
 class PlayerManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository
 ) {
     private var controllerFuture: ListenableFuture<MediaBrowser>? = null
@@ -175,7 +175,7 @@ class PlayerManager @Inject constructor(
         }
     }
 
-    fun seekBackward(ms: Long = 30000L) {
+    fun seekBackward(ms: Long = 15000L) {
         controller?.let {
             val newPosition = (it.currentPosition - ms).coerceAtLeast(0L)
             it.seekTo(newPosition)
