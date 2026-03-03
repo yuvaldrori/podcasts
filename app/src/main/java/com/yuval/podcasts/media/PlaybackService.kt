@@ -28,6 +28,10 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import android.view.KeyEvent
 
+import kotlinx.coroutines.withContext
+
+import androidx.media3.common.MediaMetadata
+
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
@@ -119,8 +123,6 @@ class PlaybackService : MediaSessionService() {
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
-                // If the entire playlist finishes (the last item ends), there is no 'transition' to a new item.
-                // We must catch STATE_ENDED to remove the final episode from the queue.
                 if (playbackState == Player.STATE_ENDED) {
                     val lastId = currentlyPlayingId
                     if (lastId != null) {
@@ -135,22 +137,76 @@ class PlaybackService : MediaSessionService() {
                 val prevId = currentlyPlayingId
                 currentlyPlayingId = mediaItem?.mediaId
                 
-                // If it transitioned automatically because the track ended, mark the previous as played
                 if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && prevId != null) {
                     serviceScope.launch {
-                        // Mark as played, reset position, delete file and remove from queue
                         removeEpisodeUseCase(prevId, markAsPlayed = true)
                     }
                 }
             }
         })
 
-        // Periodic position saving
+        observeQueue()
+
         serviceScope.launch(Dispatchers.Main) {
             while (true) {
                 kotlinx.coroutines.delay(15000)
                 if (player.isPlaying) {
                     saveCurrentPosition()
+                }
+            }
+        }
+    }
+
+    private fun observeQueue() {
+        serviceScope.launch {
+            queueDao.getQueueEpisodes().collect { episodes ->
+                withContext(Dispatchers.Main) {
+                    val currentMediaId = player.currentMediaItem?.mediaId ?: return@withContext
+                    
+                    val currentInNewIndex = episodes.indexOfFirst { it.id == currentMediaId }
+                    if (currentInNewIndex == -1) return@withContext
+
+                    val currentIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+                    val newIds = episodes.map { it.id }
+                    if (currentIds == newIds) {
+                        return@withContext
+                    }
+
+                    val currentInPlayerIndex = player.currentMediaItemIndex
+
+                    // Rebuild the ExoPlayer playlist around the currently playing item
+                    // to ensure seamless playback without resetting position
+                    if (currentInPlayerIndex < player.mediaItemCount - 1) {
+                        player.removeMediaItems(currentInPlayerIndex + 1, player.mediaItemCount)
+                    }
+                    if (currentInPlayerIndex > 0) {
+                        player.removeMediaItems(0, currentInPlayerIndex)
+                    }
+
+                    val newMediaItems = episodes.map { ep ->
+                        val uri = android.net.Uri.parse(ep.localFilePath ?: ep.audioUrl)
+                        val metadata = MediaMetadata.Builder()
+                            .setTitle(ep.title)
+                            .setArtist(ep.podcastFeedUrl)
+                            .setDisplayTitle(ep.title)
+                            .setArtworkUri(ep.imageUrl?.let { android.net.Uri.parse(it) })
+                            .build()
+                        MediaItem.Builder()
+                            .setMediaId(ep.id)
+                            .setUri(uri)
+                            .setMediaMetadata(metadata)
+                            .build()
+                    }
+
+                    val beforeItems = newMediaItems.take(currentInNewIndex)
+                    if (beforeItems.isNotEmpty()) {
+                        player.addMediaItems(0, beforeItems)
+                    }
+                    
+                    val afterItems = newMediaItems.drop(currentInNewIndex + 1)
+                    if (afterItems.isNotEmpty()) {
+                        player.addMediaItems(currentInNewIndex + 1, afterItems)
+                    }
                 }
             }
         }
