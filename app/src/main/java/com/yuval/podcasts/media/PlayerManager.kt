@@ -90,10 +90,12 @@ class PlayerManager @Inject constructor(
         _playbackSpeed.value = defaultSpeed
         _duration.value = player.duration.coerceAtLeast(0L)
         _currentMediaId.value = player.currentMediaItem?.mediaId
+        _currentPosition.value = player.currentPosition
     }
 
     fun play(mediaId: String, uri: String, startPositionMs: Long = 0L) {
         _currentMediaId.value = mediaId
+        _currentPosition.value = startPositionMs
         controller?.let {
             val mediaItem = MediaItem.Builder()
                 .setMediaId(mediaId)
@@ -112,6 +114,7 @@ class PlayerManager @Inject constructor(
         if (episodes.isEmpty() || startIndex !in episodes.indices) return
         val currentEp = episodes[startIndex]
         _currentMediaId.value = currentEp.id
+        _currentPosition.value = startPositionMs
         
         controller?.let {
             val mediaItems = episodes.map { ep ->
@@ -136,6 +139,7 @@ class PlayerManager @Inject constructor(
         }
 
         _currentMediaId.value = currentEp.id
+        _currentPosition.value = startPositionMs
         
         controller?.let {
             val mediaItems = episodes.map { ep ->
