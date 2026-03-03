@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import kotlinx.coroutines.flow.first
+
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val repository: PodcastRepository,
@@ -36,6 +38,20 @@ class PlayerViewModel @Inject constructor(
 
     init {
         playerManager.initialize()
+
+        // Auto-load the queue on fresh startup if nothing is playing
+        viewModelScope.launch {
+            // Wait until the MediaBrowser is fully connected and initialized
+            playerManager.isInitialized.first { it }
+            
+            if (currentMediaId.value == null) {
+                val queue = repository.listeningQueue.first()
+                if (queue.isNotEmpty()) {
+                    val firstEp = queue.first().episode
+                    playerManager.prepareQueue(queue.map { it.episode }, 0, firstEp.lastPlayedPosition)
+                }
+            }
+        }
 
         viewModelScope.launch {
             isPlaying.collectLatest { playing ->

@@ -1,7 +1,9 @@
+
 package com.yuval.podcasts.media
 
 import android.content.ComponentName
 import android.content.Context
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -41,6 +43,11 @@ class PlayerManager @Inject constructor(
     private val _currentMediaId = MutableStateFlow<String?>(null)
     val currentMediaId: StateFlow<String?> = _currentMediaId.asStateFlow()
 
+
+
+    private val _isInitialized = MutableStateFlow(false)
+    val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
+
     fun initialize() {
         if (controllerFuture != null) return
 
@@ -50,7 +57,8 @@ class PlayerManager @Inject constructor(
         future.addListener({
             controller = future.get()
             setupControllerListener()
-        }, MoreExecutors.directExecutor())
+            _isInitialized.value = true
+        }, ContextCompat.getMainExecutor(context))
         
         controllerFuture = future
     }
@@ -83,12 +91,6 @@ class PlayerManager @Inject constructor(
         _playbackSpeed.value = defaultSpeed
         _duration.value = player.duration.coerceAtLeast(0L)
         _currentMediaId.value = player.currentMediaItem?.mediaId
-
-        // If the player is totally empty on startup, trigger the Media3 onPlaybackResumption callback
-        // This will allow the service to read the database queue and push it down to us natively.
-        if (player.mediaItemCount == 0) {
-            player.prepare()
-        }
     }
 
     fun play(mediaId: String, uri: String, startPositionMs: Long = 0L) {
@@ -104,6 +106,24 @@ class PlayerManager @Inject constructor(
             }
             it.prepare()
             it.play()
+        }
+    }
+
+    fun prepareQueue(episodes: List<com.yuval.podcasts.data.db.entity.Episode>, startIndex: Int, startPositionMs: Long = 0L) {
+        if (episodes.isEmpty() || startIndex !in episodes.indices) return
+        val currentEp = episodes[startIndex]
+        _currentMediaId.value = currentEp.id
+        
+        controller?.let {
+            val mediaItems = episodes.map { ep ->
+                val uri = ep.localFilePath ?: ep.audioUrl
+                MediaItem.Builder()
+                    .setMediaId(ep.id)
+                    .setUri(uri)
+                    .build()
+            }
+            it.setMediaItems(mediaItems, startIndex, startPositionMs)
+            it.prepare()
         }
     }
 
