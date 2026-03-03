@@ -3,7 +3,6 @@ package com.yuval.podcasts.media
 
 import android.content.ComponentName
 import android.content.Context
-import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -58,7 +57,7 @@ class PlayerManager @Inject constructor(
             controller = future.get()
             setupControllerListener()
             _isInitialized.value = true
-        }, ContextCompat.getMainExecutor(context))
+        }, context.mainExecutor)
         
         controllerFuture = future
     }

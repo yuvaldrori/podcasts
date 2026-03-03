@@ -5,8 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
-import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -90,7 +88,7 @@ class DownloadWorker @AssistedInject constructor(
         val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
-        val notification = NotificationCompat.Builder(appContext, channelId)
+        val notification = Notification.Builder(appContext, channelId)
             .setContentTitle("Downloading Podcast")
             .setContentText(title)
             .setSmallIcon(android.R.drawable.stat_sys_download)
