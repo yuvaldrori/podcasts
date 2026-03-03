@@ -44,7 +44,7 @@ class MediaButtonRemappingTest {
                 controllerInfo: MediaSession.ControllerInfo,
                 intent: Intent
             ): Boolean {
-                val ke = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
+                val ke = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
                 if (ke != null && ke.action == KeyEvent.ACTION_DOWN) {
                     when (ke.keyCode) {
                         KeyEvent.KEYCODE_MEDIA_NEXT -> {
