@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Podcasts"
 include(":app")
+include(":benchmark")

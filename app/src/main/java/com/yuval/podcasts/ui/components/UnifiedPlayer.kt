@@ -55,6 +55,8 @@ fun UnifiedPlayer(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
+                    CastButton()
+                    
                     TextButton(
                         onClick = { viewModel.toggleSpeed() },
                         contentPadding = PaddingValues(0.dp),

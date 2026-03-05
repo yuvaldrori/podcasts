@@ -1,5 +1,8 @@
-sed -i 's/2024.11.00/2024.04.01/' app/build.gradle.kts
-sed -i 's/androidx.navigation:navigation-compose:2.8.4/androidx.navigation:navigation-compose:2.7.7/' app/build.gradle.kts
-sed -i 's/androidx.lifecycle:lifecycle-runtime-ktx:2.8.7/androidx.lifecycle:lifecycle-runtime-ktx:2.7.0/' app/build.gradle.kts
-sed -i 's/androidx.lifecycle:lifecycle-runtime-compose:2.8.7/androidx.lifecycle:lifecycle-runtime-compose:2.7.0/' app/build.gradle.kts
-sed -i 's/androidx.activity:activity-compose:1.9.3/androidx.activity:activity-compose:1.8.2/' app/build.gradle.kts
+git checkout app/build.gradle.kts
+sed -i 's/1.15.0/1.17.0/g' app/build.gradle.kts
+sed -i 's/2.8.7/2.10.0/g' app/build.gradle.kts
+sed -i 's/1.9.3/1.12.4/g' app/build.gradle.kts
+sed -i 's/1.3.1/1.4.0/g' app/build.gradle.kts
+sed -i 's/1.7.5/1.7.8/g' app/build.gradle.kts
+sed -i 's/2.9.0/2.9.7/g' app/build.gradle.kts
+sed -i 's/1.2.1/1.9.2/g' app/build.gradle.kts

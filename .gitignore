@@ -16,3 +16,4 @@
 local.properties
 .envrc
 *.un~
+benchmark/build/

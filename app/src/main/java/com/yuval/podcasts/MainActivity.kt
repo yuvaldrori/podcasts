@@ -2,7 +2,8 @@ package com.yuval.podcasts
 
 import android.Manifest
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.tracing.trace
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,7 +16,7 @@ import com.yuval.podcasts.work.CleanupWorker
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -26,23 +27,25 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Modern Android 15+ edge-to-edge UI (supported natively in Compose Scaffold)
-        enableEdgeToEdge()
+        trace("MainActivity_onCreate") {
+            // Modern Android 15+ edge-to-edge UI (supported natively in Compose Scaffold)
+            enableEdgeToEdge()
 
-        // Unconditionally request POST_NOTIFICATIONS since minSdk is 36 (Android 16)
-        requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            // Unconditionally request POST_NOTIFICATIONS since minSdk is 36 (Android 16)
+            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
 
-        // Queue background cleanup task
-        val cleanupRequest = OneTimeWorkRequestBuilder<CleanupWorker>().build()
-        WorkManager.getInstance(this).enqueueUniqueWork(
-            "cleanup_orphaned_files",
-            ExistingWorkPolicy.KEEP,
-            cleanupRequest
-        )
+            // Queue background cleanup task
+            val cleanupRequest = OneTimeWorkRequestBuilder<CleanupWorker>().build()
+            WorkManager.getInstance(this@MainActivity).enqueueUniqueWork(
+                "cleanup_orphaned_files",
+                ExistingWorkPolicy.KEEP,
+                cleanupRequest
+            )
 
-        setContent {
-            PodcastsTheme {
-                MainScreen()
+            setContent {
+                PodcastsTheme {
+                    MainScreen()
+                }
             }
         }
     }

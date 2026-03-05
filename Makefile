@@ -1,7 +1,7 @@
 .PHONY: build build-release test clean verify emulator install run help
 
 AVD_NAME=test_avd
-export ANDROID_AVD_HOME=/home/yuval/.config/.android/avd/
+export ANDROID_AVD_HOME=$(HOME)/.config/.android/avd/
 
 # Default target
 all: verify
@@ -20,21 +20,22 @@ help:
 	@echo "  make run	   - Install and launch the app"
 
 build:
-	./gradlew assembleDebug --no-daemon
+	./gradlew assembleDebug
 
 build-release:
-	./gradlew assembleRelease --no-daemon
+	./gradlew assembleRelease
 
 test:
-	./gradlew testDebugUnitTest --no-daemon
+	./gradlew testDebugUnitTest
 
 lint:
-	./gradlew lintDebug -PwarningsAsErrors=true --warning-mode all --no-daemon
+	./gradlew lintDebug -PwarningsAsErrors=true --warning-mode all
 
 deps:
-	# ./gradlew dependencyUpdates # Fails in Gradle 9.1.0 due to ben-manes plugin bug --no-daemon --no-parallel --no-configuration-cache
+	./gradlew dependencyUpdates --no-parallel --no-configuration-cache
+
 clean:
-	./gradlew clean --no-daemon
+	./gradlew clean
 
 verify: clean lint test build
 
@@ -43,7 +44,11 @@ emulator:
 	@$(ANDROID_HOME)/emulator/emulator -avd $(AVD_NAME) -no-snapshot-load > /dev/null 2>&1 &
 
 install:
-	./gradlew installDebug --no-daemon
+	./gradlew installDebug
 
 run: install
 	adb shell am start -n com.yuval.podcasts/.MainActivity
+
+benchmark-run:
+	./gradlew :benchmark:connectedBenchmarkAndroidTest
+

@@ -33,6 +33,13 @@ android {
     }
 
     buildTypes {
+        create("benchmark") {
+            initWith(buildTypes.getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("debug")
+            // isProfileable is configured via manifest in modern AGP usually, but let us try property
+            isProfileable = true
+        }
         debug {
             // Optimize debug build speed by disabling PNG crunching
             isCrunchPngs = false
@@ -70,20 +77,23 @@ kotlin {
 }
 
 dependencies {
+    implementation("androidx.tracing:tracing-ktx:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
     val composeBom = platform("androidx.compose:compose-bom:2024.11.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-    implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+    implementation("androidx.activity:activity-compose:1.12.4")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.mediarouter:mediarouter:1.7.0")
     implementation("androidx.navigation:navigation-compose:2.8.4")
 
     // Coil
@@ -96,10 +106,12 @@ dependencies {
     ksp("androidx.room:room-compiler:$roomVersion")
 
     // Media3
-    val media3Version = "1.2.1"
+    val media3Version = "1.9.2"
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-session:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
+    implementation("androidx.media3:media3-cast:$media3Version")
+    implementation("com.google.android.gms:play-services-cast-framework:21.4.0")
 
     // Hilt
     val hiltVersion = "2.59.2"
@@ -133,5 +145,6 @@ dependencies {
 }
 
 dependencies {
+    implementation("androidx.tracing:tracing-ktx:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
 }
