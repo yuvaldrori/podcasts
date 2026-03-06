@@ -75,6 +75,9 @@ class PlayerManager @Inject constructor(
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    stopAndClear()
+                }
                 _duration.value = player.duration.coerceAtLeast(0L)
             }
 
