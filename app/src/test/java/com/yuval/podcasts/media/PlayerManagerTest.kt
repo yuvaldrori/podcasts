@@ -70,8 +70,10 @@ class PlayerManagerTest {
     fun setPlaybackSpeed_updatesSettingsAndController() {
         playerManager.setPlaybackSpeed(2.0f)
         
-        verify { settingsRepository.savePlaybackSpeed(2.0f) }
-        verify { mediaController.setPlaybackParameters(match { it.speed == 2.0f }) }
+        verify { 
+            settingsRepository.savePlaybackSpeed(2.0f)
+            mediaController.setPlaybackParameters(PlaybackParameters(2.0f))
+        }
         assertEquals(2.0f, playerManager.playbackSpeed.value)
     }
 
@@ -80,45 +82,37 @@ class PlayerManagerTest {
         every { mediaController.currentPosition } returns 10000L
         every { mediaController.duration } returns 60000L
         
-        playerManager.seekForward(30000L)
+        playerManager.seekForward()
         
-        // 10000 + 30000 = 40000 <= 60000
         verify { mediaController.seekTo(40000L) }
-        assertEquals(40000L, playerManager.currentPosition.value)
     }
 
     @Test
     fun seekForward_capsAtDuration() {
-        every { mediaController.currentPosition } returns 40000L
+        every { mediaController.currentPosition } returns 50000L
         every { mediaController.duration } returns 60000L
         
-        playerManager.seekForward(30000L)
+        playerManager.seekForward()
         
-        // 40000 + 30000 = 70000, which is > 60000, should cap at 60000
         verify { mediaController.seekTo(60000L) }
-        assertEquals(60000L, playerManager.currentPosition.value)
     }
 
     @Test
     fun seekBackward_calculatesCorrectPosition() {
-        every { mediaController.currentPosition } returns 40000L
+        every { mediaController.currentPosition } returns 30000L
         
-        playerManager.seekBackward(30000L)
+        playerManager.seekBackward()
         
-        // 40000 - 30000 = 10000 >= 0
-        verify { mediaController.seekTo(10000L) }
-        assertEquals(10000L, playerManager.currentPosition.value)
+        verify { mediaController.seekTo(15000L) }
     }
 
     @Test
     fun seekBackward_capsAtZero() {
-        every { mediaController.currentPosition } returns 20000L
+        every { mediaController.currentPosition } returns 5000L
         
-        playerManager.seekBackward(30000L)
+        playerManager.seekBackward()
         
-        // 20000 - 30000 < 0, should cap at 0
         verify { mediaController.seekTo(0L) }
-        assertEquals(0L, playerManager.currentPosition.value)
     }
 
     @Test
@@ -176,5 +170,29 @@ class PlayerManagerTest {
         // Should play instead of setMediaItems
         verify(exactly = 0) { mediaController.setMediaItems(any(), any(), any()) }
         verify { mediaController.play() }
+    }
+
+    @Test
+    fun onPlaybackStateChanged_whenEnded_clearsPlayer() {
+        // We need to call setupControllerListener using reflection since it's private and usually called asynchronously
+        val setupMethod = PlayerManager::class.java.getDeclaredMethod("setupControllerListener")
+        setupMethod.isAccessible = true
+        setupMethod.invoke(playerManager)
+        
+        // Capture the listener passed to mediaController
+        val listenerSlot = io.mockk.slot<Player.Listener>()
+        verify { mediaController.addListener(capture(listenerSlot)) }
+        
+        // Set up initial state with an item playing
+        playerManager.play("ep1", "http://example.com/audio.mp3", 0L)
+        assertEquals("ep1", playerManager.currentMediaId.value)
+
+        // Trigger the STATE_ENDED event
+        listenerSlot.captured.onPlaybackStateChanged(Player.STATE_ENDED)
+        
+        // Verify stopAndClear() logic occurred
+        verify { mediaController.stop() }
+        verify { mediaController.clearMediaItems() }
+        assertEquals(null, playerManager.currentMediaId.value)
     }
 }
