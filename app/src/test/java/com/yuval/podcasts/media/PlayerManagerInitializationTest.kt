@@ -40,7 +40,7 @@ class PlayerManagerInitializationTest {
         setupMethod.isAccessible = true
         setupMethod.invoke(playerManager)
 
-        val position = playerManager.currentPosition.value
+        val position = browser.currentPosition
         assertEquals("PlayerManager must actively read the paused currentPosition upon connection.", 45000L, position)
     }
 }

@@ -41,23 +41,18 @@ fun MainScreen(
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
-    val isPlaying by playerViewModel.isPlaying.collectAsStateWithLifecycle()
-    val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
-    val currentEpisode by playerViewModel.currentlyPlayingEpisode.collectAsStateWithLifecycle()
-    val isConnected by playerViewModel.isConnected.collectAsStateWithLifecycle()
-    val currentPosition by playerViewModel.currentPosition.collectAsStateWithLifecycle()
-    val duration by playerViewModel.duration.collectAsStateWithLifecycle()
+    val uiState by playerViewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         bottomBar = {
             Column {
                 UnifiedPlayer(
-                    currentEpisode = currentEpisode,
-                    isPlaying = isPlaying,
-                    playbackSpeed = playbackSpeed,
-                    isConnected = isConnected,
-                    currentPosition = currentPosition,
-                    duration = duration,
+                    currentEpisode = uiState.currentEpisode,
+                    isPlaying = uiState.isPlaying,
+                    playbackSpeed = uiState.playbackSpeed,
+                    isConnected = uiState.isConnected,
+                    currentPosition = uiState.currentPosition,
+                    duration = uiState.duration,
                     onToggleSpeed = { playerViewModel.toggleSpeed() },
                     onSeekBackward = { playerViewModel.seekBackward() },
                     onPlayPause = { playerViewModel.playPause() },

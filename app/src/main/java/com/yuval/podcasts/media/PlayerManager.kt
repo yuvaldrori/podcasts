@@ -16,6 +16,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +31,8 @@ class PlayerManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository
 ) {
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
     private var controllerFuture: ListenableFuture<MediaBrowser>? = null
     private var controller: MediaBrowser? = null
 
@@ -31,7 +40,13 @@ class PlayerManager @Inject constructor(
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
     private val _currentPosition = MutableStateFlow(0L)
-    val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
+
+    val currentPosition: StateFlow<Long> = flow {
+        while (true) {
+            emit(controller?.currentPosition ?: 0L)
+            delay(1000)
+        }
+    }.stateIn(scope, SharingStarted.WhileSubscribed(5000), 0L)
 
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
@@ -223,12 +238,5 @@ class PlayerManager @Inject constructor(
         controllerFuture = null
         controller = null
         _isInitialized.value = false
-    }
-
-    // Call this periodically from the UI to update the progress bar
-    fun updatePosition() {
-        controller?.let {
-            _currentPosition.value = it.currentPosition
-        }
     }
 }

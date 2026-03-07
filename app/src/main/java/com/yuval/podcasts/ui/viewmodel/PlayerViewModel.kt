@@ -11,12 +11,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 import kotlinx.coroutines.flow.first
+
+data class PlayerUiState(
+    val isPlaying: Boolean = false,
+    val isConnected: Boolean = false,
+    val currentPosition: Long = 0L,
+    val duration: Long = 0L,
+    val playbackSpeed: Float = 1.0f,
+    val currentEpisode: Episode? = null
+)
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -24,18 +31,30 @@ class PlayerViewModel @Inject constructor(
     private val playerManager: PlayerManager
 ) : ViewModel() {
 
-    val isPlaying = playerManager.isPlaying
-    val isConnected = playerManager.isConnected
-    val currentPosition = playerManager.currentPosition
-    val duration = playerManager.duration
-    val playbackSpeed = playerManager.playbackSpeed
-    val currentMediaId = playerManager.currentMediaId
-
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val currentlyPlayingEpisode: StateFlow<Episode?> = currentMediaId.flatMapLatest { id ->
-        if (id == null) flowOf(null)
-        else repository.getEpisodeByIdFlow(id)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val uiState: StateFlow<PlayerUiState> = combine(
+        playerManager.isPlaying,
+        playerManager.isConnected,
+        playerManager.currentPosition,
+        playerManager.duration,
+        playerManager.playbackSpeed,
+        playerManager.currentMediaId.flatMapLatest { id ->
+            if (id == null) flowOf(null) else repository.getEpisodeByIdFlow(id)
+        }
+    ) { values ->
+        PlayerUiState(
+            isPlaying = values[0] as Boolean,
+            isConnected = values[1] as Boolean,
+            currentPosition = values[2] as Long,
+            duration = values[3] as Long,
+            playbackSpeed = values[4] as Float,
+            currentEpisode = values[5] as Episode?
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = PlayerUiState()
+    )
 
     init {
         playerManager.initialize()
@@ -45,20 +64,11 @@ class PlayerViewModel @Inject constructor(
             // Wait until the MediaBrowser is fully connected and initialized
             playerManager.isInitialized.first { it }
             
-            if (currentMediaId.value == null) {
+            if (playerManager.currentMediaId.value == null) {
                 val queue = repository.listeningQueue.first()
                 if (queue.isNotEmpty()) {
                     val firstEp = queue.first().episode
                     playerManager.prepareQueue(queue.map { it.episode }, 0, firstEp.lastPlayedPosition)
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            isPlaying.collectLatest { playing ->
-                while (playing) {
-                    playerManager.updatePosition()
-                    delay(1000)
                 }
             }
         }
@@ -86,7 +96,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun toggleSpeed() {
-        val currentSpeed = playbackSpeed.value
+        val currentSpeed = playerManager.playbackSpeed.value
         val newSpeed = if (currentSpeed >= 2f) 1f else 2f
         setSpeed(newSpeed)
     }
@@ -97,9 +107,5 @@ class PlayerViewModel @Inject constructor(
 
     fun seekBackward() {
         playerManager.seekBackward()
-    }
-
-    fun updatePosition() {
-        playerManager.updatePosition()
     }
 }

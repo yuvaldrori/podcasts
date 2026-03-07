@@ -16,6 +16,11 @@ import javax.inject.Inject
 
 import kotlinx.coroutines.flow.combine
 
+data class QueueUiState(
+    val queue: List<EpisodeWithPodcast> = emptyList(),
+    val queueTimeRemaining: Long = 0L
+)
+
 @HiltViewModel
 class QueueViewModel @Inject constructor(
     private val repository: PodcastRepository,
@@ -24,11 +29,8 @@ class QueueViewModel @Inject constructor(
     private val skipToNextEpisodeUseCase: SkipToNextEpisodeUseCase
 ) : ViewModel() {
 
-    val queue: StateFlow<List<EpisodeWithPodcast>> = repository.listeningQueue
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val queueTimeRemaining: StateFlow<Long> = combine(
-        queue,
+    val uiState: StateFlow<QueueUiState> = combine(
+        repository.listeningQueue,
         playerManager.playbackSpeed,
         playerManager.currentMediaId,
         playerManager.currentPosition,
@@ -38,17 +40,13 @@ class QueueViewModel @Inject constructor(
             if (item.episode.id == currentId && currentDur > 0) {
                 (currentDur - currentPos).coerceAtLeast(0L)
             } else {
-                // duration is in seconds, lastPlayedPosition is in ms
                 val durationMs = item.episode.duration * 1000L
                 (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
             }
         }
-        if (speed > 0f) {
-            (totalMsRemaining / speed).toLong()
-        } else {
-            0L
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+        val remaining = if (speed > 0f) (totalMsRemaining / speed).toLong() else 0L
+        QueueUiState(currentQueue, remaining)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueueUiState())
 
     fun reorderQueue(newOrderIds: List<String>) {
         viewModelScope.launch {

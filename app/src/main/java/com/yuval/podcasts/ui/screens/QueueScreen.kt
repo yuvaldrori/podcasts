@@ -36,12 +36,14 @@ fun QueueScreen(
     viewModel: QueueViewModel = hiltViewModel(),
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
-    val dbQueue by viewModel.queue.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val dbQueue = uiState.queue
     var queue by remember { mutableStateOf(emptyList<EpisodeWithPodcast>()) }
-    val isPlaying by playerViewModel.isPlaying.collectAsStateWithLifecycle()
-    val currentMediaId by playerViewModel.currentMediaId.collectAsStateWithLifecycle()
 
-    val queueTimeRemainingMs by viewModel.queueTimeRemaining.collectAsStateWithLifecycle()
+    val isPlaying = playerViewModel.uiState.collectAsStateWithLifecycle().value.isPlaying
+    val currentMediaId = playerViewModel.uiState.collectAsStateWithLifecycle().value.currentEpisode?.id
+
+    val queueTimeRemainingMs = uiState.queueTimeRemaining
 
     val listState = rememberLazyListState()
     val dragDropState = rememberDragDropState(listState) { fromIndex, toIndex ->

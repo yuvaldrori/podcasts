@@ -68,7 +68,7 @@ class QueueViewModelTimeTest {
     fun testQueueTimeRemaining_usesPlayerManagerLiveDataForCurrentEpisode() = runTest {
         // Collect the flow to trigger the combine block
         val job = launch {
-            viewModel.queueTimeRemaining.collect {}
+            viewModel.uiState.collect {}
         }
         
         // DB says duration is 80 minutes (4800s), position is 55 mins (3300000ms)
@@ -101,7 +101,7 @@ class QueueViewModelTimeTest {
         // Should calculate:
         // Remaining real = 5100000 - 3324000 = 1776000 ms
         // Speed 2x => 1776000 / 2 = 888000 ms
-        val remaining = viewModel.queueTimeRemaining.value
+        val remaining = viewModel.uiState.value.queueTimeRemaining
         assertEquals(888000L, remaining)
         
         job.cancel()

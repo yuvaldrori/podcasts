@@ -33,7 +33,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class PodcastRepository @Inject constructor(
+open class PodcastRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val database: AppDatabase,
     private val podcastApi: PodcastApi,
@@ -44,36 +44,30 @@ class PodcastRepository @Inject constructor(
     private val queueDao: QueueDao,
     private val workManager: WorkManager
 ) {
-    val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
-    val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast()
-    val playHistory: Flow<List<EpisodeWithPodcast>> = episodeDao.getPlayHistory()
+    open val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
+    open val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast()
+    open val playHistory: Flow<List<EpisodeWithPodcast>> = episodeDao.getPlayHistory()
 
     // Limit concurrent network requests to prevent socket exhaustion
     private val networkSemaphore = Semaphore(10)
-    val unplayedEpisodes: Flow<List<EpisodeWithPodcast>> = episodeDao.getUnplayedEpisodesWithPodcast().distinctUntilChanged()
+    open val unplayedEpisodes: Flow<List<EpisodeWithPodcast>> = episodeDao.getUnplayedEpisodesWithPodcast().distinctUntilChanged()
 
-    fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl).distinctUntilChanged()
+    open fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl).distinctUntilChanged()
 
-    fun getEpisodeByIdFlow(id: String): Flow<Episode?> = episodeDao.getEpisodeByIdFlow(id).distinctUntilChanged()
+    open fun getEpisodeByIdFlow(id: String): Flow<Episode?> = episodeDao.getEpisodeByIdFlow(id).distinctUntilChanged()
 
-    fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?> = episodeDao.getEpisodeWithPodcastFlow(id).distinctUntilChanged()
+    open fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?> = episodeDao.getEpisodeWithPodcastFlow(id).distinctUntilChanged()
 
-    suspend fun fetchAndStorePodcast(feedUrl: String) {
-        try {
-            withContext(Dispatchers.IO) {
-                val inputStream = podcastApi.fetchRss(feedUrl)
-                val (podcast, episodes) = rssParser.parse(inputStream, feedUrl)
-                podcastDao.insertPodcast(podcast)
-                episodeDao.upsertEpisodes(episodes)
-            }
-        } catch (e: Exception) {
-                        if (e is kotlinx.coroutines.CancellationException) throw e
-            e.printStackTrace()
-            // Ignore parse errors or OOMs for a single bad feed
+    open suspend fun fetchAndStorePodcast(feedUrl: String) {
+        withContext(Dispatchers.IO) {
+            val inputStream = podcastApi.fetchRss(feedUrl)
+            val (podcast, episodes) = rssParser.parse(inputStream, feedUrl)
+            podcastDao.insertPodcast(podcast)
+            episodeDao.upsertEpisodes(episodes)
         }
     }
 
-    suspend fun refreshAll() {
+    open suspend fun refreshAll() {
         coroutineScope {
             val podcasts = allPodcasts.first()
             podcasts.map { podcast ->
@@ -91,22 +85,22 @@ class PodcastRepository @Inject constructor(
         }
     }
 
-    suspend fun markAllAsPlayed() {
+    open suspend fun markAllAsPlayed() {
         episodeDao.markAllUnplayedAsPlayed()
     }
 
-    suspend fun markAsPlayed(id: String) {
+    open suspend fun markAsPlayed(id: String) {
         episodeDao.updatePlaybackStatus(id, true, System.currentTimeMillis())
     }
 
-    suspend fun reorderQueue(newOrderIds: List<String>) {
+    open suspend fun reorderQueue(newOrderIds: List<String>) {
         val newQueue = newOrderIds.mapIndexed { index, id ->
             QueueState(id, index)
         }
         queueDao.updateQueue(newQueue)
     }
 
-    suspend fun unsubscribePodcast(feedUrl: String) {
+    open suspend fun unsubscribePodcast(feedUrl: String) {
         // 1. Get all episodes for this podcast
         val episodes = episodeDao.getEpisodesForPodcastSync(feedUrl)
         

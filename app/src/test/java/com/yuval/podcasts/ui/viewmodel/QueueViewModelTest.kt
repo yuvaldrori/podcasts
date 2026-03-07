@@ -71,7 +71,7 @@ class QueueViewModelTest {
         every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
         viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
         
-        val job2 = backgroundScope.launch { viewModel.queue.collect {} }
+        val job2 = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
         viewModel.removeFromQueue("ep2")
@@ -99,7 +99,7 @@ class QueueViewModelTest {
 
         viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
         
-        val job2 = backgroundScope.launch { viewModel.queue.collect {} }
+        val job2 = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
         viewModel.removeFromQueue("ep1")
@@ -130,19 +130,19 @@ class QueueViewModelTest {
 
         viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
         
-        val job = backgroundScope.launch { viewModel.queueTimeRemaining.collect {} }
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
         // Total remaining time: 8 hours. At 2x speed, that's 4 hours.
         // 4 hours in milliseconds = 14,400,000 ms
-        assertEquals(14400000L, viewModel.queueTimeRemaining.value)
+        assertEquals(14400000L, viewModel.uiState.value.queueTimeRemaining)
         
         // Change speed to 1x
         playbackSpeedFlow.value = 1f
         advanceUntilIdle()
         
         // 8 hours in milliseconds = 28,800,000 ms
-        assertEquals(28800000L, viewModel.queueTimeRemaining.value)
+        assertEquals(28800000L, viewModel.uiState.value.queueTimeRemaining)
         
         job.cancel()
     }
