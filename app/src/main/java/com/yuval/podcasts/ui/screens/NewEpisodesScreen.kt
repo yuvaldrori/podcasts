@@ -23,6 +23,9 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.FeedsUiState
 
+import androidx.compose.ui.res.stringResource
+import com.yuval.podcasts.R
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewEpisodesScreen(
@@ -38,20 +41,23 @@ fun NewEpisodesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("New Episodes") },
+                title = { Text(stringResource(R.string.new_episodes_title)) },
                 actions = {
                     IconButton(onClick = onDismissAll) {
-                        Icon(Icons.Default.Clear, contentDescription = "Dismiss All")
+                        Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.dismiss_all))
                     }
                     IconButton(onClick = onRefreshAll) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
                     }
                 }
             )
         }
     ) { padding ->
+        val isRefreshing = (uiState as? FeedsUiState.Success)?.isRefreshing ?: false
+        val episodes = (uiState as? FeedsUiState.Success)?.unplayedEpisodes ?: emptyList()
+
         PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
+            isRefreshing = isRefreshing,
             onRefresh = onRefreshAll,
             state = pullToRefreshState,
             modifier = Modifier
@@ -63,7 +69,7 @@ fun NewEpisodesScreen(
                 contentPadding = PaddingValues(16.dp)
             ) {
                 items(
-                    items = uiState.unplayedEpisodes,
+                    items = episodes,
                     key = { it.episode.id }
                 ) { episodeWithPodcast ->
                     val episode = episodeWithPodcast.episode
@@ -113,10 +119,10 @@ fun NewEpisodesScreen(
                                 trailingContent = {
                                     Row {
                                         IconButton(onClick = { onDismissEpisode(episode) }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Dismiss")
+                                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.dismiss))
                                         }
                                         IconButton(onClick = { onAddToQueue(episode) }) {
-                                            Icon(Icons.Default.Add, contentDescription = "Add to Queue")
+                                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
                                         }
                                     }
                                 }

@@ -24,6 +24,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.ui.res.stringResource
+import com.yuval.podcasts.R
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
@@ -35,7 +38,7 @@ fun HistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("History") }
+                title = { Text(stringResource(R.string.history_title)) }
             )
         },
         modifier = modifier
@@ -48,7 +51,7 @@ fun HistoryScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No play history yet.",
+                    text = stringResource(R.string.no_play_history),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -72,7 +75,7 @@ fun HistoryScreen(
                             androidx.compose.material3.IconButton(onClick = { onEnqueueEpisode(episodeWithPodcast) }) {
                                 androidx.compose.material3.Icon(
                                     androidx.compose.material.icons.Icons.Default.Add,
-                                    contentDescription = "Add to Queue"
+                                    contentDescription = stringResource(R.string.add_to_queue)
                                 )
                             }
                         }

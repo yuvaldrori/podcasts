@@ -18,6 +18,9 @@ import coil.compose.AsyncImage
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.ui.viewmodel.FeedsViewModel
 
+import androidx.compose.ui.res.stringResource
+import com.yuval.podcasts.R
+
 @Composable
 fun SubscriptionsScreen(
     podcasts: List<Podcast>,
@@ -41,14 +44,14 @@ fun SubscriptionsScreen(
                 trailingContent = {
                     Box {
                         IconButton(onClick = { expanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options), modifier = Modifier.size(24.dp))
                         }
                         DropdownMenu(
                             expanded = expanded,
                             onDismissRequest = { expanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Unsubscribe") },
+                                text = { Text(stringResource(R.string.unsubscribe)) },
                                 onClick = {
                                     expanded = false
                                     onUnsubscribe(podcast.feedUrl)

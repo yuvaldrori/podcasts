@@ -114,13 +114,13 @@ class QueueViewModelTest {
         playbackSpeedFlow.value = 1f
         advanceUntilIdle()
         // (3600 + 7200) * 1000 = 10,800,000 ms = 3 hours
-        assertEquals(10800000L, viewModel.uiState.value.queueTimeRemaining)
+        assertEquals(10800000L, (viewModel.uiState.value as QueueUiState.Success).queueTimeRemaining)
 
         // Test 2x speed
         playbackSpeedFlow.value = 2f
         advanceUntilIdle()
         // 10,800,000 / 2 = 5,400,000 ms = 1.5 hours
-        assertEquals(5400000L, viewModel.uiState.value.queueTimeRemaining)
+        assertEquals(5400000L, (viewModel.uiState.value as QueueUiState.Success).queueTimeRemaining)
         
         job.cancel()
     }

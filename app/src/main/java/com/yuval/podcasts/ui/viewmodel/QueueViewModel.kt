@@ -16,10 +16,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class QueueUiState(
-    val queue: List<EpisodeWithPodcast> = emptyList(),
-    val queueTimeRemaining: Long = 0L
-)
+sealed interface QueueUiState {
+    object Loading : QueueUiState
+    data class Success(
+        val queue: List<EpisodeWithPodcast>,
+        val queueTimeRemaining: Long
+    ) : QueueUiState
+}
 
 @HiltViewModel
 class QueueViewModel @Inject constructor(
@@ -46,8 +49,8 @@ class QueueViewModel @Inject constructor(
             }
         }
         val remaining = if (speed > 0f) (totalMsRemaining / speed).toLong() else 0L
-        QueueUiState(currentQueue, remaining)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueueUiState())
+        QueueUiState.Success(currentQueue, remaining)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueueUiState.Loading)
 
     fun reorderQueue(newOrderIds: List<String>) {
         viewModelScope.launch {

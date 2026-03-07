@@ -16,12 +16,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class FeedsUiState(
-    val podcasts: List<Podcast> = emptyList(),
-    val unplayedEpisodes: List<EpisodeWithPodcast> = emptyList(),
-    val isRefreshing: Boolean = false,
-    val errorMessage: String? = null
-)
+sealed interface FeedsUiState {
+    object Loading : FeedsUiState
+    data class Success(
+        val podcasts: List<Podcast> = emptyList(),
+        val unplayedEpisodes: List<EpisodeWithPodcast> = emptyList(),
+        val isRefreshing: Boolean = false,
+        val errorMessage: String? = null
+    ) : FeedsUiState
+}
 
 @HiltViewModel
 class FeedsViewModel @Inject constructor(
@@ -43,7 +46,7 @@ class FeedsViewModel @Inject constructor(
         _isRefreshing,
         _errorMessage
     ) { podcasts, episodes, isRefreshing, error ->
-        FeedsUiState(
+        FeedsUiState.Success(
             podcasts = podcasts,
             unplayedEpisodes = episodes,
             isRefreshing = isRefreshing,
@@ -52,7 +55,7 @@ class FeedsViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = FeedsUiState()
+        initialValue = FeedsUiState.Loading
     )
 
     fun refreshPodcast(feedUrl: String) {

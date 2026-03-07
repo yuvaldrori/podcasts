@@ -19,11 +19,14 @@ import javax.inject.Inject
 import androidx.navigation.toRoute
 import com.yuval.podcasts.ui.navigation.EpisodeDetailScreenRoute
 
-data class EpisodeDetailUiState(
-    val episodeWithPodcast: EpisodeWithPodcast? = null,
-    val isInQueue: Boolean = false,
-    val isLoading: Boolean = true
-)
+sealed interface EpisodeDetailUiState {
+    object Loading : EpisodeDetailUiState
+    data class Success(
+        val episodeWithPodcast: EpisodeWithPodcast,
+        val isInQueue: Boolean
+    ) : EpisodeDetailUiState
+    object Error : EpisodeDetailUiState
+}
 
 @HiltViewModel
 class EpisodeDetailViewModel @Inject constructor(
@@ -41,15 +44,18 @@ class EpisodeDetailViewModel @Inject constructor(
         },
         repository.listeningQueue
     ) { episodeData, queue ->
-        EpisodeDetailUiState(
-            episodeWithPodcast = episodeData,
-            isInQueue = episodeData?.let { data -> queue.any { it.episode.id == data.episode.id } } ?: false,
-            isLoading = episodeData == null
-        )
+        if (episodeData == null) {
+            EpisodeDetailUiState.Loading
+        } else {
+            EpisodeDetailUiState.Success(
+                episodeWithPodcast = episodeData,
+                isInQueue = queue.any { it.episode.id == episodeData.episode.id }
+            )
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = EpisodeDetailUiState()
+        initialValue = EpisodeDetailUiState.Loading
     )
 
     fun addToQueue(episode: Episode) {

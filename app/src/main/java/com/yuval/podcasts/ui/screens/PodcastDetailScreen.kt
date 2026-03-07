@@ -14,6 +14,9 @@ import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
 
+import androidx.compose.ui.res.stringResource
+import com.yuval.podcasts.R
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PodcastDetailScreen(
@@ -25,10 +28,10 @@ fun PodcastDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Episodes") },
+                title = { Text(stringResource(R.string.episodes_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -51,7 +54,7 @@ fun PodcastDetailScreen(
                     showPlayedMarker = true,
                     trailingContent = {
                         IconButton(onClick = { onAddToQueue(episode) }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add to Queue")
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
                         }
                     }
                 )

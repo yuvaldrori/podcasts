@@ -70,8 +70,8 @@ class FeedsViewModelTest {
         viewModel.refreshAll()
         advanceUntilIdle()
         
-        assertFalse(viewModel.uiState.value.isRefreshing)
-        assertNull(viewModel.uiState.value.errorMessage)
+        assertFalse((viewModel.uiState.value as FeedsUiState.Success).isRefreshing)
+        assertNull((viewModel.uiState.value as FeedsUiState.Success).errorMessage)
         io.mockk.verify { refreshAllPodcastsUseCase.invoke() }
         
         job.cancel()

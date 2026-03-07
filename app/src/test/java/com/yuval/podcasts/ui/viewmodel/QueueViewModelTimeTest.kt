@@ -108,7 +108,7 @@ class QueueViewModelTimeTest {
         // Should calculate:
         // Remaining real = 5100000 - 3324000 = 1776000 ms
         // Speed 2x => 1776000 / 2 = 888000 ms
-        val remaining = viewModel.uiState.value.queueTimeRemaining
+        val remaining = (viewModel.uiState.value as QueueUiState.Success).queueTimeRemaining
         assertEquals(888000L, remaining)
         
         job.cancel()

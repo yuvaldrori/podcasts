@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Podcasts</string>
+    <string name="queue_title">Queue</string>
+    <string name="new_episodes_title">New Episodes</string>
+    <string name="podcasts_title">Podcasts</string>
+    <string name="history_title">History</string>
+    <string name="settings_title">Settings</string>
+    <string name="episodes_title">Episodes</string>
+    <string name="episode_details_title">Episode Details</string>
+    <string name="add_to_queue">Add to Queue</string>
+    <string name="share">Share</string>
+    <string name="dismiss_all">Dismiss All</string>
+    <string name="refresh">Refresh</string>
+    <string name="no_play_history">No play history yet.</string>
+    <string name="importing_podcasts">Importing podcasts: %1$d of %2$d</string>
+    <string name="import_btn">Import</string>
+    <string name="export_btn">Export</string>
+    <string name="add_podcast_rss">Add Podcast RSS</string>
+    <string name="add_podcast">Add Podcast</string>
+    <string name="opml_import_export">OPML Import/Export</string>
+    <string name="queue_listening_time">%1$s of queue listening time</string>
+    <string name="back">Back</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="remove">Remove</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="reorder">Reorder</string>
+    <string name="options">Options</string>
+    <string name="unsubscribe">Unsubscribe</string>
+    <string name="share_episode">Share Episode</string>
+    <string name="podcast_cover">Podcast Cover</string>
+</resources>

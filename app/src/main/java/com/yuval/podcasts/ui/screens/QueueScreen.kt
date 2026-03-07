@@ -30,6 +30,9 @@ import com.yuval.podcasts.ui.viewmodel.QueueViewModel
 import com.yuval.podcasts.ui.viewmodel.QueueUiState
 import kotlinx.coroutines.delay
 
+import androidx.compose.ui.res.stringResource
+import com.yuval.podcasts.R
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QueueScreen(
@@ -41,10 +44,18 @@ fun QueueScreen(
     onReorderQueue: (List<String>) -> Unit,
     onPlayQueue: (List<com.yuval.podcasts.data.db.entity.Episode>, Int, Long) -> Unit
 ) {
-    val dbQueue = uiState.queue
+    if (uiState is QueueUiState.Loading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    
+    val successState = uiState as QueueUiState.Success
+    val dbQueue = successState.queue
     var queue by remember { mutableStateOf(emptyList<EpisodeWithPodcast>()) }
 
-    val queueTimeRemainingMs = uiState.queueTimeRemaining
+    val queueTimeRemainingMs = successState.queueTimeRemaining
 
     val listState = rememberLazyListState()
     val dragDropState = rememberDragDropState(listState) { fromIndex, toIndex ->
@@ -54,7 +65,6 @@ fun QueueScreen(
     }
 
     LaunchedEffect(dbQueue) { 
-        // Only refresh the list from the database if we are NOT currently dragging
         if (dragDropState.draggedItemIndex == null) {
             queue = dbQueue 
         }
@@ -63,7 +73,7 @@ fun QueueScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         if (queue.isNotEmpty()) {
             Text(
-                text = "${formatQueueTime(queueTimeRemainingMs)} of queue listening time",
+                text = stringResource(R.string.queue_listening_time, formatQueueTime(queueTimeRemainingMs)),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -138,11 +148,11 @@ fun QueueScreen(
                                     }) {
                                         Icon(
                                             imageVector = if (isCurrentlyPlaying && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                            contentDescription = if (isCurrentlyPlaying && isPlaying) "Pause" else "Play"
+                                            contentDescription = if (isCurrentlyPlaying && isPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
                                         )
                                     }
                                     IconButton(onClick = { onRemoveFromQueue(episodeWithPodcast.episode.id) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Remove")
+                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove))
                                     }
                                     Box(
                                         modifier = Modifier
@@ -150,7 +160,6 @@ fun QueueScreen(
                                             .pointerInput(episodeWithPodcast.episode.id) {
                                                 detectVerticalDragGestures(
                                                     onDragStart = { 
-                                                        // Dynamically find index to avoid stale captures
                                                         val currentIndex = queue.indexOfFirst { it.episode.id == episodeWithPodcast.episode.id }
                                                         if (currentIndex != -1) {
                                                             dragDropState.onDragStart(currentIndex)
@@ -171,7 +180,7 @@ fun QueueScreen(
                                     ) {
                                         Icon(
                                             Icons.Default.DragHandle,
-                                            contentDescription = "Reorder"
+                                            contentDescription = stringResource(R.string.reorder)
                                         )
                                     }
                                 }

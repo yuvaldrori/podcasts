@@ -26,6 +26,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.ui.res.stringResource
+import com.yuval.podcasts.R
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodeDetailScreen(
@@ -38,104 +41,112 @@ fun EpisodeDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Episode Details", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(stringResource(R.string.episode_details_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
         }
     ) { padding ->
-        val data = uiState.episodeWithPodcast
-        if (uiState.isLoading || data == null) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    val imageUrl = data.episode.imageUrl ?: data.podcast.imageUrl
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = "Podcast Cover",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = data.episode.title,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = data.podcast.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = formatLongDate(data.episode.pubDate),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
+        when (uiState) {
+            is EpisodeDetailUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            }
+            is EpisodeDetailUiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text("Episode not found")
+                }
+            }
+            is EpisodeDetailUiState.Success -> {
+                val data = uiState.episodeWithPodcast
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
                 ) {
-                    if (!uiState.isInQueue && !data.episode.isPlayed) {
-                        FilledIconButton(
-                            onClick = { 
-                                onAddToQueue(data.episode)
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add to Queue")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        val imageUrl = data.episode.imageUrl ?: data.podcast.imageUrl
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = stringResource(R.string.podcast_cover),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = data.episode.title,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = data.podcast.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = formatLongDate(data.episode.pubDate),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
                         }
                     }
                     
-                    OutlinedIconButton(
-                        onClick = {
-                            val shareIntent = Intent.createChooser(Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TITLE, data.episode.title)
-                                putExtra(Intent.EXTRA_TEXT, "${data.episode.title}\n${data.episode.audioUrl}")
-                            }, "Share Episode")
-                            context.startActivity(shareIntent)
-                        },
-                        modifier = Modifier.weight(if (!uiState.isInQueue && !data.episode.isPlayed) 1f else 0.5f)
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = "Share")
-                    }
-                }
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-                
-                val parsedDescription = remember(data.episode.description) {
-                    Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toString()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (!uiState.isInQueue && !data.episode.isPlayed) {
+                            FilledIconButton(
+                                onClick = { 
+                                    onAddToQueue(data.episode)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
+                            }
+                        }
+                        
+                        OutlinedIconButton(
+                            onClick = {
+                                val shareIntent = Intent.createChooser(Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TITLE, data.episode.title)
+                                    putExtra(Intent.EXTRA_TEXT, "${data.episode.title}\n${data.episode.audioUrl}")
+                                }, context.getString(R.string.share_episode))
+                                context.startActivity(shareIntent)
+                            },
+                            modifier = Modifier.weight(if (!uiState.isInQueue && !data.episode.isPlayed) 1f else 0.5f)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                    
+                    val parsedDescription = remember(data.episode.description) {
+                        Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toString()
+                    }
+                    Text(
+                        text = parsedDescription,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
-                Text(
-                    text = parsedDescription,
-                    style = MaterialTheme.typography.bodyLarge
-                )
             }
         }
     }

@@ -58,7 +58,7 @@ class EpisodeDetailViewModelTest {
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        assertEquals(episodeWithPodcast, viewModel.uiState.value.episodeWithPodcast)
+        assertEquals(episodeWithPodcast, (viewModel.uiState.value as EpisodeDetailUiState.Success).episodeWithPodcast)
         job.cancel()
     }
 
@@ -100,7 +100,7 @@ class EpisodeDetailViewModelTest {
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        assertEquals(true, viewModel.uiState.value.isInQueue)
+        assertEquals(true, (viewModel.uiState.value as EpisodeDetailUiState.Success).isInQueue)
         job.cancel()
     }
 
@@ -122,7 +122,7 @@ class EpisodeDetailViewModelTest {
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        assertEquals(false, viewModel.uiState.value.isInQueue)
+        assertEquals(true, viewModel.uiState.value is EpisodeDetailUiState.Loading)
         job.cancel()
     }
 }

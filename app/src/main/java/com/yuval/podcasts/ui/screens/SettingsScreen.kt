@@ -11,6 +11,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.work.WorkInfo
 
+import androidx.compose.ui.res.stringResource
+import com.yuval.podcasts.R
+
 @Composable
 fun SettingsScreen(
     importWorkInfo: WorkInfo?,
@@ -36,7 +39,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(text = "Add Podcast RSS", style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.add_podcast_rss), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         TextField(
             value = rssUrl,
@@ -54,12 +57,12 @@ fun SettingsScreen(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Add Podcast")
+            Text(stringResource(R.string.add_podcast))
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
-        Text(text = "OPML Import/Export", style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.opml_import_export), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         
         val isImporting = importWorkInfo?.state == WorkInfo.State.RUNNING || importWorkInfo?.state == WorkInfo.State.ENQUEUED
@@ -75,7 +78,7 @@ fun SettingsScreen(
                     val total = importWorkInfo?.progress?.getInt("TOTAL", 1) ?: 1
                     
                     Text(
-                        text = "Importing podcasts: $progress of $total",
+                        text = stringResource(R.string.importing_podcasts, progress, total),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -96,14 +99,14 @@ fun SettingsScreen(
                 modifier = Modifier.weight(1f),
                 enabled = !isImporting
             ) {
-                Text("Import")
+                Text(stringResource(R.string.import_btn))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = { opmlExportLauncher.launch("podcasts.opml") },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Export")
+                Text(stringResource(R.string.export_btn))
             }
         }
     }
