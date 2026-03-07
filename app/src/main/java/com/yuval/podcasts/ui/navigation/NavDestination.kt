@@ -7,10 +7,13 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
+import androidx.compose.material.icons.filled.History
+
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object Queue : Screen("queue", "Queue", Icons.AutoMirrored.Filled.List)
     object NewEpisodes : Screen("new_episodes", "New", Icons.Default.Notifications)
     object Subscriptions : Screen("subscriptions", "Podcasts", Icons.Default.Info)
+    object History : Screen("history", "History", Icons.Default.History)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     object PodcastDetail : Screen("podcast_detail/{feedUrl}", "Episodes", Icons.AutoMirrored.Filled.List) {
         fun createRoute(feedUrl: String) = "podcast_detail/${java.net.URLEncoder.encode(feedUrl, "UTF-8")}"
@@ -24,5 +27,6 @@ val bottomNavItems = listOf(
     Screen.Queue,
     Screen.NewEpisodes,
     Screen.Subscriptions,
+    Screen.History,
     Screen.Settings
 )

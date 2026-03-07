@@ -103,6 +103,11 @@ fun MainScreen(
                     navController.navigate(Screen.PodcastDetail.createRoute(feedUrl))
                 })
             }
+            composable(Screen.History.route) {
+                com.yuval.podcasts.ui.screens.HistoryScreen(onNavigateToEpisode = { episodeId ->
+                    navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                })
+            }
             composable(Screen.Settings.route) { SettingsScreen() }
             composable(
                 route = Screen.PodcastDetail.route,

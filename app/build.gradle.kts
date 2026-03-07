@@ -5,8 +5,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.yuval.podcasts"
+    
     compileSdk = 36
     buildToolsVersion = "36.1.0"
 

@@ -28,5 +28,7 @@ data class Episode(
     @ColumnInfo(defaultValue = "0")
     val isPlayed: Boolean = false,
     @ColumnInfo(defaultValue = "0")
-    val lastPlayedPosition: Long = 0L
+    val lastPlayedPosition: Long = 0L,
+    @ColumnInfo(defaultValue = "NULL")
+    val completedAt: Long? = null
 )

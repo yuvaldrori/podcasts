@@ -46,6 +46,7 @@ class PodcastRepository @Inject constructor(
 ) {
     val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
     val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast()
+    val playHistory: Flow<List<EpisodeWithPodcast>> = episodeDao.getPlayHistory()
 
     // Limit concurrent network requests to prevent socket exhaustion
     private val networkSemaphore = Semaphore(10)
@@ -95,7 +96,7 @@ class PodcastRepository @Inject constructor(
     }
 
     suspend fun markAsPlayed(id: String) {
-        episodeDao.updatePlaybackStatus(id, true)
+        episodeDao.updatePlaybackStatus(id, true, System.currentTimeMillis())
     }
 
     suspend fun reorderQueue(newOrderIds: List<String>) {

@@ -20,7 +20,7 @@ class RemoveEpisodeUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(episodeId: String, markAsPlayed: Boolean = false) = withContext(Dispatchers.IO) {
         if (markAsPlayed) {
-            episodeDao.updatePlaybackStatus(episodeId, true)
+            episodeDao.updatePlaybackStatus(episodeId, true, System.currentTimeMillis())
             episodeDao.updateLastPlayedPosition(episodeId, 0L)
         }
 

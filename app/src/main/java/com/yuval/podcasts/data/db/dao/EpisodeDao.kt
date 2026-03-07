@@ -47,8 +47,12 @@ interface EpisodeDao {
     @Query("UPDATE episodes SET downloadStatus = :status, localFilePath = :path WHERE id = :id")
     suspend fun updateDownloadStatus(id: String, status: Int, path: String?)
 
-    @Query("UPDATE episodes SET isPlayed = :isPlayed WHERE id = :id")
-    suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean)
+    @Query("UPDATE episodes SET isPlayed = :isPlayed, completedAt = :completedAt WHERE id = :id")
+    suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long? = null)
+
+    @Transaction
+    @Query("SELECT * FROM episodes WHERE completedAt IS NOT NULL ORDER BY completedAt DESC, pubDate DESC LIMIT 200")
+    fun getPlayHistory(): Flow<List<EpisodeWithPodcast>>
 
     @Query("UPDATE episodes SET lastPlayedPosition = :position WHERE id = :id")
     suspend fun updateLastPlayedPosition(id: String, position: Long)
