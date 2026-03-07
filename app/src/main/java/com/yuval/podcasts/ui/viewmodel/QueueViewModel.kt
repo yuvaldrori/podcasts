@@ -6,15 +6,15 @@ import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import com.yuval.podcasts.domain.usecase.SkipToNextEpisodeUseCase
+import com.yuval.podcasts.domain.usecase.ReorderQueueUseCase
 import com.yuval.podcasts.media.PlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-import kotlinx.coroutines.flow.combine
 
 data class QueueUiState(
     val queue: List<EpisodeWithPodcast> = emptyList(),
@@ -26,7 +26,8 @@ class QueueViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val playerManager: PlayerManager,
     private val removeEpisodeUseCase: RemoveEpisodeUseCase,
-    private val skipToNextEpisodeUseCase: SkipToNextEpisodeUseCase
+    private val skipToNextEpisodeUseCase: SkipToNextEpisodeUseCase,
+    private val reorderQueueUseCase: ReorderQueueUseCase
 ) : ViewModel() {
 
     val uiState: StateFlow<QueueUiState> = combine(
@@ -50,18 +51,14 @@ class QueueViewModel @Inject constructor(
 
     fun reorderQueue(newOrderIds: List<String>) {
         viewModelScope.launch {
-            repository.reorderQueue(newOrderIds)
+            reorderQueueUseCase(newOrderIds)
         }
     }
 
     fun removeFromQueue(episodeId: String) {
         viewModelScope.launch {
-            // Check if the dismissed episode is currently playing by reading the PlayerManager directly
             val isPlayingDismissed = playerManager.currentMediaId.value == episodeId
-
-            // Actually remove it from the DB and file system
             removeEpisodeUseCase(episodeId, markAsPlayed = false)
-
             if (isPlayingDismissed) {
                 skipToNextEpisodeUseCase()
             }

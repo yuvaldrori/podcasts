@@ -18,35 +18,32 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
-import com.yuval.podcasts.ui.viewmodel.FeedsViewModel
-import kotlinx.coroutines.launch
+import com.yuval.podcasts.ui.viewmodel.FeedsUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewEpisodesScreen(
+    uiState: FeedsUiState,
     onEpisodeClick: (String) -> Unit,
-    viewModel: FeedsViewModel = hiltViewModel()
+    onRefreshAll: () -> Unit,
+    onDismissAll: () -> Unit,
+    onDismissEpisode: (Episode) -> Unit,
+    onAddToQueue: (Episode) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     val pullToRefreshState = rememberPullToRefreshState()
-    val coroutineScope = rememberCoroutineScope()
-
-
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("New Episodes") },
                 actions = {
-                    IconButton(onClick = { viewModel.dismissAll() }) {
+                    IconButton(onClick = onDismissAll) {
                         Icon(Icons.Default.Clear, contentDescription = "Dismiss All")
                     }
-                    IconButton(onClick = { viewModel.refreshAll() }) {
+                    IconButton(onClick = onRefreshAll) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 }
@@ -55,7 +52,7 @@ fun NewEpisodesScreen(
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
-            onRefresh = { viewModel.refreshAll() },
+            onRefresh = onRefreshAll,
             state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
@@ -69,15 +66,18 @@ fun NewEpisodesScreen(
                     items = uiState.unplayedEpisodes,
                     key = { it.episode.id }
                 ) { episodeWithPodcast ->
-                    val onDismiss = remember(episodeWithPodcast.episode.id) {
+                    val episode = episodeWithPodcast.episode
+                    val podcast = episodeWithPodcast.podcast
+                    
+                    val onDismiss = remember(episode.id) {
                         { value: SwipeToDismissBoxValue ->
                             when (value) {
                                 SwipeToDismissBoxValue.EndToStart -> {
-                                    viewModel.dismissEpisode(episodeWithPodcast.episode)
+                                    onDismissEpisode(episode)
                                     true
                                 }
                                 SwipeToDismissBoxValue.StartToEnd -> {
-                                    viewModel.addToQueue(episodeWithPodcast.episode)
+                                    onAddToQueue(episode)
                                     true
                                 }
                                 else -> false
@@ -105,19 +105,17 @@ fun NewEpisodesScreen(
                             }
                         },
                         content = {
-                            val clickHandler = remember(episodeWithPodcast.episode.id) { { onEpisodeClick(episodeWithPodcast.episode.id) } }
+                            val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
                             EpisodeItem(
-                                episode = episodeWithPodcast.episode,
+                                episode = episode,
                                 modifier = Modifier.clickable(onClick = clickHandler),
-                                imageUrl = episodeWithPodcast.podcast.imageUrl,
+                                imageUrl = podcast.imageUrl,
                                 trailingContent = {
                                     Row {
-                                        val onDismissClick = remember(episodeWithPodcast.episode.id) { { viewModel.dismissEpisode(episodeWithPodcast.episode) } }
-                                        val onAddClick = remember(episodeWithPodcast.episode.id) { { viewModel.addToQueue(episodeWithPodcast.episode) } }
-                                        IconButton(onClick = onDismissClick) {
+                                        IconButton(onClick = { onDismissEpisode(episode) }) {
                                             Icon(Icons.Default.Delete, contentDescription = "Dismiss")
                                         }
-                                        IconButton(onClick = onAddClick) {
+                                        IconButton(onClick = { onAddToQueue(episode) }) {
                                             Icon(Icons.Default.Add, contentDescription = "Add to Queue")
                                         }
                                     }
@@ -127,8 +125,6 @@ fun NewEpisodesScreen(
                     )
                 }
             }
-
-
         }
     }
 }

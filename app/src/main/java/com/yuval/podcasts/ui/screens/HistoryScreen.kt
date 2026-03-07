@@ -18,11 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.ui.components.EpisodeItem
-import com.yuval.podcasts.ui.viewmodel.HistoryViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -30,12 +27,11 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
+    history: List<EpisodeWithPodcast>,
     onNavigateToEpisode: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    viewModel: HistoryViewModel = hiltViewModel()
+    onEnqueueEpisode: (EpisodeWithPodcast) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val history by viewModel.history.collectAsStateWithLifecycle()
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,18 +63,13 @@ fun HistoryScreen(
                     items = history,
                     key = { it.episode.id }
                 ) { episodeWithPodcast ->
-                    // Add a secondary sub-label if completedAt is available
-                    val completedDate = episodeWithPodcast.episode.completedAt?.let {
-                        SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(it))
-                    }
-                    
                     val clickHandler = remember(episodeWithPodcast.episode.id) { { onNavigateToEpisode(episodeWithPodcast.episode.id) } }
                     EpisodeItem(
                         episode = episodeWithPodcast.episode,
                         modifier = Modifier.clickable(onClick = clickHandler),
                         imageUrl = episodeWithPodcast.podcast.imageUrl,
                         trailingContent = {
-                            androidx.compose.material3.IconButton(onClick = { viewModel.enqueueEpisode(episodeWithPodcast) }) {
+                            androidx.compose.material3.IconButton(onClick = { onEnqueueEpisode(episodeWithPodcast) }) {
                                 androidx.compose.material3.Icon(
                                     androidx.compose.material.icons.Icons.Default.Add,
                                     contentDescription = "Add to Queue"

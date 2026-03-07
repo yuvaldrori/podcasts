@@ -7,16 +7,11 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -25,16 +20,17 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yuval.podcasts.ui.components.UnifiedPlayer
 import com.yuval.podcasts.ui.navigation.Screen
 import com.yuval.podcasts.ui.navigation.bottomNavItems
 import com.yuval.podcasts.ui.screens.NewEpisodesScreen
 import com.yuval.podcasts.ui.screens.PodcastDetailScreen
+import com.yuval.podcasts.ui.screens.EpisodeDetailScreen
 import com.yuval.podcasts.ui.screens.QueueScreen
+import com.yuval.podcasts.ui.screens.HistoryScreen
 import com.yuval.podcasts.ui.screens.SettingsScreen
 import com.yuval.podcasts.ui.screens.SubscriptionsScreen
-import com.yuval.podcasts.ui.viewmodel.PlayerViewModel
+import com.yuval.podcasts.ui.viewmodel.*
 
 @Composable
 fun MainScreen(
@@ -59,6 +55,7 @@ fun MainScreen(
                     onSeekForward = { playerViewModel.seekForward() },
                     onSeekTo = { playerViewModel.seekTo(it) }
                 )
+                
                 NavigationBar {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
@@ -66,14 +63,7 @@ fun MainScreen(
                         val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                         NavigationBarItem(
                             icon = { Icon(screen.icon, contentDescription = null) },
-                            label = { 
-                                Text(
-                                    text = screen.title, 
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1
-                                ) 
-                            },
-                            alwaysShowLabel = true,
+                            label = { Text(screen.title) },
                             selected = selected,
                             onClick = {
                                 if (currentDestination?.hierarchy?.any { it.route == screen.route } == true) {
@@ -95,7 +85,7 @@ fun MainScreen(
         }
     ) { innerPadding ->
         NavHost(
-            navController = navController,
+            navController = navController, 
             startDestination = Screen.Queue.route,
             modifier = Modifier.padding(innerPadding),
             enterTransition = { androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(0)) },
@@ -104,43 +94,97 @@ fun MainScreen(
             popExitTransition = { androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(0)) }
         ) {
             composable(Screen.Queue.route) { 
-                QueueScreen(onEpisodeClick = { episodeId -> 
-                    navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
-                }) 
+                val queueViewModel: QueueViewModel = hiltViewModel()
+                val queueUiState by queueViewModel.uiState.collectAsStateWithLifecycle()
+                
+                QueueScreen(
+                    uiState = queueUiState,
+                    isPlaying = uiState.isPlaying,
+                    currentMediaId = uiState.currentEpisode?.id,
+                    onEpisodeClick = { episodeId -> 
+                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                    },
+                    onRemoveFromQueue = { episodeId -> queueViewModel.removeFromQueue(episodeId) },
+                    onReorderQueue = { newOrder -> queueViewModel.reorderQueue(newOrder) },
+                    onPlayQueue = { episodes, startIndex, position -> 
+                        playerViewModel.playQueue(episodes, startIndex, position)
+                    }
+                ) 
             }
             composable(Screen.NewEpisodes.route) { 
-                NewEpisodesScreen(onEpisodeClick = { episodeId -> 
-                    navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
-                }) 
+                val feedsViewModel: FeedsViewModel = hiltViewModel()
+                val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
+                
+                NewEpisodesScreen(
+                    uiState = feedsUiState,
+                    onEpisodeClick = { episodeId -> 
+                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                    },
+                    onRefreshAll = { feedsViewModel.refreshAll() },
+                    onDismissAll = { feedsViewModel.dismissAll() },
+                    onDismissEpisode = { episode -> feedsViewModel.dismissEpisode(episode) },
+                    onAddToQueue = { episode -> feedsViewModel.addToQueue(episode) }
+                ) 
             }
             composable(Screen.Subscriptions.route) {
-                SubscriptionsScreen(onPodcastClick = { feedUrl ->
-                    navController.navigate(Screen.PodcastDetail.createRoute(feedUrl))
-                })
+                val feedsViewModel: FeedsViewModel = hiltViewModel()
+                val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
+                
+                SubscriptionsScreen(
+                    podcasts = feedsUiState.podcasts,
+                    onPodcastClick = { feedUrl ->
+                        navController.navigate(Screen.PodcastDetail.createRoute(feedUrl))
+                    },
+                    onUnsubscribe = { feedUrl -> feedsViewModel.unsubscribePodcast(feedUrl) }
+                )
             }
             composable(Screen.History.route) {
-                com.yuval.podcasts.ui.screens.HistoryScreen(onNavigateToEpisode = { episodeId ->
-                    navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
-                })
+                val historyViewModel: HistoryViewModel = hiltViewModel()
+                val history by historyViewModel.history.collectAsStateWithLifecycle()
+                
+                HistoryScreen(
+                    history = history,
+                    onNavigateToEpisode = { episodeId ->
+                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                    },
+                    onEnqueueEpisode = { ep -> historyViewModel.enqueueEpisode(ep) }
+                )
             }
-            composable(Screen.Settings.route) { SettingsScreen() }
+            composable(Screen.Settings.route) {
+                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                val importWorkInfo by settingsViewModel.importWorkInfo.collectAsStateWithLifecycle()
+                SettingsScreen(
+                    importWorkInfo = importWorkInfo,
+                    onAddPodcast = { url -> settingsViewModel.addPodcast(url) },
+                    onImportOpml = { uri -> settingsViewModel.importOpml(uri) },
+                    onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) }
+                )
+            }
             composable(
                 route = Screen.PodcastDetail.route,
                 arguments = listOf(navArgument("feedUrl") { type = NavType.StringType })
             ) {
+                val podcastDetailViewModel: PodcastDetailViewModel = hiltViewModel()
+                val episodes by podcastDetailViewModel.episodes.collectAsStateWithLifecycle()
                 PodcastDetailScreen(
+                    episodes = episodes,
                     onBack = { navController.popBackStack() },
-                    onEpisodeClick = { episodeId -> 
+                    onEpisodeClick = { episodeId ->
                         navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
-                    }
+                    },
+                    onAddToQueue = { episode -> podcastDetailViewModel.addToQueue(episode) }
                 )
             }
             composable(
                 route = Screen.EpisodeDetail.route,
                 arguments = listOf(navArgument("episodeId") { type = NavType.StringType })
             ) {
-                com.yuval.podcasts.ui.screens.EpisodeDetailScreen(
-                    onBack = { navController.popBackStack() }
+                val episodeDetailViewModel: EpisodeDetailViewModel = hiltViewModel()
+                val episodeUiState by episodeDetailViewModel.uiState.collectAsStateWithLifecycle()
+                EpisodeDetailScreen(
+                    uiState = episodeUiState,
+                    onBack = { navController.popBackStack() },
+                    onAddToQueue = { episode -> episodeDetailViewModel.addToQueue(episode) }
                 )
             }
         }

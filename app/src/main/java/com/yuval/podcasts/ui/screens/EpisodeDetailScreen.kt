@@ -1,5 +1,4 @@
 package com.yuval.podcasts.ui.screens
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import android.content.Intent
 import android.text.Html
@@ -20,9 +19,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.yuval.podcasts.ui.viewmodel.EpisodeDetailViewModel
+import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.ui.viewmodel.EpisodeDetailUiState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -30,10 +29,10 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodeDetailScreen(
+    uiState: EpisodeDetailUiState,
     onBack: () -> Unit,
-    viewModel: EpisodeDetailViewModel = hiltViewModel()
+    onAddToQueue: (Episode) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     Scaffold(
@@ -104,7 +103,7 @@ fun EpisodeDetailScreen(
                     if (!uiState.isInQueue && !data.episode.isPlayed) {
                         FilledIconButton(
                             onClick = { 
-                                viewModel.addToQueue(data.episode)
+                                onAddToQueue(data.episode)
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -130,7 +129,6 @@ fun EpisodeDetailScreen(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                 
-                // Use fromHtml to parse basic HTML tags often found in podcast RSS descriptions
                 val parsedDescription = remember(data.episode.description) {
                     Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toString()
                 }

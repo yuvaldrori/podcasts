@@ -1,6 +1,6 @@
 package com.yuval.podcasts.ui.screens
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -9,35 +9,26 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.yuval.podcasts.ui.viewmodel.SettingsViewModel
-
 import androidx.work.WorkInfo
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel()
+    importWorkInfo: WorkInfo?,
+    onAddPodcast: (String) -> Unit,
+    onImportOpml: (Uri) -> Unit,
+    onExportOpml: (android.content.Context, Uri) -> Unit
 ) {
     var rssUrl by remember { mutableStateOf("") }
     val context = LocalContext.current
-    val importWorkInfo by viewModel.importWorkInfo.collectAsStateWithLifecycle()
 
     val opmlImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
-        onResult = { uri ->
-            uri?.let {
-                viewModel.importOpml(it)
-            }
-        }
+        onResult = { uri -> uri?.let { onImportOpml(it) } }
     )
 
     val opmlExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/x-opml"),
-        onResult = { uri ->
-            uri?.let {
-                viewModel.exportOpml(context, it)
-            }
-        }
+        onResult = { uri -> uri?.let { onExportOpml(context, it) } }
     )
 
     Column(
@@ -57,7 +48,7 @@ fun SettingsScreen(
         Button(
             onClick = {
                 if (rssUrl.isNotBlank()) {
-                    viewModel.addPodcast(rssUrl)
+                    onAddPodcast(rssUrl)
                     rssUrl = ""
                 }
             },
@@ -71,7 +62,6 @@ fun SettingsScreen(
         Text(text = "OPML Import/Export", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         
-        // Show progress UI if an import is actively running
         val isImporting = importWorkInfo?.state == WorkInfo.State.RUNNING || importWorkInfo?.state == WorkInfo.State.ENQUEUED
         if (isImporting) {
             Card(

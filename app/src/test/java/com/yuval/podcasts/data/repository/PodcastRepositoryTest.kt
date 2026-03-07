@@ -64,7 +64,7 @@ class PodcastRepositoryTest {
         every { queueDao.getQueueEpisodesWithPodcast() } returns flowOf(emptyList())
         every { episodeDao.getUnplayedEpisodesWithPodcast() } returns flowOf(emptyList())
 
-        repository = PodcastRepository(
+        repository = DefaultPodcastRepository(
             context = context,
             database = database,
             podcastApi = podcastApi,

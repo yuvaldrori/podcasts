@@ -27,21 +27,22 @@ import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.PlayerViewModel
 import com.yuval.podcasts.ui.viewmodel.QueueViewModel
+import com.yuval.podcasts.ui.viewmodel.QueueUiState
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QueueScreen(
+    uiState: QueueUiState,
+    isPlaying: Boolean,
+    currentMediaId: String?,
     onEpisodeClick: (String) -> Unit,
-    viewModel: QueueViewModel = hiltViewModel(),
-    playerViewModel: PlayerViewModel = hiltViewModel()
+    onRemoveFromQueue: (String) -> Unit,
+    onReorderQueue: (List<String>) -> Unit,
+    onPlayQueue: (List<com.yuval.podcasts.data.db.entity.Episode>, Int, Long) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dbQueue = uiState.queue
     var queue by remember { mutableStateOf(emptyList<EpisodeWithPodcast>()) }
-
-    val isPlaying = playerViewModel.uiState.collectAsStateWithLifecycle().value.isPlaying
-    val currentMediaId = playerViewModel.uiState.collectAsStateWithLifecycle().value.currentEpisode?.id
 
     val queueTimeRemainingMs = uiState.queueTimeRemaining
 
@@ -88,7 +89,7 @@ fun QueueScreen(
                 val onDismiss = remember(episodeWithPodcast.episode.id) {
                     { value: SwipeToDismissBoxValue ->
                         if (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd) {
-                            viewModel.removeFromQueue(episodeWithPodcast.episode.id)
+                            onRemoveFromQueue(episodeWithPodcast.episode.id)
                             true
                         } else {
                             false
@@ -132,7 +133,7 @@ fun QueueScreen(
                                         val episodes = queue.map { it.episode }
                                         val startIndex = episodes.indexOfFirst { it.id == episodeWithPodcast.episode.id }
                                         if (startIndex != -1) {
-                                            playerViewModel.playQueue(episodes, startIndex, episodeWithPodcast.episode.lastPlayedPosition)
+                                            onPlayQueue(episodes, startIndex, episodeWithPodcast.episode.lastPlayedPosition)
                                         }
                                     }) {
                                         Icon(
@@ -140,7 +141,7 @@ fun QueueScreen(
                                             contentDescription = if (isCurrentlyPlaying && isPlaying) "Pause" else "Play"
                                         )
                                     }
-                                    IconButton(onClick = { viewModel.removeFromQueue(episodeWithPodcast.episode.id) }) {
+                                    IconButton(onClick = { onRemoveFromQueue(episodeWithPodcast.episode.id) }) {
                                         Icon(Icons.Default.Delete, contentDescription = "Remove")
                                     }
                                     Box(
@@ -157,7 +158,7 @@ fun QueueScreen(
                                                     },
                                                     onDragEnd = { 
                                                         dragDropState.onDragEnd()
-                                                        viewModel.reorderQueue(queue.map { it.episode.id })
+                                                        onReorderQueue(queue.map { it.episode.id })
                                                     },
                                                     onDragCancel = { dragDropState.onDragEnd() },
                                                     onVerticalDrag = { change, dragAmount ->

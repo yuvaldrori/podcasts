@@ -6,16 +6,15 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-import kotlinx.coroutines.flow.combine
 
 data class FeedsUiState(
     val podcasts: List<Podcast> = emptyList(),
@@ -27,7 +26,12 @@ data class FeedsUiState(
 @HiltViewModel
 class FeedsViewModel @Inject constructor(
     private val repository: PodcastRepository,
-    private val enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
+    private val enqueueEpisodeUseCase: EnqueueEpisodeUseCase,
+    private val refreshPodcastUseCase: RefreshPodcastUseCase,
+    private val refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase,
+    private val markEpisodeAsPlayedUseCase: MarkEpisodeAsPlayedUseCase,
+    private val markAllAsPlayedUseCase: MarkAllAsPlayedUseCase,
+    private val unsubscribePodcastUseCase: UnsubscribePodcastUseCase
 ) : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -54,9 +58,9 @@ class FeedsViewModel @Inject constructor(
     fun refreshPodcast(feedUrl: String) {
         viewModelScope.launch {
             try {
-                repository.fetchAndStorePodcast(feedUrl)
+                refreshPodcastUseCase(feedUrl)
             } catch (e: Exception) {
-                        if (e is kotlinx.coroutines.CancellationException) throw e
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _errorMessage.value = "Failed to refresh podcast: ${e.message}"
             }
         }
@@ -66,9 +70,9 @@ class FeedsViewModel @Inject constructor(
         viewModelScope.launch {
             _isRefreshing.value = true
             try {
-                repository.refreshAll()
+                refreshAllPodcastsUseCase()
             } catch (e: Exception) {
-                        if (e is kotlinx.coroutines.CancellationException) throw e
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _errorMessage.value = "Failed to refresh all podcasts: ${e.message}"
             } finally {
                 _isRefreshing.value = false
@@ -86,13 +90,13 @@ class FeedsViewModel @Inject constructor(
 
     fun dismissEpisode(episode: Episode) {
         viewModelScope.launch {
-            repository.markAsPlayed(episode.id)
+            markEpisodeAsPlayedUseCase(episode.id)
         }
     }
 
     fun dismissAll() {
         viewModelScope.launch {
-            repository.markAllAsPlayed()
+            markAllAsPlayedUseCase()
         }
     }
 
@@ -102,7 +106,7 @@ class FeedsViewModel @Inject constructor(
 
     fun unsubscribePodcast(feedUrl: String) {
         viewModelScope.launch {
-            repository.unsubscribePodcast(feedUrl)
+            unsubscribePodcastUseCase(feedUrl)
         }
     }
 }

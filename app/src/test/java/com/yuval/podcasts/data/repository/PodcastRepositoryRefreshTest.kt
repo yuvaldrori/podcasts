@@ -44,7 +44,7 @@ class PodcastRepositoryRefreshTest {
         val queueDao = mockk<com.yuval.podcasts.data.db.dao.QueueDao>(relaxed = true)
         every { queueDao.getQueueEpisodesWithPodcast() } returns flowOf(emptyList())
 
-        repository = PodcastRepository(
+        repository = DefaultPodcastRepository(
             context = mockk(relaxed = true),
             database = mockk(relaxed = true),
             podcastApi = podcastApi,

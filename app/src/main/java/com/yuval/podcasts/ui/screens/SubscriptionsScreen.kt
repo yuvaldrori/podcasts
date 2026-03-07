@@ -20,17 +20,16 @@ import com.yuval.podcasts.ui.viewmodel.FeedsViewModel
 
 @Composable
 fun SubscriptionsScreen(
-    viewModel: FeedsViewModel = hiltViewModel(),
-    onPodcastClick: (String) -> Unit
+    podcasts: List<Podcast>,
+    onPodcastClick: (String) -> Unit,
+    onUnsubscribe: (String) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {
         items(
-            items = uiState.podcasts,
+            items = podcasts,
             key = { it.feedUrl }
         ) { podcast ->
             var expanded by remember { mutableStateOf(false) }
@@ -52,7 +51,7 @@ fun SubscriptionsScreen(
                                 text = { Text("Unsubscribe") },
                                 onClick = {
                                     expanded = false
-                                    viewModel.unsubscribePodcast(podcast.feedUrl)
+                                    onUnsubscribe(podcast.feedUrl)
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Delete, contentDescription = null)

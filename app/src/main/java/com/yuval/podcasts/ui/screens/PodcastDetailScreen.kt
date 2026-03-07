@@ -1,5 +1,4 @@
 package com.yuval.podcasts.ui.screens
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,20 +11,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
-import com.yuval.podcasts.ui.viewmodel.PodcastDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PodcastDetailScreen(
+    episodes: List<Episode>,
     onBack: () -> Unit,
     onEpisodeClick: (String) -> Unit,
-    viewModel: PodcastDetailViewModel = hiltViewModel()
+    onAddToQueue: (Episode) -> Unit
 ) {
-    val episodes by viewModel.episodes.collectAsStateWithLifecycle()
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -54,8 +50,7 @@ fun PodcastDetailScreen(
                     showProgress = true,
                     showPlayedMarker = true,
                     trailingContent = {
-                        val onAddClick = remember(episode.id) { { viewModel.addToQueue(episode) } }
-                        IconButton(onClick = onAddClick) {
+                        IconButton(onClick = { onAddToQueue(episode) }) {
                             Icon(Icons.Default.Add, contentDescription = "Add to Queue")
                         }
                     }

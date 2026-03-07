@@ -4,8 +4,7 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.PodcastRepository
-import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
-import com.yuval.podcasts.domain.usecase.SkipToNextEpisodeUseCase
+import com.yuval.podcasts.domain.usecase.*
 import com.yuval.podcasts.media.PlayerManager
 import io.mockk.every
 import io.mockk.mockk
@@ -32,6 +31,7 @@ class QueueViewModelTimeTest {
     private lateinit var playerManager: PlayerManager
     private lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
     private lateinit var skipToNextEpisodeUseCase: SkipToNextEpisodeUseCase
+    private lateinit var reorderQueueUseCase: ReorderQueueUseCase
     
     private lateinit var viewModel: QueueViewModel
 
@@ -49,6 +49,7 @@ class QueueViewModelTimeTest {
         playerManager = mockk()
         removeEpisodeUseCase = mockk()
         skipToNextEpisodeUseCase = mockk()
+        reorderQueueUseCase = mockk(relaxed = true)
         
         every { repository.listeningQueue } returns queueFlow
         every { playerManager.playbackSpeed } returns playbackSpeedFlow
@@ -56,7 +57,13 @@ class QueueViewModelTimeTest {
         every { playerManager.currentPosition } returns currentPositionFlow
         every { playerManager.duration } returns durationFlow
         
-        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
+        viewModel = QueueViewModel(
+            repository, 
+            playerManager, 
+            removeEpisodeUseCase, 
+            skipToNextEpisodeUseCase, 
+            reorderQueueUseCase
+        )
     }
 
     @After

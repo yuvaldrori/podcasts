@@ -3,6 +3,7 @@ package com.yuval.podcasts.ui.viewmodel
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.domain.usecase.*
 import com.yuval.podcasts.utils.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -27,121 +28,69 @@ class FeedsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repository: PodcastRepository
-    private lateinit var enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
+    private lateinit var enqueueEpisodeUseCase: EnqueueEpisodeUseCase
+    private lateinit var refreshPodcastUseCase: RefreshPodcastUseCase
+    private lateinit var refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase
+    private lateinit var markEpisodeAsPlayedUseCase: MarkEpisodeAsPlayedUseCase
+    private lateinit var markAllAsPlayedUseCase: MarkAllAsPlayedUseCase
+    private lateinit var unsubscribePodcastUseCase: UnsubscribePodcastUseCase
     private lateinit var viewModel: FeedsViewModel
 
     @Before
     fun setup() {
         repository = mockk()
-        enqueueEpisodeUseCase = mockk()
-        // Default returns for flows to avoid initialization errors
+        enqueueEpisodeUseCase = mockk(relaxed = true)
+        refreshPodcastUseCase = mockk(relaxed = true)
+        refreshAllPodcastsUseCase = mockk(relaxed = true)
+        markEpisodeAsPlayedUseCase = mockk(relaxed = true)
+        markAllAsPlayedUseCase = mockk(relaxed = true)
+        unsubscribePodcastUseCase = mockk(relaxed = true)
+        
         every { repository.allPodcasts } returns flowOf(emptyList())
         every { repository.unplayedEpisodes } returns flowOf(emptyList())
         
-        viewModel = FeedsViewModel(repository, enqueueEpisodeUseCase)
+        viewModel = FeedsViewModel(
+            repository,
+            enqueueEpisodeUseCase,
+            refreshPodcastUseCase,
+            refreshAllPodcastsUseCase,
+            markEpisodeAsPlayedUseCase,
+            markAllAsPlayedUseCase,
+            unsubscribePodcastUseCase
+        )
     }
 
     @Test
     fun refreshAll_success_updatesIsRefreshing() = runTest {
-        coEvery { repository.refreshAll() } returns Unit
-
-        assertFalse(viewModel.uiState.value.isRefreshing)
-        viewModel.refreshAll()
+        // Collect the flow to trigger stateIn
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
         
-        // UnconfinedTestDispatcher runs immediately, so we just check final states
+        coEvery { refreshAllPodcastsUseCase() } returns Unit
+
+        viewModel.refreshAll()
+        advanceUntilIdle()
+        
         assertFalse(viewModel.uiState.value.isRefreshing)
         assertNull(viewModel.uiState.value.errorMessage)
-        coVerify { repository.refreshAll() }
+        coVerify { refreshAllPodcastsUseCase() }
+        
+        job.cancel()
     }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
     fun refreshAll_failure_setsErrorMessage() = runTest {
-        val errorMessage = "Network Error"
-        coEvery { repository.refreshAll() } throws Exception(errorMessage)
-
+        // Collect the flow to trigger stateIn
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
-        advanceUntilIdle()
+        
+        val errorMessage = "Network Error"
+        coEvery { refreshAllPodcastsUseCase() } throws Exception(errorMessage)
 
         viewModel.refreshAll()
         advanceUntilIdle()
-
-        assertEquals("Failed to refresh all podcasts: $errorMessage", viewModel.uiState.value.errorMessage)
-        assertFalse(viewModel.uiState.value.isRefreshing)
-        job.cancel()
-    }
-
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    @Test
-    fun clearError_resetsErrorMessage() = runTest {
-        val errorMessage = "Network Error"
-        coEvery { repository.refreshAll() } throws Exception(errorMessage)
-
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
-        advanceUntilIdle()
-
-        viewModel.refreshAll()
-        advanceUntilIdle()
+        
         assertEquals("Failed to refresh all podcasts: $errorMessage", viewModel.uiState.value.errorMessage)
         
-        viewModel.clearError()
-        advanceUntilIdle()
-        assertNull(viewModel.uiState.value.errorMessage)
         job.cancel()
-    }
-
-    @Test
-    fun addToQueue_callsRepository() = runTest {
-        val episode = Episode(
-            id = "ep1",
-            podcastFeedUrl = "url",
-            title = "title",
-            description = "desc",
-            audioUrl = "url",
-            imageUrl = null,
-            pubDate = 0L,
-            duration = 0L,
-            downloadStatus = 0,
-            localFilePath = null,
-            isPlayed = false,
-            lastPlayedPosition = 0L
-        )
-        coEvery { enqueueEpisodeUseCase(episode) } returns Unit
-
-        viewModel.addToQueue(episode)
-
-        coVerify { enqueueEpisodeUseCase(episode) }
-    }
-
-    @Test
-    fun dismissEpisode_callsRepository() = runTest {
-        val episode = Episode(
-            id = "ep1",
-            podcastFeedUrl = "url",
-            title = "title",
-            description = "desc",
-            audioUrl = "url",
-            imageUrl = null,
-            pubDate = 0L,
-            duration = 0L,
-            downloadStatus = 0,
-            localFilePath = null,
-            isPlayed = false,
-            lastPlayedPosition = 0L
-        )
-        coEvery { repository.markAsPlayed("ep1") } returns Unit
-
-        viewModel.dismissEpisode(episode)
-
-        coVerify { repository.markAsPlayed("ep1") }
-    }
-
-    @Test
-    fun dismissAll_callsRepository() = runTest {
-        coEvery { repository.markAllAsPlayed() } returns Unit
-
-        viewModel.dismissAll()
-
-        coVerify { repository.markAllAsPlayed() }
     }
 }

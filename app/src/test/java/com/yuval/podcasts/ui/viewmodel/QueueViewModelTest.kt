@@ -8,8 +8,7 @@ import com.yuval.podcasts.data.db.entity.Podcast
 import kotlinx.coroutines.test.advanceUntilIdle
 import com.yuval.podcasts.media.PlayerManager
 import com.yuval.podcasts.utils.MainDispatcherRule
-import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
-import com.yuval.podcasts.domain.usecase.SkipToNextEpisodeUseCase
+import com.yuval.podcasts.domain.usecase.*
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -32,7 +31,14 @@ class QueueViewModelTest {
     private lateinit var playerManager: PlayerManager
     private lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
     private lateinit var skipToNextEpisodeUseCase: SkipToNextEpisodeUseCase
+    private lateinit var reorderQueueUseCase: ReorderQueueUseCase
     private lateinit var viewModel: QueueViewModel
+
+    private val listeningQueueFlow = MutableStateFlow<List<EpisodeWithPodcast>>(emptyList())
+    private val currentMediaIdFlow = MutableStateFlow<String?>(null)
+    private val playbackSpeedFlow = MutableStateFlow(1f)
+    private val currentPositionFlow = MutableStateFlow(0L)
+    private val durationFlow = MutableStateFlow(0L)
 
     @Before
     fun setup() {
@@ -40,109 +46,81 @@ class QueueViewModelTest {
         playerManager = mockk()
         removeEpisodeUseCase = mockk()
         skipToNextEpisodeUseCase = mockk()
+        reorderQueueUseCase = mockk(relaxed = true)
 
-        every { repository.listeningQueue } returns flowOf(emptyList())
-        every { playerManager.currentMediaId } returns MutableStateFlow(null)
-        every { playerManager.playbackSpeed } returns MutableStateFlow(1f)
-        every { playerManager.currentPosition } returns MutableStateFlow(0L)
-        every { playerManager.duration } returns MutableStateFlow(0L)
+        every { repository.listeningQueue } returns listeningQueueFlow
+        every { playerManager.currentMediaId } returns currentMediaIdFlow
+        every { playerManager.playbackSpeed } returns playbackSpeedFlow
+        every { playerManager.currentPosition } returns currentPositionFlow
+        every { playerManager.duration } returns durationFlow
 
-        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
+        viewModel = QueueViewModel(
+            repository, 
+            playerManager, 
+            removeEpisodeUseCase, 
+            skipToNextEpisodeUseCase, 
+            reorderQueueUseCase
+        )
     }
 
     @Test
-    fun reorderQueue_callsRepository() = runTest {
+    fun reorderQueue_callsUseCase() = runTest {
         val newOrder = listOf("ep2", "ep1")
-        coEvery { repository.reorderQueue(newOrder) } returns Unit
+        coEvery { reorderQueueUseCase(newOrder) } returns Unit
         
         viewModel.reorderQueue(newOrder)
 
-        coVerify { repository.reorderQueue(newOrder) }
+        coVerify { reorderQueueUseCase(newOrder) }
     }
 
-
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
     fun removeFromQueue_nonPlayingEpisode_onlyCallsRepository() = runTest {
-        val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
-        coEvery { removeEpisodeUseCase("ep2", false) } returns Unit
-        every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
-        
-        every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
-        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
-        
-        val job2 = backgroundScope.launch { viewModel.uiState.collect {} }
-        advanceUntilIdle()
+        val episodeId = "ep1"
+        currentMediaIdFlow.value = "other_ep"
+        coEvery { removeEpisodeUseCase(episodeId, false) } returns Unit
 
-        viewModel.removeFromQueue("ep2")
-        advanceUntilIdle()
+        viewModel.removeFromQueue(episodeId)
 
-        coVerify { removeEpisodeUseCase("ep2", false) }
-        verify(exactly = 0) { skipToNextEpisodeUseCase() }
-        job2.cancel()
+        coVerify { removeEpisodeUseCase(episodeId, false) }
+        coVerify(exactly = 0) { skipToNextEpisodeUseCase() }
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
     fun removeFromQueue_playingEpisode_callsSkipToNext() = runTest {
-        val podcast = Podcast("feed", "Title", "Desc", "Img", "Web")
-        val ep1 = Episode("ep1", "feed", "E1", "D", "audio1", null, 0L, 0L, 0, null, false, 0L)
-        val ep2 = Episode("ep2", "feed", "E2", "D", "audio2", null, 0L, 0L, 0, null, false, 0L)
-        
-        coEvery { removeEpisodeUseCase("ep1", false) } returns Unit
-        every { skipToNextEpisodeUseCase() } returns Unit
-        every { repository.getEpisodeByIdFlow("ep1") } returns flowOf(ep1)
-        every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
-        
-        val queueList = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
-        every { repository.listeningQueue } returns flowOf(queueList)
+        val episodeId = "ep1"
+        currentMediaIdFlow.value = episodeId
+        coEvery { removeEpisodeUseCase(episodeId, false) } returns Unit
+        coEvery { skipToNextEpisodeUseCase() } returns Unit
 
-        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
-        
-        val job2 = backgroundScope.launch { viewModel.uiState.collect {} }
-        advanceUntilIdle()
+        viewModel.removeFromQueue(episodeId)
 
-        viewModel.removeFromQueue("ep1")
-        advanceUntilIdle()
-
-        coVerify { removeEpisodeUseCase("ep1", false) }
-        verify { skipToNextEpisodeUseCase() }
-        job2.cancel()
+        coVerify { removeEpisodeUseCase(episodeId, false) }
+        coVerify { skipToNextEpisodeUseCase() }
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
     fun queueTimeRemaining_calculatedCorrectlyWithPlaybackSpeed() = runTest {
-        val podcast = Podcast("feed", "Title", "Desc", "Img", "Web")
-        // Three episodes, 3 hours each (10,800 seconds each). 
-        // Note: one episode has been partially played (1 hour in).
-        val ep1 = Episode("ep1", "feed", "E1", "D", "audio", null, 0L, 10800L, 0, null, false, 3600000L) // 2 hours remaining
-        val ep2 = Episode("ep2", "feed", "E2", "D", "audio", null, 0L, 10800L, 0, null, false, 0L) // 3 hours remaining
-        val ep3 = Episode("ep3", "feed", "E3", "D", "audio", null, 0L, 10800L, 0, null, false, 0L) // 3 hours remaining
+        val podcast = Podcast("p1", "T", "D", "I", "W")
+        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, 0L, 3600L, 0, null, false, 0L) // 1 hour
+        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, 0L, 7200L, 0, null, false, 0L) // 2 hours
         
-        val queueList = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast), EpisodeWithPodcast(ep3, podcast))
+        val queue = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
+        listeningQueueFlow.value = queue
         
-        every { repository.listeningQueue } returns flowOf(queueList)
-        
-        // Setup player manager to have 2X speed
-        val playbackSpeedFlow = MutableStateFlow(2f)
-        every { playerManager.playbackSpeed } returns playbackSpeedFlow
-
-        viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
-        
+        // Use a job to collect uiState
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
-        advanceUntilIdle()
 
-        // Total remaining time: 8 hours. At 2x speed, that's 4 hours.
-        // 4 hours in milliseconds = 14,400,000 ms
-        assertEquals(14400000L, viewModel.uiState.value.queueTimeRemaining)
-        
-        // Change speed to 1x
+        // Test 1x speed
         playbackSpeedFlow.value = 1f
         advanceUntilIdle()
-        
-        // 8 hours in milliseconds = 28,800,000 ms
-        assertEquals(28800000L, viewModel.uiState.value.queueTimeRemaining)
+        // (3600 + 7200) * 1000 = 10,800,000 ms = 3 hours
+        assertEquals(10800000L, viewModel.uiState.value.queueTimeRemaining)
+
+        // Test 2x speed
+        playbackSpeedFlow.value = 2f
+        advanceUntilIdle()
+        // 10,800,000 / 2 = 5,400,000 ms = 1.5 hours
+        assertEquals(5400000L, viewModel.uiState.value.queueTimeRemaining)
         
         job.cancel()
     }
