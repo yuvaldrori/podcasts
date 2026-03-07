@@ -58,14 +58,14 @@ fun MainScreen(
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
                     bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                        val selected = currentDestination?.hierarchy?.any { it.route?.contains(screen.route::class.simpleName ?: "") == true } == true
                         NavigationBarItem(
                             icon = { Icon(screen.icon, contentDescription = null) },
                             label = { Text(screen.title) },
                             selected = selected,
                             onClick = {
-                                if (currentDestination?.hierarchy?.any { it.route == screen.route } == true) {
-                                    navController.popBackStack(screen.route, false)
+                                if (selected) {
+                                    navController.popBackStack(screen.route, inclusive = false, saveState = true)
                                 } else {
                                     navController.navigate(screen.route) {
                                         popUpTo(navController.graph.findStartDestination().id) {
@@ -129,7 +129,7 @@ fun MainScreen(
                 val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
                 
                 SubscriptionsScreen(
-                    podcasts = feedsUiState.podcasts,
+                    podcasts = (feedsUiState as? FeedsUiState.Success)?.podcasts ?: emptyList(),
                     onPodcastClick = { feedUrl ->
                         navController.navigate(PodcastDetailScreenRoute(feedUrl))
                     },
