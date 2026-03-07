@@ -17,14 +17,12 @@ object PlayerModule {
 
     @Provides
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-    @Singleton
     fun provideExoPlayer(@ApplicationContext context: Context): ExoPlayer {
         return ExoPlayer.Builder(context).build()
     }
 
     @Provides
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-    @Singleton
     fun provideCastPlayer(@ApplicationContext context: Context): CastPlayer {
         // CastContext is initialized via the OptionsProvider in AndroidManifest.xml
         return CastPlayer(CastContext.getSharedInstance(context))

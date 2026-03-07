@@ -22,6 +22,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.io.File
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
+import com.yuval.podcasts.data.repository.SettingsRepository
 import javax.inject.Inject
 
 import androidx.media3.session.SessionCommand
@@ -45,6 +46,7 @@ class PlaybackService : MediaSessionService() {
     @Inject lateinit var episodeDao: EpisodeDao
     @Inject lateinit var queueDao: QueueDao
     @Inject lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     private var mediaSession: MediaSession? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -100,6 +102,9 @@ class PlaybackService : MediaSessionService() {
             
         exoPlayer.setAudioAttributes(audioAttributes, true)
         exoPlayer.setHandleAudioBecomingNoisy(true)
+        
+        val defaultSpeed = settingsRepository.getPlaybackSpeed()
+        exoPlayer.setPlaybackParameters(androidx.media3.common.PlaybackParameters(defaultSpeed))
         
         currentPlayer = exoPlayer
             
