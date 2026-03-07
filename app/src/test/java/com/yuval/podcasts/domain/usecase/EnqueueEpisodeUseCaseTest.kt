@@ -38,8 +38,8 @@ class EnqueueEpisodeUseCaseTest {
         // The user manually reordered them, so we must NOT change their relative order.
         // Queue currently: [UserItem1 (Pos 0), UserItem2 (Pos 1)]
         val existingQueueEpisodes = listOf(
-            Episode("user1_newest", "feed1", "T1", "D1", "url", null, 5000L, 0L, 0, null, false, 0L),
-            Episode("user2_oldest", "feed1", "T2", "D2", "url", null, 1000L, 0L, 0, null, false, 0L) 
+            Episode("user1_newest", "feed1", "T1", "D1", "url", null, null, 5000L, 0L, 0, null, false, 0L),
+            Episode("user2_oldest", "feed1", "T2", "D2", "url", null, null, 1000L, 0L, 0, null, false, 0L) 
         )
         
         // Notice user1_newest (pubDate 5000) is BEFORE user2_oldest (pubDate 1000). The user explicitly put it there.
@@ -54,7 +54,7 @@ class EnqueueEpisodeUseCaseTest {
         // So the new item should be inserted at index 0.
         // The final order should be: [newEp, user1_newest, user2_oldest]
         
-        val newEpisode = Episode("newEp_middle", "feed1", "TNew", "DNew", "url", null, 3000L, 0L, 0, null, false, 0L)
+        val newEpisode = Episode("newEp_middle", "feed1", "TNew", "DNew", "url", null, null, 3000L, 0L, 0, null, false, 0L)
 
         val updatedQueueSlot = slot<List<QueueState>>()
         coEvery { queueDao.updateQueue(capture(updatedQueueSlot)) } returns Unit
@@ -78,13 +78,13 @@ class EnqueueEpisodeUseCaseTest {
     @Test
     fun enqueue_insertsAtEnd_ifAllItemsAreOlder() = runTest {
         val existingQueueEpisodes = listOf(
-            Episode("user1_oldest", "feed1", "T1", "D1", "url", null, 1000L, 0L, 0, null, false, 0L)
+            Episode("user1_oldest", "feed1", "T1", "D1", "url", null, null, 1000L, 0L, 0, null, false, 0L)
         )
         coEvery { queueDao.getQueueEpisodes() } returns flowOf(existingQueueEpisodes)
 
         // New item is newer (2000L) than existing item (1000L).
         // Since older comes before newer, the new item goes at the end.
-        val newEpisode = Episode("newEp_newer", "feed1", "TNew", "DNew", "url", null, 2000L, 0L, 0, null, false, 0L)
+        val newEpisode = Episode("newEp_newer", "feed1", "TNew", "DNew", "url", null, null, 2000L, 0L, 0, null, false, 0L)
 
         val updatedQueueSlot = slot<List<QueueState>>()
         coEvery { queueDao.updateQueue(capture(updatedQueueSlot)) } returns Unit

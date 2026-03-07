@@ -87,6 +87,7 @@ class QueueViewModelTimeTest {
             description = "desc", 
             audioUrl = "url", 
             imageUrl = null, 
+            episodeWebLink = null, 
             pubDate = 0L, 
             duration = 4800L, 
             downloadStatus = 0, 

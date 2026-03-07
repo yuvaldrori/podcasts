@@ -101,8 +101,8 @@ class QueueViewModelTest {
     @Test
     fun queueTimeRemaining_calculatedCorrectlyWithPlaybackSpeed() = runTest {
         val podcast = Podcast("p1", "T", "D", "I", "W")
-        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, 0L, 3600L, 0, null, false, 0L) // 1 hour
-        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, 0L, 7200L, 0, null, false, 0L) // 2 hours
+        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 3600L, 0, null, false, 0L, null, 0L) // 1 hour
+        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 7200L, 0, null, false, 0L, null, 0L) // 2 hours
         
         val queue = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
         listeningQueueFlow.value = queue

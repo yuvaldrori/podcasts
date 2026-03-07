@@ -85,7 +85,7 @@ class PodcastRepositoryTest {
         coEvery { podcastApi.fetchRss(feedUrl) } returns mockInputStream
 
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
-        val episodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L))
+        val episodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L))
         coEvery { rssParser.parse(any(), feedUrl) } returns Pair(podcast, episodes)
 
         repository.fetchAndStorePodcast(feedUrl)
@@ -102,7 +102,7 @@ class PodcastRepositoryTest {
 
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
         // The network parser returns a NetworkEpisode, which has NO isPlayed property
-        val networkEpisodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L))
+        val networkEpisodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L))
         coEvery { rssParser.parse(any(), feedUrl) } returns Pair(podcast, networkEpisodes)
 
         repository.fetchAndStorePodcast(feedUrl)
@@ -127,7 +127,7 @@ class PodcastRepositoryTest {
         var threadName = ""
         
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
-        val episodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, 0L, 0L))
+        val episodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L))
         
         coEvery { rssParser.parse(any(), feedUrl) } coAnswers {
             usedDispatcher = currentCoroutineContext()[ContinuationInterceptor]
@@ -163,8 +163,8 @@ class PodcastRepositoryTest {
     @Test
     fun unsubscribePodcast_deletesAllData() = runTest {
         val feedUrl = "http://test.com/feed"
-        val ep1 = Episode("ep1", feedUrl, "E1", "D", "A", null, 0L, 0L, 0, null, false, 0L)
-        val ep2 = Episode("ep2", feedUrl, "E2", "D", "A", null, 0L, 0L, 0, null, false, 0L)
+        val ep1 = Episode("ep1", feedUrl, "E1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L)
+        val ep2 = Episode("ep2", feedUrl, "E2", "D", "A", null, null, 0L, 0L, 0, null, false, 0L)
         
         coEvery { episodeDao.getEpisodesForPodcastSync(feedUrl) } returns listOf(ep1, ep2)
         coEvery { queueDao.removeFromQueue(any()) } returns Unit

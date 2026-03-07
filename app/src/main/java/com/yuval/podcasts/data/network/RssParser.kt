@@ -68,6 +68,7 @@ class RssParser {
         var id = ""
         var title = ""
         var description = ""
+        var episodeWebLink: String? = null
         var audioUrl = ""
         var imageUrl: String? = null
         var pubDate = 0L
@@ -79,6 +80,7 @@ class RssParser {
             when (parser.name) {
                 "title" -> title = readText(parser)
                 "description" -> description = readText(parser)
+                "link" -> episodeWebLink = readText(parser)
                 "guid" -> id = readText(parser)
                 "itunes:image" -> {
                     val href = parser.getAttributeValue(null, "href")
@@ -114,6 +116,7 @@ class RssParser {
             description = description,
             audioUrl = audioUrl,
             imageUrl = imageUrl,
+            episodeWebLink = episodeWebLink,
             pubDate = pubDate,
             duration = duration
         )

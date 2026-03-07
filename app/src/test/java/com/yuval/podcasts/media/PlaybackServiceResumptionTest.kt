@@ -30,8 +30,8 @@ class PlaybackServiceResumptionTest {
         val queueDao = mockk<QueueDao>()
         
         val episodes = listOf(
-            Episode("ep1", "feed", "Title 1", "Desc 1", "http://audio1.mp3", null, 0L, 0L, 0, null, false, 5000L),
-            Episode("ep2", "feed", "Title 2", "Desc 2", "http://audio2.mp3", null, 0L, 0L, 0, null, false, 0L)
+            Episode("ep1", "feed", "Title 1", "Desc 1", "http://audio1.mp3", null, null, 0L, 0L, 0, null, false, 5000L),
+            Episode("ep2", "feed", "Title 2", "Desc 2", "http://audio2.mp3", null, null, 0L, 0L, 0, null, false, 0L)
         )
         
         // This simulates the behavior we want to build inside our PlaybackService Callback

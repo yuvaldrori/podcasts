@@ -20,6 +20,8 @@ data class Episode(
     val description: String,
     val audioUrl: String,
     val imageUrl: String? = null,
+    @ColumnInfo(defaultValue = "NULL")
+    val episodeWebLink: String? = null,
     val pubDate: Long,
     val duration: Long,
     @ColumnInfo(defaultValue = "0")

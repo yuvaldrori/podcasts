@@ -32,7 +32,7 @@ class PlaybackResumptionIntegrationTest {
         
         // Setup an episode with a potentially problematic URI structure or missing metadata that would crash the standard parser
         val episodes = listOf(
-            Episode("ep1", "feed", "Title 1", "Desc 1", "http://audio1.mp3", null, 0L, 0L, 0, null, false, 5000L)
+            Episode("ep1", "feed", "Title 1", "Desc 1", "http://audio1.mp3", null, null, 0L, 0L, 0, null, false, 5000L)
         )
         coEvery { queueDao.getQueueEpisodes() } returns flowOf(episodes)
         
@@ -64,7 +64,7 @@ class PlaybackResumptionIntegrationTest {
         every { Uri.parse(any()) } returns mockUri
         
         val episodes = listOf(
-            Episode("ep1", "feed", "Title 1", "Desc 1", "http://audio1.mp3", "http://image.jpg", 0L, 0L, 0, null, false, 5000L)
+            Episode("ep1", "feed", "Title 1", "Desc 1", "http://audio1.mp3", "http://image.jpg", null, 0L, 0L, 0, null, false, 5000L)
         )
         coEvery { queueDao.getQueueEpisodes() } returns flowOf(episodes)
         

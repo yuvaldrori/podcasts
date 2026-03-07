@@ -130,7 +130,7 @@ class PlayerManagerTest {
 
     @Test
     fun playQueue_whenCurrentItemMatchesAndPlaying_pauses() {
-        val episode = Episode("ep1", "feed", "T1", "D1", "http://audio1.mp3", null, 0L, 0L, 0, null, false, 5000L)
+        val episode = Episode("ep1", "feed", "T1", "D1", "http://audio1.mp3", null, null, 0L, 0L, 0, null, false, 5000L)
         val episodes = listOf(episode)
         
         // Mock current state: ep1 is playing
@@ -152,7 +152,7 @@ class PlayerManagerTest {
 
     @Test
     fun playQueue_whenCurrentItemMatchesAndPaused_plays() {
-        val episode = Episode("ep1", "feed", "T1", "D1", "http://audio1.mp3", null, 0L, 0L, 0, null, false, 5000L)
+        val episode = Episode("ep1", "feed", "T1", "D1", "http://audio1.mp3", null, null, 0L, 0L, 0, null, false, 5000L)
         val episodes = listOf(episode)
         
         // Mock current state: ep1 is paused

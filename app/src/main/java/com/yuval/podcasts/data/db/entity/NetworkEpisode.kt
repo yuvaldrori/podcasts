@@ -14,6 +14,7 @@ data class NetworkEpisode(
     val description: String,
     val audioUrl: String,
     val imageUrl: String?,
+    val episodeWebLink: String?,
     val pubDate: Long,
     val duration: Long
 )
