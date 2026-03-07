@@ -121,7 +121,8 @@ fun MainScreen(
                     onRefreshAll = { feedsViewModel.refreshAll() },
                     onDismissAll = { feedsViewModel.dismissAll() },
                     onDismissEpisode = { episode -> feedsViewModel.dismissEpisode(episode) },
-                    onAddToQueue = { episode -> feedsViewModel.addToQueue(episode) }
+                    onAddToQueue = { episode -> feedsViewModel.addToQueue(episode) },
+                    onClearError = { feedsViewModel.clearError() }
                 ) 
             }
             composable<SubscriptionsScreenRoute> {

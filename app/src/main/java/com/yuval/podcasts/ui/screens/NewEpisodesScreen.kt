@@ -34,11 +34,22 @@ fun NewEpisodesScreen(
     onRefreshAll: () -> Unit,
     onDismissAll: () -> Unit,
     onDismissEpisode: (Episode) -> Unit,
-    onAddToQueue: (Episode) -> Unit
+    onAddToQueue: (Episode) -> Unit,
+    onClearError: () -> Unit = {}
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val errorMessage = (uiState as? FeedsUiState.Success)?.errorMessage
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage)
+            onClearError()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.new_episodes_title)) },
