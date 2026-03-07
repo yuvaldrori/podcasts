@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import java.net.URLDecoder
+import androidx.navigation.toRoute
+import com.yuval.podcasts.ui.navigation.PodcastDetailScreenRoute
 
 @HiltViewModel
 class PodcastDetailViewModel @Inject constructor(
@@ -23,7 +24,7 @@ class PodcastDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val feedUrl = savedStateHandle.get<String>("feedUrl")?.let { URLDecoder.decode(it, "UTF-8") }
+    private val feedUrl = savedStateHandle.toRoute<PodcastDetailScreenRoute>().feedUrl
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val episodes: StateFlow<List<Episode>> = flowOf(feedUrl)

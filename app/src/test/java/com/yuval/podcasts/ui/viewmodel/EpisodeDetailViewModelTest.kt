@@ -18,7 +18,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class EpisodeDetailViewModelTest {
 
     @get:Rule
@@ -44,8 +47,12 @@ class EpisodeDetailViewModelTest {
         every { repository.getEpisodeWithPodcastFlow("ep1") } returns flowOf(episodeWithPodcast)
         every { repository.listeningQueue } returns flowOf(emptyList())
         
-        savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
-        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
+        val savedStateHandle = androidx.lifecycle.SavedStateHandle()
+        // Mock toRoute behavior manually because it relies on Bundle and Android internals which break in pure local unit tests without Robolectric
+        // A hack for unit tests is needed since toRoute() is an inline function that tries to read from a Bundle.
+        // We will just change EpisodeDetailViewModel to optionally take the ID directly for testing, or we just use Robolectric.
+        // Actually, let's just make EpisodeDetailViewModelTest use Robolectric.
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
         
         // Start collection to trigger stateIn
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
@@ -62,8 +69,12 @@ class EpisodeDetailViewModelTest {
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(null)
         every { repository.listeningQueue } returns flowOf(emptyList())
 
-        savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
-        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
+        val savedStateHandle = androidx.lifecycle.SavedStateHandle()
+        // Mock toRoute behavior manually because it relies on Bundle and Android internals which break in pure local unit tests without Robolectric
+        // A hack for unit tests is needed since toRoute() is an inline function that tries to read from a Bundle.
+        // We will just change EpisodeDetailViewModel to optionally take the ID directly for testing, or we just use Robolectric.
+        // Actually, let's just make EpisodeDetailViewModelTest use Robolectric.
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
 
         viewModel.addToQueue(episode)
 
@@ -79,8 +90,12 @@ class EpisodeDetailViewModelTest {
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(episodeWithPodcast)
         every { repository.listeningQueue } returns flowOf(listOf(episodeWithPodcast))
 
-        savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
-        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
+        val savedStateHandle = androidx.lifecycle.SavedStateHandle()
+        // Mock toRoute behavior manually because it relies on Bundle and Android internals which break in pure local unit tests without Robolectric
+        // A hack for unit tests is needed since toRoute() is an inline function that tries to read from a Bundle.
+        // We will just change EpisodeDetailViewModel to optionally take the ID directly for testing, or we just use Robolectric.
+        // Actually, let's just make EpisodeDetailViewModelTest use Robolectric.
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
 
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
@@ -97,8 +112,12 @@ class EpisodeDetailViewModelTest {
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(null)
         every { repository.listeningQueue } returns flowOf(listOf(EpisodeWithPodcast(episodeInQueue, podcast)))
 
-        savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
-        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
+        val savedStateHandle = androidx.lifecycle.SavedStateHandle()
+        // Mock toRoute behavior manually because it relies on Bundle and Android internals which break in pure local unit tests without Robolectric
+        // A hack for unit tests is needed since toRoute() is an inline function that tries to read from a Bundle.
+        // We will just change EpisodeDetailViewModel to optionally take the ID directly for testing, or we just use Robolectric.
+        // Actually, let's just make EpisodeDetailViewModelTest use Robolectric.
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
 
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()

@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.navigation.toRoute
+import com.yuval.podcasts.ui.navigation.EpisodeDetailScreenRoute
 
 data class EpisodeDetailUiState(
     val episodeWithPodcast: EpisodeWithPodcast? = null,
@@ -30,7 +32,7 @@ class EpisodeDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val episodeId: String? = savedStateHandle.get<String>("episodeId")
+    private val episodeId = savedStateHandle.toRoute<EpisodeDetailScreenRoute>().episodeId
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<EpisodeDetailUiState> = combine(

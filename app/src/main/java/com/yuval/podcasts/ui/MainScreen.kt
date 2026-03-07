@@ -19,10 +19,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.yuval.podcasts.ui.components.UnifiedPlayer
-import com.yuval.podcasts.ui.navigation.Screen
-import com.yuval.podcasts.ui.navigation.bottomNavItems
+import com.yuval.podcasts.ui.navigation.*
 import com.yuval.podcasts.ui.screens.NewEpisodesScreen
 import com.yuval.podcasts.ui.screens.PodcastDetailScreen
 import com.yuval.podcasts.ui.screens.EpisodeDetailScreen
@@ -86,14 +84,14 @@ fun MainScreen(
     ) { innerPadding ->
         NavHost(
             navController = navController, 
-            startDestination = Screen.Queue.route,
+            startDestination = QueueScreenRoute,
             modifier = Modifier.padding(innerPadding),
             enterTransition = { androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(0)) },
             exitTransition = { androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(0)) },
             popEnterTransition = { androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(0)) },
             popExitTransition = { androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(0)) }
         ) {
-            composable(Screen.Queue.route) { 
+            composable<QueueScreenRoute> { 
                 val queueViewModel: QueueViewModel = hiltViewModel()
                 val queueUiState by queueViewModel.uiState.collectAsStateWithLifecycle()
                 
@@ -102,7 +100,7 @@ fun MainScreen(
                     isPlaying = uiState.isPlaying,
                     currentMediaId = uiState.currentEpisode?.id,
                     onEpisodeClick = { episodeId -> 
-                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                        navController.navigate(EpisodeDetailScreenRoute(episodeId))
                     },
                     onRemoveFromQueue = { episodeId -> queueViewModel.removeFromQueue(episodeId) },
                     onReorderQueue = { newOrder -> queueViewModel.reorderQueue(newOrder) },
@@ -111,14 +109,14 @@ fun MainScreen(
                     }
                 ) 
             }
-            composable(Screen.NewEpisodes.route) { 
+            composable<NewEpisodesScreenRoute> { 
                 val feedsViewModel: FeedsViewModel = hiltViewModel()
                 val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
                 
                 NewEpisodesScreen(
                     uiState = feedsUiState,
                     onEpisodeClick = { episodeId -> 
-                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                        navController.navigate(EpisodeDetailScreenRoute(episodeId))
                     },
                     onRefreshAll = { feedsViewModel.refreshAll() },
                     onDismissAll = { feedsViewModel.dismissAll() },
@@ -126,31 +124,31 @@ fun MainScreen(
                     onAddToQueue = { episode -> feedsViewModel.addToQueue(episode) }
                 ) 
             }
-            composable(Screen.Subscriptions.route) {
+            composable<SubscriptionsScreenRoute> {
                 val feedsViewModel: FeedsViewModel = hiltViewModel()
                 val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
                 
                 SubscriptionsScreen(
                     podcasts = feedsUiState.podcasts,
                     onPodcastClick = { feedUrl ->
-                        navController.navigate(Screen.PodcastDetail.createRoute(feedUrl))
+                        navController.navigate(PodcastDetailScreenRoute(feedUrl))
                     },
                     onUnsubscribe = { feedUrl -> feedsViewModel.unsubscribePodcast(feedUrl) }
                 )
             }
-            composable(Screen.History.route) {
+            composable<HistoryScreenRoute> {
                 val historyViewModel: HistoryViewModel = hiltViewModel()
                 val history by historyViewModel.history.collectAsStateWithLifecycle()
                 
                 HistoryScreen(
                     history = history,
                     onNavigateToEpisode = { episodeId ->
-                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                        navController.navigate(EpisodeDetailScreenRoute(episodeId))
                     },
                     onEnqueueEpisode = { ep -> historyViewModel.enqueueEpisode(ep) }
                 )
             }
-            composable(Screen.Settings.route) {
+            composable<SettingsScreenRoute> {
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
                 val importWorkInfo by settingsViewModel.importWorkInfo.collectAsStateWithLifecycle()
                 SettingsScreen(
@@ -160,25 +158,19 @@ fun MainScreen(
                     onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) }
                 )
             }
-            composable(
-                route = Screen.PodcastDetail.route,
-                arguments = listOf(navArgument("feedUrl") { type = NavType.StringType })
-            ) {
+            composable<PodcastDetailScreenRoute> {
                 val podcastDetailViewModel: PodcastDetailViewModel = hiltViewModel()
                 val episodes by podcastDetailViewModel.episodes.collectAsStateWithLifecycle()
                 PodcastDetailScreen(
                     episodes = episodes,
                     onBack = { navController.popBackStack() },
                     onEpisodeClick = { episodeId ->
-                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                        navController.navigate(EpisodeDetailScreenRoute(episodeId))
                     },
                     onAddToQueue = { episode -> podcastDetailViewModel.addToQueue(episode) }
                 )
             }
-            composable(
-                route = Screen.EpisodeDetail.route,
-                arguments = listOf(navArgument("episodeId") { type = NavType.StringType })
-            ) {
+            composable<EpisodeDetailScreenRoute> {
                 val episodeDetailViewModel: EpisodeDetailViewModel = hiltViewModel()
                 val episodeUiState by episodeDetailViewModel.uiState.collectAsStateWithLifecycle()
                 EpisodeDetailScreen(
