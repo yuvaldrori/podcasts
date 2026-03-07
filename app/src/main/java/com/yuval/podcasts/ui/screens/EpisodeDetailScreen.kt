@@ -103,20 +103,17 @@ fun EpisodeDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (!isInQueue && !data.episode.isPlayed) {
-                        Button(
+                        FilledIconButton(
                             onClick = { 
                                 viewModel.addToQueue(data.episode)
-                                // Not calling onBack() immediately here lets the user see it added
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Add to Queue")
+                            Icon(Icons.Default.Add, contentDescription = "Add to Queue")
                         }
                     }
                     
-                    OutlinedButton(
+                    OutlinedIconButton(
                         onClick = {
                             val shareIntent = Intent.createChooser(Intent().apply {
                                 action = Intent.ACTION_SEND
@@ -128,9 +125,7 @@ fun EpisodeDetailScreen(
                         },
                         modifier = Modifier.weight(if (!isInQueue && !data.episode.isPlayed) 1f else 0.5f)
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Share")
+                        Icon(Icons.Default.Share, contentDescription = "Share")
                     }
                 }
 
