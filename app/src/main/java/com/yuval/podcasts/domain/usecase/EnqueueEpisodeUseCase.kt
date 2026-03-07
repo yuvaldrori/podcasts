@@ -60,6 +60,7 @@ class EnqueueEpisodeUseCase @Inject constructor(
         val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setConstraints(constraints)
             .setInputData(downloadData)
+            .setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
 
         workManager.enqueueUniqueWork(

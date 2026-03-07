@@ -67,16 +67,13 @@ class FeedsViewModel @Inject constructor(
     }
 
     fun refreshAll() {
+        // Enqueue the worker. The UI will update when the DB updates via flows.
+        _isRefreshing.value = true
+        refreshAllPodcastsUseCase()
+        // We'll reset the refreshing state quickly here, a real app might observe WorkInfo
         viewModelScope.launch {
-            _isRefreshing.value = true
-            try {
-                refreshAllPodcastsUseCase()
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                _errorMessage.value = "Failed to refresh all podcasts: ${e.message}"
-            } finally {
-                _isRefreshing.value = false
-            }
+            kotlinx.coroutines.delay(1000)
+            _isRefreshing.value = false
         }
     }
 

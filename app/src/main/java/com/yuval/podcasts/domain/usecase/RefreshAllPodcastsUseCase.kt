@@ -1,10 +1,29 @@
 package com.yuval.podcasts.domain.usecase
 
-import com.yuval.podcasts.data.repository.PodcastRepository
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.yuval.podcasts.work.SyncWorker
 import javax.inject.Inject
 
 class RefreshAllPodcastsUseCase @Inject constructor(
-    private val repository: PodcastRepository
+    private val workManager: WorkManager
 ) {
-    suspend operator fun invoke() = repository.refreshAll()
+    operator fun invoke() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val syncWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "sync_all_podcasts",
+            ExistingWorkPolicy.REPLACE,
+            syncWorkRequest
+        )
+    }
 }

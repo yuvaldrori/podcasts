@@ -26,6 +26,11 @@ class DownloadWorker @AssistedInject constructor(
     private val episodeDao: EpisodeDao
 ) : CoroutineWorker(appContext, workerParams) {
 
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        val title = inputData.getString(KEY_EPISODE_TITLE) ?: "Episode"
+        return createForegroundInfo(title)
+    }
+
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val episodeId = inputData.getString(KEY_EPISODE_ID) ?: return@withContext Result.failure()
         val audioUrl = inputData.getString(KEY_AUDIO_URL) ?: return@withContext Result.failure()
