@@ -29,15 +29,25 @@ class QueueViewModel @Inject constructor(
 
     val queueTimeRemaining: StateFlow<Long> = combine(
         queue,
-        playerManager.playbackSpeed
-    ) { currentQueue, speed ->
+        playerManager.playbackSpeed,
+        playerManager.currentMediaId,
+        playerManager.currentPosition,
+        playerManager.duration
+    ) { currentQueue, speed, currentId, currentPos, currentDur ->
         val totalMsRemaining = currentQueue.sumOf { item ->
-            // duration is in seconds, lastPlayedPosition is in ms
-            val durationMs = item.episode.duration * 1000L
-            val remainingMs = (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
-            remainingMs
+            if (item.episode.id == currentId && currentDur > 0) {
+                (currentDur - currentPos).coerceAtLeast(0L)
+            } else {
+                // duration is in seconds, lastPlayedPosition is in ms
+                val durationMs = item.episode.duration * 1000L
+                (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
+            }
         }
-        (totalMsRemaining / speed).toLong()
+        if (speed > 0f) {
+            (totalMsRemaining / speed).toLong()
+        } else {
+            0L
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
     fun reorderQueue(newOrderIds: List<String>) {
