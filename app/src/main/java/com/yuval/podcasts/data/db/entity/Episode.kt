@@ -8,12 +8,12 @@ import androidx.room.ColumnInfo
 @Entity(
     tableName = "episodes",
     indices = [
+        Index(value = ["id"], unique = true),
         Index(value = ["isPlayed", "pubDate"]),
         Index(value = ["podcastFeedUrl"])
     ]
 )
 data class Episode(
-    @PrimaryKey
     val id: String, // Guid or url
     val podcastFeedUrl: String, // Foreign key
     val title: String,
@@ -30,5 +30,7 @@ data class Episode(
     @ColumnInfo(defaultValue = "0")
     val lastPlayedPosition: Long = 0L,
     @ColumnInfo(defaultValue = "NULL")
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    @PrimaryKey(autoGenerate = true)
+    val localId: Long = 0
 )

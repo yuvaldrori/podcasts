@@ -44,6 +44,8 @@ class QueueViewModelTest {
         every { repository.listeningQueue } returns flowOf(emptyList())
         every { playerManager.currentMediaId } returns MutableStateFlow(null)
         every { playerManager.playbackSpeed } returns MutableStateFlow(1f)
+        every { playerManager.currentPosition } returns MutableStateFlow(0L)
+        every { playerManager.duration } returns MutableStateFlow(0L)
 
         viewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase, skipToNextEpisodeUseCase)
     }

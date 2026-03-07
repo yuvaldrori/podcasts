@@ -23,9 +23,47 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC LIMIT 150")
     fun getUnplayedEpisodes(): Flow<List<Episode>>
 
-    @Upsert(entity = Episode::class)
-    suspend fun upsertEpisodes(episodes: List<NetworkEpisode>)
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertEpisode(episode: Episode)
+
+    @Query("""
+        UPDATE episodes 
+        SET title = :title, 
+            description = :description, 
+            audioUrl = :audioUrl, 
+            imageUrl = :imageUrl, 
+            pubDate = :pubDate, 
+            duration = :duration 
+        WHERE id = :id
+    """)
+    suspend fun updateEpisodeDetails(id: String, title: String, description: String, audioUrl: String, imageUrl: String?, pubDate: Long, duration: Long)
+
+    @Transaction
+    suspend fun upsertEpisodes(episodes: List<NetworkEpisode>) {
+        episodes.forEach { networkEp ->
+            val existing = getEpisodeById(networkEp.id)
+            if (existing != null) {
+                updateEpisodeDetails(networkEp.id, networkEp.title, networkEp.description, networkEp.audioUrl, networkEp.imageUrl, networkEp.pubDate, networkEp.duration)
+            } else {
+                insertEpisode(Episode(
+                    id = networkEp.id,
+                    podcastFeedUrl = networkEp.podcastFeedUrl,
+                    title = networkEp.title,
+                    description = networkEp.description,
+                    audioUrl = networkEp.audioUrl,
+                    imageUrl = networkEp.imageUrl,
+                    pubDate = networkEp.pubDate,
+                    duration = networkEp.duration,
+                    downloadStatus = 0,
+                    localFilePath = null,
+                    isPlayed = false,
+                    lastPlayedPosition = 0L
+                ))
+            }
+        }
+    }
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun testInsertEpisodes(episodes: List<Episode>)
 
     @Query("SELECT * FROM episodes WHERE podcastFeedUrl = :feedUrl")

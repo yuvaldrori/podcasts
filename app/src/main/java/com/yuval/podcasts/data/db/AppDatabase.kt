@@ -12,11 +12,8 @@ import com.yuval.podcasts.data.db.dao.QueueDao
 
 @Database(
     entities = [Podcast::class, Episode::class, QueueState::class],
-    version = 5,
-    exportSchema = true,
-    autoMigrations = [
-        AutoMigration(from = 4, to = 5)
-    ]
+    version = 6,
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun podcastDao(): PodcastDao
