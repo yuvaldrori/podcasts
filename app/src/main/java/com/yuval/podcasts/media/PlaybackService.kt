@@ -144,7 +144,7 @@ class PlaybackService : MediaSessionService() {
                     val lastId = currentlyPlayingId
                     if (lastId != null) {
                         serviceScope.launch(Dispatchers.IO) {
-                            removeEpisodeUseCase(lastId)
+                            removeEpisodeUseCase(lastId, markAsPlayed = true)
                         }
                     }
                 }
@@ -154,7 +154,7 @@ class PlaybackService : MediaSessionService() {
                 val lastId = currentlyPlayingId
                 if (lastId != null && mediaItem != null && lastId != mediaItem.mediaId && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                     serviceScope.launch(Dispatchers.IO) {
-                         removeEpisodeUseCase(lastId)
+                         removeEpisodeUseCase(lastId, markAsPlayed = true)
                     }
                 }
                 currentlyPlayingId = mediaItem?.mediaId
