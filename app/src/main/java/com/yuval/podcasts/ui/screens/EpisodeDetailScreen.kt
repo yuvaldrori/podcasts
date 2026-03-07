@@ -1,6 +1,7 @@
 package com.yuval.podcasts.ui.screens
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+import android.content.Intent
 import android.text.Html
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -8,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -31,6 +34,8 @@ fun EpisodeDetailScreen(
     viewModel: EpisodeDetailViewModel = hiltViewModel()
 ) {
     val episodeWithPodcast by viewModel.episode.collectAsStateWithLifecycle()
+    val isInQueue by viewModel.isInQueue.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -39,14 +44,6 @@ fun EpisodeDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    val currentEpisode = episodeWithPodcast?.episode
-                    if (currentEpisode != null && !currentEpisode.isPlayed) {
-                        IconButton(onClick = { viewModel.addToQueue(currentEpisode); onBack() }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add to Queue")
-                        }
                     }
                 }
             )
@@ -99,6 +96,44 @@ fun EpisodeDetailScreen(
                     }
                 }
                 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (!isInQueue && !data.episode.isPlayed) {
+                        Button(
+                            onClick = { 
+                                viewModel.addToQueue(data.episode)
+                                // Not calling onBack() immediately here lets the user see it added
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Add to Queue")
+                        }
+                    }
+                    
+                    OutlinedButton(
+                        onClick = {
+                            val shareIntent = Intent.createChooser(Intent().apply {
+                                action = Intent.ACTION_SEND
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TITLE, data.episode.title)
+                                putExtra(Intent.EXTRA_TEXT, "${data.episode.title}\n${data.episode.audioUrl}")
+                            }, "Share Episode")
+                            context.startActivity(shareIntent)
+                        },
+                        modifier = Modifier.weight(if (!isInQueue && !data.episode.isPlayed) 1f else 0.5f)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Share")
+                    }
+                }
+
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                 
                 // Use fromHtml to parse basic HTML tags often found in podcast RSS descriptions

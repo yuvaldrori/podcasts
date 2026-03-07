@@ -42,6 +42,7 @@ class EpisodeDetailViewModelTest {
         val episodeWithPodcast = EpisodeWithPodcast(episode, podcast)
 
         every { repository.getEpisodeWithPodcastFlow("ep1") } returns flowOf(episodeWithPodcast)
+        every { repository.listeningQueue } returns flowOf(emptyList())
         
         savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
         val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
@@ -59,6 +60,7 @@ class EpisodeDetailViewModelTest {
         val episode = Episode("ep1", "url", "title", "desc", "url", null, 0L, 0L, 0, null, false, 0L)
         coEvery { enqueueEpisodeUseCase(episode) } returns Unit
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(null)
+        every { repository.listeningQueue } returns flowOf(emptyList())
 
         savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
         val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
@@ -66,5 +68,42 @@ class EpisodeDetailViewModelTest {
         viewModel.addToQueue(episode)
 
         coVerify { enqueueEpisodeUseCase(episode) }
+    }
+
+    @Test
+    fun isInQueue_isTrueWhenEpisodeIsInQueue() = runTest {
+        val episode = Episode("ep1", "url", "title", "desc", "url", null, 0L, 0L, 0, null, false, 0L)
+        val podcast = Podcast("url", "podTitle", "podDesc", "img", "web")
+        val episodeWithPodcast = EpisodeWithPodcast(episode, podcast)
+
+        every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(episodeWithPodcast)
+        every { repository.listeningQueue } returns flowOf(listOf(episodeWithPodcast))
+
+        savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
+
+        val job = backgroundScope.launch { viewModel.isInQueue.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.isInQueue.value)
+        job.cancel()
+    }
+
+    @Test
+    fun isInQueue_isFalseWhenEpisodeIsNotInQueue() = runTest {
+        val episodeInQueue = Episode("ep2", "url", "title", "desc", "url", null, 0L, 0L, 0, null, false, 0L)
+        val podcast = Podcast("url", "podTitle", "podDesc", "img", "web")
+
+        every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(null)
+        every { repository.listeningQueue } returns flowOf(listOf(EpisodeWithPodcast(episodeInQueue, podcast)))
+
+        savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
+
+        val job = backgroundScope.launch { viewModel.isInQueue.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(false, viewModel.isInQueue.value)
+        job.cancel()
     }
 }
