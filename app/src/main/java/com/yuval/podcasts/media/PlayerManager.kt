@@ -47,6 +47,8 @@ class PlayerManager @Inject constructor(
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
+    val isConnected: StateFlow<Boolean> = _isInitialized.asStateFlow()
+
     fun initialize() {
         if (controllerFuture != null) return
 
@@ -220,6 +222,7 @@ class PlayerManager @Inject constructor(
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
         controller = null
+        _isInitialized.value = false
     }
 
     // Call this periodically from the UI to update the progress bar

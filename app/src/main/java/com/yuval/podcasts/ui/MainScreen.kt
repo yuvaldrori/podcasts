@@ -25,6 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yuval.podcasts.ui.components.UnifiedPlayer
 import com.yuval.podcasts.ui.navigation.Screen
 import com.yuval.podcasts.ui.navigation.bottomNavItems
@@ -40,10 +41,29 @@ fun MainScreen(
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
+    val isPlaying by playerViewModel.isPlaying.collectAsStateWithLifecycle()
+    val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
+    val currentEpisode by playerViewModel.currentlyPlayingEpisode.collectAsStateWithLifecycle()
+    val isConnected by playerViewModel.isConnected.collectAsStateWithLifecycle()
+    val currentPosition by playerViewModel.currentPosition.collectAsStateWithLifecycle()
+    val duration by playerViewModel.duration.collectAsStateWithLifecycle()
+
     Scaffold(
         bottomBar = {
             Column {
-                UnifiedPlayer(viewModel = playerViewModel)
+                UnifiedPlayer(
+                    currentEpisode = currentEpisode,
+                    isPlaying = isPlaying,
+                    playbackSpeed = playbackSpeed,
+                    isConnected = isConnected,
+                    currentPosition = currentPosition,
+                    duration = duration,
+                    onToggleSpeed = { playerViewModel.toggleSpeed() },
+                    onSeekBackward = { playerViewModel.seekBackward() },
+                    onPlayPause = { playerViewModel.playPause() },
+                    onSeekForward = { playerViewModel.seekForward() },
+                    onSeekTo = { playerViewModel.seekTo(it) }
+                )
                 NavigationBar {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination

@@ -48,10 +48,10 @@ class EpisodeDetailViewModelTest {
         val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
         
         // Start collection to trigger stateIn
-        val job = backgroundScope.launch { viewModel.episode.collect {} }
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        assertEquals(episodeWithPodcast, viewModel.episode.value)
+        assertEquals(episodeWithPodcast, viewModel.uiState.value.episodeWithPodcast)
         job.cancel()
     }
 
@@ -82,10 +82,10 @@ class EpisodeDetailViewModelTest {
         savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
         val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
 
-        val job = backgroundScope.launch { viewModel.isInQueue.collect {} }
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        assertEquals(true, viewModel.isInQueue.value)
+        assertEquals(true, viewModel.uiState.value.isInQueue)
         job.cancel()
     }
 
@@ -100,10 +100,10 @@ class EpisodeDetailViewModelTest {
         savedStateHandle = SavedStateHandle(mapOf("episodeId" to "ep1"))
         val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, savedStateHandle)
 
-        val job = backgroundScope.launch { viewModel.isInQueue.collect {} }
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        assertEquals(false, viewModel.isInQueue.value)
+        assertEquals(false, viewModel.uiState.value.isInQueue)
         job.cancel()
     }
 }

@@ -33,8 +33,7 @@ fun EpisodeDetailScreen(
     onBack: () -> Unit,
     viewModel: EpisodeDetailViewModel = hiltViewModel()
 ) {
-    val episodeWithPodcast by viewModel.episode.collectAsStateWithLifecycle()
-    val isInQueue by viewModel.isInQueue.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     Scaffold(
@@ -49,8 +48,8 @@ fun EpisodeDetailScreen(
             )
         }
     ) { padding ->
-        val data = episodeWithPodcast
-        if (data == null) {
+        val data = uiState.episodeWithPodcast
+        if (uiState.isLoading || data == null) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -102,7 +101,7 @@ fun EpisodeDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (!isInQueue && !data.episode.isPlayed) {
+                    if (!uiState.isInQueue && !data.episode.isPlayed) {
                         FilledIconButton(
                             onClick = { 
                                 viewModel.addToQueue(data.episode)
@@ -123,7 +122,7 @@ fun EpisodeDetailScreen(
                             }, "Share Episode")
                             context.startActivity(shareIntent)
                         },
-                        modifier = Modifier.weight(if (!isInQueue && !data.episode.isPlayed) 1f else 0.5f)
+                        modifier = Modifier.weight(if (!uiState.isInQueue && !data.episode.isPlayed) 1f else 0.5f)
                     ) {
                         Icon(Icons.Default.Share, contentDescription = "Share")
                     }

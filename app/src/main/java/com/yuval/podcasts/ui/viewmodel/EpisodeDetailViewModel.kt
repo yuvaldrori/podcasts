@@ -10,12 +10,18 @@ import com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class EpisodeDetailUiState(
+    val episodeWithPodcast: EpisodeWithPodcast? = null,
+    val isInQueue: Boolean = false,
+    val isLoading: Boolean = true
+)
 
 @HiltViewModel
 class EpisodeDetailViewModel @Inject constructor(
@@ -24,32 +30,25 @@ class EpisodeDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val episodeId = savedStateHandle.get<String>("episodeId")
+    private val episodeId: String? = savedStateHandle.get<String>("episodeId")
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val episode: StateFlow<EpisodeWithPodcast?> = flowOf(episodeId)
-        .flatMapLatest { id ->
-            if (id != null) {
-                repository.getEpisodeWithPodcastFlow(id)
-            } else {
-                flowOf(null)
-            }
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
+    val uiState: StateFlow<EpisodeDetailUiState> = combine(
+        flowOf(episodeId).flatMapLatest { id ->
+            if (id != null) repository.getEpisodeWithPodcastFlow(id) else flowOf(null)
+        },
+        repository.listeningQueue
+    ) { episodeData, queue ->
+        EpisodeDetailUiState(
+            episodeWithPodcast = episodeData,
+            isInQueue = episodeData?.let { data -> queue.any { it.episode.id == data.episode.id } } ?: false,
+            isLoading = episodeData == null
         )
-
-    val isInQueue: StateFlow<Boolean> = repository.listeningQueue
-        .map { queue ->
-            queue.any { it.episode.id == episodeId }
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false
-        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = EpisodeDetailUiState()
+    )
 
     fun addToQueue(episode: Episode) {
         viewModelScope.launch {

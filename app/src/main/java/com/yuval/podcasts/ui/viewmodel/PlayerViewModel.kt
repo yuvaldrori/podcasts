@@ -25,6 +25,7 @@ class PlayerViewModel @Inject constructor(
 ) : ViewModel() {
 
     val isPlaying = playerManager.isPlaying
+    val isConnected = playerManager.isConnected
     val currentPosition = playerManager.currentPosition
     val duration = playerManager.duration
     val playbackSpeed = playerManager.playbackSpeed

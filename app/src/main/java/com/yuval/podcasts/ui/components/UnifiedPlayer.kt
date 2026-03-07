@@ -12,19 +12,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.yuval.podcasts.ui.viewmodel.PlayerViewModel
+import com.yuval.podcasts.data.db.entity.Episode
 import java.util.Locale
 
 @Composable
 fun UnifiedPlayer(
-    viewModel: PlayerViewModel,
+    currentEpisode: Episode?,
+    isPlaying: Boolean,
+    playbackSpeed: Float,
+    isConnected: Boolean,
+    currentPosition: Long,
+    duration: Long,
+    onToggleSpeed: () -> Unit,
+    onSeekBackward: () -> Unit,
+    onPlayPause: () -> Unit,
+    onSeekForward: () -> Unit,
+    onSeekTo: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
-    val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
-    val currentEpisode by viewModel.currentlyPlayingEpisode.collectAsStateWithLifecycle()
-
     Surface(
         modifier = modifier,
         tonalElevation = 8.dp,
@@ -58,20 +63,23 @@ fun UnifiedPlayer(
                     CastButton()
                     
                     TextButton(
-                        onClick = { viewModel.toggleSpeed() },
+                        onClick = onToggleSpeed,
+                        enabled = isConnected,
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
                     ) {
                         Text(text = if (playbackSpeed >= 2f) "2x" else "1x", style = MaterialTheme.typography.labelLarge)
                     }
                     IconButton(
-                        onClick = { viewModel.seekBackward() },
+                        onClick = onSeekBackward,
+                        enabled = isConnected,
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(Icons.Default.FastRewind, contentDescription = "-30s", modifier = Modifier.size(20.dp))
                     }
                     IconButton(
-                        onClick = { viewModel.playPause() },
+                        onClick = onPlayPause,
+                        enabled = isConnected,
                         modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
@@ -81,7 +89,8 @@ fun UnifiedPlayer(
                         )
                     }
                     IconButton(
-                        onClick = { viewModel.seekForward() },
+                        onClick = onSeekForward,
+                        enabled = isConnected,
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(Icons.Default.FastForward, contentDescription = "+30s", modifier = Modifier.size(20.dp))
@@ -89,20 +98,24 @@ fun UnifiedPlayer(
                 }
             }
 
-            // Bottom Row: Progress Slider and Times (Extracted to optimize state reads)
-            PlayerScrubber(viewModel = viewModel)
+            // Bottom Row: Progress Slider and Times
+            PlayerScrubber(
+                currentPosition = currentPosition,
+                duration = duration,
+                onSeekTo = onSeekTo,
+                enabled = isConnected
+            )
         }
     }
 }
 
 @Composable
-private fun PlayerScrubber(viewModel: PlayerViewModel) {
-    // These states update every 1 second. 
-    // By reading them here, only THIS tiny composable recomposes, 
-    // keeping the rest of the UnifiedPlayer (and the app) stable.
-    val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
-    val duration by viewModel.duration.collectAsStateWithLifecycle()
-
+private fun PlayerScrubber(
+    currentPosition: Long,
+    duration: Long,
+    onSeekTo: (Long) -> Unit,
+    enabled: Boolean
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -115,7 +128,8 @@ private fun PlayerScrubber(viewModel: PlayerViewModel) {
         val progress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
         Slider(
             value = progress,
-            onValueChange = { viewModel.seekTo((it * duration).toLong()) },
+            onValueChange = { onSeekTo((it * duration).toLong()) },
+            enabled = enabled,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(24.dp)
         )
         
