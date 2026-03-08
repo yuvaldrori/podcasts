@@ -30,4 +30,5 @@
     <string name="unsubscribe">Unsubscribe</string>
     <string name="share_episode">Share Episode</string>
     <string name="podcast_cover">Podcast Cover</string>
+    <string name="empty_queue_message">Your queue is empty. Go to Podcasts or New Episodes to add some!</string>
 </resources>

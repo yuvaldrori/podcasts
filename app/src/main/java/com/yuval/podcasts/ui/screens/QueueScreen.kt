@@ -80,113 +80,125 @@ fun QueueScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
-        }
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(
-                start = 16.dp, 
-                end = 16.dp, 
-                top = if (queue.isNotEmpty()) 0.dp else 16.dp, 
-                bottom = 16.dp
-            )
-        ) {
-            itemsIndexed(queue, key = { _, item -> item.episode.id }) { index, episodeWithPodcast ->
-                val isDragging = dragDropState.draggedItemIndex == index
-                val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "elevation")
-                
-                val onDismiss = remember(episodeWithPodcast.episode.id) {
-                    { value: SwipeToDismissBoxValue ->
-                        if (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd) {
-                            onRemoveFromQueue(episodeWithPodcast.episode.id)
-                            true
-                        } else {
-                            false
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(
+                    start = 16.dp, 
+                    end = 16.dp, 
+                    top = 0.dp, 
+                    bottom = 16.dp
+                )
+            ) {
+                itemsIndexed(queue, key = { _, item -> item.episode.id }) { index, episodeWithPodcast ->
+                    val isDragging = dragDropState.draggedItemIndex == index
+                    val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "elevation")
+                    
+                    val onDismiss = remember(episodeWithPodcast.episode.id) {
+                        { value: SwipeToDismissBoxValue ->
+                            if (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd) {
+                                onRemoveFromQueue(episodeWithPodcast.episode.id)
+                                true
+                            } else {
+                                false
+                            }
                         }
                     }
-                }
-                
-                SwipeToDismissBox(
-                    state = rememberSwipeToDismissBoxState(
-                        confirmValueChange = onDismiss
-                    ),
-                    modifier = Modifier
-                        .zIndex(if (isDragging) 1f else 0f)
-                        .graphicsLayer {
-                            if (isDragging) {
-                                translationY = dragDropState.draggingItemOffset
+                    
+                    SwipeToDismissBox(
+                        state = rememberSwipeToDismissBoxState(
+                            confirmValueChange = onDismiss
+                        ),
+                        modifier = Modifier
+                            .zIndex(if (isDragging) 1f else 0f)
+                            .graphicsLayer {
+                                if (isDragging) {
+                                    translationY = dragDropState.draggingItemOffset
+                                }
+                                shadowElevation = elevation.toPx()
                             }
-                            shadowElevation = elevation.toPx()
-                        }
-                        .animateItem(), // Native Compose 1.7+ feature for layout animations
-                    backgroundContent = {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(vertical = 4.dp),
-                        )
-                    },
-                    content = {
-                        val clickHandler = remember(episodeWithPodcast.episode.id) { 
-                            { onEpisodeClick(episodeWithPodcast.episode.id) } 
-                        }
-                        val isCurrentlyPlaying = episodeWithPodcast.episode.id == currentMediaId
-                        EpisodeItem(
-                            episode = episodeWithPodcast.episode,
-                            modifier = Modifier.clickable(onClick = clickHandler),
-                            imageUrl = episodeWithPodcast.podcast.imageUrl,
-                            containerColor = if (isCurrentlyPlaying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                            trailingContent = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(onClick = { 
-                                        val episodes = queue.map { it.episode }
-                                        val startIndex = episodes.indexOfFirst { it.id == episodeWithPodcast.episode.id }
-                                        if (startIndex != -1) {
-                                            onPlayQueue(episodes, startIndex, episodeWithPodcast.episode.lastPlayedPosition)
+                            .animateItem(), // Native Compose 1.7+ feature for layout animations
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(vertical = 4.dp),
+                            )
+                        },
+                        content = {
+                            val clickHandler = remember(episodeWithPodcast.episode.id) { 
+                                { onEpisodeClick(episodeWithPodcast.episode.id) } 
+                            }
+                            val isCurrentlyPlaying = episodeWithPodcast.episode.id == currentMediaId
+                            EpisodeItem(
+                                episode = episodeWithPodcast.episode,
+                                modifier = Modifier.clickable(onClick = clickHandler),
+                                imageUrl = episodeWithPodcast.podcast.imageUrl,
+                                containerColor = if (isCurrentlyPlaying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                trailingContent = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(onClick = { 
+                                            val episodes = queue.map { it.episode }
+                                            val startIndex = episodes.indexOfFirst { it.id == episodeWithPodcast.episode.id }
+                                            if (startIndex != -1) {
+                                                onPlayQueue(episodes, startIndex, episodeWithPodcast.episode.lastPlayedPosition)
+                                            }
+                                        }) {
+                                            Icon(
+                                                imageVector = if (isCurrentlyPlaying && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                                contentDescription = if (isCurrentlyPlaying && isPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
+                                            )
                                         }
-                                    }) {
-                                        Icon(
-                                            imageVector = if (isCurrentlyPlaying && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                            contentDescription = if (isCurrentlyPlaying && isPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
-                                        )
-                                    }
-                                    IconButton(onClick = { onRemoveFromQueue(episodeWithPodcast.episode.id) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove))
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .pointerInput(episodeWithPodcast.episode.id) {
-                                                detectVerticalDragGestures(
-                                                    onDragStart = { 
-                                                        val currentIndex = queue.indexOfFirst { it.episode.id == episodeWithPodcast.episode.id }
-                                                        if (currentIndex != -1) {
-                                                            dragDropState.onDragStart(currentIndex)
+                                        IconButton(onClick = { onRemoveFromQueue(episodeWithPodcast.episode.id) }) {
+                                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove))
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .pointerInput(episodeWithPodcast.episode.id) {
+                                                    detectVerticalDragGestures(
+                                                        onDragStart = { 
+                                                            val currentIndex = queue.indexOfFirst { it.episode.id == episodeWithPodcast.episode.id }
+                                                            if (currentIndex != -1) {
+                                                                dragDropState.onDragStart(currentIndex)
+                                                            }
+                                                        },
+                                                        onDragEnd = { 
+                                                            dragDropState.onDragEnd()
+                                                            onReorderQueue(queue.map { it.episode.id })
+                                                        },
+                                                        onDragCancel = { dragDropState.onDragEnd() },
+                                                        onVerticalDrag = { change, dragAmount ->
+                                                            change.consume()
+                                                            dragDropState.onDrag(dragAmount)
                                                         }
-                                                    },
-                                                    onDragEnd = { 
-                                                        dragDropState.onDragEnd()
-                                                        onReorderQueue(queue.map { it.episode.id })
-                                                    },
-                                                    onDragCancel = { dragDropState.onDragEnd() },
-                                                    onVerticalDrag = { change, dragAmount ->
-                                                        change.consume()
-                                                        dragDropState.onDrag(dragAmount)
-                                                    }
-                                                )
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.DragHandle,
-                                            contentDescription = stringResource(R.string.reorder)
-                                        )
+                                                    )
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Default.DragHandle,
+                                                contentDescription = stringResource(R.string.reorder)
+                                            )
+                                        }
                                     }
                                 }
-                            }
-                        )
-                    }
+                            )
+                        }
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.empty_queue_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
         }
