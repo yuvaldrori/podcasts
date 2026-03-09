@@ -1,1 +1,2 @@
-sed -i '/implementation(composeBom)/a \    implementation("androidx.compose.foundation:foundation:1.6.8")\n    implementation("androidx.compose.foundation:foundation-layout:1.6.8")\n    implementation("androidx.compose.animation:animation:1.6.8")' app/build.gradle.kts
+#!/bin/bash
+sed -i 's/val composeBom = platform("androidx.compose:compose-bom:2024.11.00")/val composeBom = platform("androidx.compose:compose-bom:2024.11.00")\n    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.7")/g' app/build.gradle.kts

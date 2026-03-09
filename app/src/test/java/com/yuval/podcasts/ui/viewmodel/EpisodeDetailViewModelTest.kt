@@ -108,8 +108,8 @@ class EpisodeDetailViewModelTest {
     fun isInQueue_isFalseWhenEpisodeIsNotInQueue() = runTest {
         val episodeInQueue = Episode("ep2", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L)
         val podcast = Podcast("url", "podTitle", "podDesc", "img", "web")
-
-        every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(null)
+        val activeEpisode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L)
+        every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(EpisodeWithPodcast(activeEpisode, podcast))
         every { repository.listeningQueue } returns flowOf(listOf(EpisodeWithPodcast(episodeInQueue, podcast)))
 
         val savedStateHandle = androidx.lifecycle.SavedStateHandle()
@@ -122,7 +122,7 @@ class EpisodeDetailViewModelTest {
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        assertEquals(true, viewModel.uiState.value is EpisodeDetailUiState.Loading)
+        assertEquals(false, (viewModel.uiState.value as EpisodeDetailUiState.Success).isInQueue)
         job.cancel()
     }
 }

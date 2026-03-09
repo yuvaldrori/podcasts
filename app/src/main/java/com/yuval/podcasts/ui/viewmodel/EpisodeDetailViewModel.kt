@@ -49,7 +49,7 @@ class EpisodeDetailViewModel @Inject constructor(
         repository.listeningQueue
     ) { episodeData, queue ->
         if (episodeData == null) {
-            EpisodeDetailUiState.Loading
+            EpisodeDetailUiState.Error
         } else {
             EpisodeDetailUiState.Success(
                 episodeWithPodcast = episodeData,

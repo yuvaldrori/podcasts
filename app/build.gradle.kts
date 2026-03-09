@@ -160,8 +160,3 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
-
-dependencies {
-    implementation("androidx.tracing:tracing-ktx:1.2.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
-}

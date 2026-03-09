@@ -60,7 +60,7 @@ fun MainScreen(
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
                     bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { it.route?.contains(screen.route::class.simpleName ?: "") == true } == true
+                        val selected = currentDestination?.hierarchy?.any { it.route?.contains(screen.route::class.qualifiedName ?: "") == true } == true
                         NavigationBarItem(
                             icon = { Icon(screen.icon, contentDescription = null) },
                             label = { Text(screen.title) },
