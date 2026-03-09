@@ -17,3 +17,31 @@ local.properties
 .envrc
 *.un~
 benchmark/build/
+
+# Editor swap files
+*.swp
+
+
+# Build logs & traces
+*.trace
+logcat.txt
+build_warnings.txt
+
+
+# Local Database Backups & Exports
+*.db
+*.opml
+*.xml
+!app/src/main/AndroidManifest.xml
+!app/src/benchmark/AndroidManifest.xml
+!app/src/main/res/**/*.xml
+
+
+# Stray fix scripts and tests
+/*.py
+/*.sh
+/*.kt
+
+# Stray screenshots in root
+/*.png
+
