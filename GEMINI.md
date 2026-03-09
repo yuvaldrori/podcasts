@@ -25,3 +25,7 @@ The following guidelines govern all code development, refactoring, and problem-s
 ## 6. Performance & Efficiency
 * **Monitor Resource Usage**: Actively consider the impact of new changes on performance, memory usage, and battery life.
 * **Test for Constraints**: Ensure that background tasks, media players, and network calls are optimized, properly bounded to the correct threads (using explicit Dispatchers), and cancelled cleanly when no longer needed.
+
+## 7. Documentation & Visuals
+* **Keep Docs Synced**: Whenever making UI or layout changes, use an emulator or device to capture new screenshots of the updated screens. Ensure that the screenshots stored in `docs/images/` accurately reflect the current state of the application.
+
