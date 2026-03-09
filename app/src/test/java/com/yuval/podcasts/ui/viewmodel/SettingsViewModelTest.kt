@@ -1,5 +1,11 @@
 package com.yuval.podcasts.ui.viewmodel
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.collect
+
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
@@ -27,6 +33,9 @@ class SettingsViewModelTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
+
+    @get:Rule
+    val instantTaskExecutorRule = androidx.arch.core.executor.testing.InstantTaskExecutorRule()
 
     private lateinit var repository: PodcastRepository
     private lateinit var workManager: WorkManager
@@ -65,7 +74,7 @@ class SettingsViewModelTest {
         viewModel.addPodcast(url)
 
         coVerify { repository.fetchAndStorePodcast(url) }
-        assertNull(viewModel.errorMessage.value)
+        assertNull(viewModel.uiState.value.errorMessage)
     }
 
     @Test
@@ -73,10 +82,13 @@ class SettingsViewModelTest {
         val url = "http://example.com/feed"
         val errorMessage = "Invalid URL"
         coEvery { repository.fetchAndStorePodcast(url) } throws Exception(errorMessage)
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.addPodcast(url)
+        advanceUntilIdle()
 
-        assertEquals("Failed to add podcast: $errorMessage", viewModel.errorMessage.value)
+        assertEquals("Failed to add podcast: $errorMessage", viewModel.uiState.value.errorMessage)
+        job.cancel()
     }
 
     @Test
@@ -86,26 +98,57 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun importLocalAudio_success() = runTest {
+        coEvery { repository.addLocalFile(uri) } returns Result.success(Unit)
+
+        viewModel.importLocalAudio(uri)
+
+        coVerify { repository.addLocalFile(uri) }
+        assertNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun importLocalAudio_failure_setsErrorMessage() = runTest {
+        val errorMsg = "Import failed"
+        coEvery { repository.addLocalFile(uri) } returns Result.failure(Exception(errorMsg))
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.importLocalAudio(uri)
+        advanceUntilIdle()
+
+        coVerify { repository.addLocalFile(uri) }
+        assertEquals("Failed to import local file: $errorMsg", viewModel.uiState.value.errorMessage)
+        job.cancel()
+    }
+
+    @Test
     fun exportOpml_success() = runTest {
         every { contentResolver.openOutputStream(uri) } returns outputStream
         every { outputStream.close() } returns Unit
         coEvery { exportOpmlUseCase(outputStream) } returns Unit
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.exportOpml(context, uri)
+        advanceUntilIdle()
 
         coVerify { exportOpmlUseCase(outputStream) }
-        assertNull(viewModel.errorMessage.value)
+        assertNull(viewModel.uiState.value.errorMessage)
+        job.cancel()
     }
 
     @Test
     fun clearError_resetsErrorMessage() = runTest {
         val url = "http://example.com/feed"
         coEvery { repository.fetchAndStorePodcast(url) } throws Exception("Error")
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.addPodcast(url)
-        assertEquals("Failed to add podcast: Error", viewModel.errorMessage.value)
+        advanceUntilIdle()
+        assertEquals("Failed to add podcast: Error", viewModel.uiState.value.errorMessage)
 
         viewModel.clearError()
-        assertNull(viewModel.errorMessage.value)
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.errorMessage)
+        job.cancel()
     }
 }

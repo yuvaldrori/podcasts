@@ -127,8 +127,13 @@ fun EpisodeDetailScreen(
                                     action = Intent.ACTION_SEND
                                     type = "text/plain"
                                     putExtra(Intent.EXTRA_TITLE, data.episode.title)
-                                    val urlToShare = data.episode.episodeWebLink ?: data.episode.audioUrl
-                                    putExtra(Intent.EXTRA_TEXT, "${data.episode.title}\n$urlToShare")
+                                    val text = if (data.episode.isLocal) {
+                                        context.getString(R.string.listening_to, data.episode.title)
+                                    } else {
+                                        val urlToShare = data.episode.episodeWebLink ?: data.episode.audioUrl
+                                        "${data.episode.title}\n$urlToShare"
+                                    }
+                                    putExtra(Intent.EXTRA_TEXT, text)
                                 }, context.getString(R.string.share_episode))
                                 context.startActivity(shareIntent)
                             },

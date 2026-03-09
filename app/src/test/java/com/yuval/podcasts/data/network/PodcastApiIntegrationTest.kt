@@ -14,10 +14,11 @@ class PodcastApiIntegrationTest {
 
     @Test
     fun fetchRss_respectsCancellation() = runTest {
-        val api = PodcastApi()
+        val testDispatcher = kotlinx.coroutines.Dispatchers.IO
+        val api = PodcastApi(testDispatcher)
         var cancelled = false
 
-        val job = launch {
+        val job = launch(testDispatcher) {
             try {
                 // Using a known large/slow feed to ensure we catch it inflight
                 api.fetchRss("https://feeds.npr.org/510289/podcast.xml")
@@ -28,8 +29,8 @@ class PodcastApiIntegrationTest {
             }
         }
 
-        // Let it start and potentially reach the network connect call
-        delay(500)
+        // Allow real time for the network connection to start
+        kotlinx.coroutines.delay(200)
         job.cancel()
         job.join()
 

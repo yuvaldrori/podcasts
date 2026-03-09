@@ -35,4 +35,8 @@ data class Episode(
     val completedAt: Long? = null,
     @PrimaryKey(autoGenerate = true)
     val localId: Long = 0
-)
+) {
+    val isLocal: Boolean
+        get() = podcastFeedUrl == com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL ||
+                (!audioUrl.startsWith("http") && episodeWebLink == null)
+}

@@ -66,7 +66,7 @@ interface EpisodeDao {
     }
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun testInsertEpisodes(episodes: List<Episode>)
+    suspend fun insertEpisodes(episodes: List<Episode>)
 
     @Query("SELECT * FROM episodes WHERE podcastFeedUrl = :feedUrl")
     suspend fun getEpisodesForPodcastSync(feedUrl: String): List<Episode>

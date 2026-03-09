@@ -31,4 +31,7 @@
     <string name="share_episode">Share Episode</string>
     <string name="podcast_cover">Podcast Cover</string>
     <string name="empty_queue_message">Your queue is empty. Go to Podcasts or New Episodes to add some!</string>
+    <string name="import_local_audio_title">Import Local Audio</string>
+    <string name="import_local_audio_btn">Import MP3</string>
+    <string name="listening_to">Listening to %1$s via Podcasts App</string>
 </resources>

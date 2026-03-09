@@ -1,7 +1,6 @@
 package com.yuval.podcasts.ui.screens
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -22,11 +21,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.ui.components.EpisodeItem
-import com.yuval.podcasts.ui.viewmodel.PlayerViewModel
-import com.yuval.podcasts.ui.viewmodel.QueueViewModel
 import com.yuval.podcasts.ui.viewmodel.QueueUiState
 import kotlinx.coroutines.delay
 
@@ -205,61 +201,6 @@ fun QueueScreen(
     }
 }
 
-class DragDropState(
-    private val lazyListState: LazyListState,
-    private val onMove: (Int, Int) -> Unit
-) {
-    var draggedItemIndex by mutableStateOf<Int?>(null)
-        private set
-        
-    var draggingItemOffset by mutableFloatStateOf(0f)
-        private set
-
-    fun onDragStart(index: Int) {
-        draggedItemIndex = index
-        draggingItemOffset = 0f
-    }
-
-    fun onDrag(dragAmount: Float) {
-        val currentIndex = draggedItemIndex ?: return
-        val currentItem = lazyListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == currentIndex } ?: return
-
-        draggingItemOffset += dragAmount
-
-        // Check if our center crosses the bounds of another item
-        val center = currentItem.offset + draggingItemOffset + currentItem.size / 2f
-        
-        val targetItem = lazyListState.layoutInfo.visibleItemsInfo.find { item ->
-            item.index != currentIndex && 
-            center in item.offset.toFloat()..(item.offset + item.size).toFloat()
-        }
-
-        if (targetItem != null) {
-            val targetIndex = targetItem.index
-            onMove(currentIndex, targetIndex)
-            draggedItemIndex = targetIndex
-            
-            // Adjust the offset to counteract the layout shift caused by the swap
-            val offsetAdjustment = if (targetIndex > currentIndex) -targetItem.size else targetItem.size
-            draggingItemOffset += offsetAdjustment.toFloat()
-        }
-    }
-
-    fun onDragEnd() {
-        draggedItemIndex = null
-        draggingItemOffset = 0f
-    }
-}
-
-@Composable
-fun rememberDragDropState(
-    lazyListState: LazyListState,
-    onMove: (Int, Int) -> Unit
-): DragDropState {
-    return remember(lazyListState) {
-        DragDropState(lazyListState, onMove)
-    }
-}
 
 private fun formatQueueTime(ms: Long): String {
     if (ms <= 0) return "0 mins"

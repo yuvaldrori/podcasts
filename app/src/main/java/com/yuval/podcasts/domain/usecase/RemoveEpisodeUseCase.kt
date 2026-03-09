@@ -3,7 +3,8 @@ package com.yuval.podcasts.domain.usecase
 import androidx.work.WorkManager
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.QueueDao
-import kotlinx.coroutines.Dispatchers
+import com.yuval.podcasts.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -16,9 +17,10 @@ import javax.inject.Inject
 class RemoveEpisodeUseCase @Inject constructor(
     private val episodeDao: EpisodeDao,
     private val queueDao: QueueDao,
-    private val workManager: WorkManager
+    private val workManager: WorkManager,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    suspend operator fun invoke(episodeId: String, markAsPlayed: Boolean = false) = withContext(Dispatchers.IO) {
+    suspend operator fun invoke(episodeId: String, markAsPlayed: Boolean = false) = withContext(ioDispatcher) {
         if (markAsPlayed) {
             episodeDao.updatePlaybackStatus(episodeId, true, System.currentTimeMillis())
             episodeDao.updateLastPlayedPosition(episodeId, 0L)

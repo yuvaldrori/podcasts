@@ -16,15 +16,19 @@ import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.QueueDao
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.io.File
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import com.yuval.podcasts.data.repository.SettingsRepository
+import com.yuval.podcasts.di.IoDispatcher
+import com.yuval.podcasts.di.MainDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 
+import androidx.core.content.IntentCompat
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
@@ -47,9 +51,12 @@ class PlaybackService : MediaSessionService() {
     @Inject lateinit var queueDao: QueueDao
     @Inject lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
     @Inject lateinit var settingsRepository: SettingsRepository
+    
+    @Inject @IoDispatcher lateinit var ioDispatcher: CoroutineDispatcher
+    @Inject @MainDispatcher lateinit var mainDispatcher: CoroutineDispatcher
 
     private var mediaSession: MediaSession? = null
-    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private lateinit var serviceScope: CoroutineScope
 
     private val mediaSessionCallback = object : MediaSession.Callback {
         override fun onMediaButtonEvent(
@@ -57,7 +64,7 @@ class PlaybackService : MediaSessionService() {
             controllerInfo: MediaSession.ControllerInfo,
             intent: Intent
         ): Boolean {
-            val keyEvent = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
+            val keyEvent = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
             if (keyEvent?.action == KeyEvent.ACTION_DOWN) {
                 when (keyEvent.keyCode) {
                     KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
@@ -94,6 +101,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        serviceScope = CoroutineScope(ioDispatcher + SupervisorJob())
         
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -143,7 +151,7 @@ class PlaybackService : MediaSessionService() {
                 if (playbackState == Player.STATE_ENDED) {
                     val lastId = currentlyPlayingId
                     if (lastId != null) {
-                        serviceScope.launch(Dispatchers.IO) {
+                        serviceScope.launch(ioDispatcher) {
                             removeEpisodeUseCase(lastId, markAsPlayed = true)
                         }
                     }
@@ -153,7 +161,7 @@ class PlaybackService : MediaSessionService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val lastId = currentlyPlayingId
                 if (lastId != null && mediaItem != null && lastId != mediaItem.mediaId && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-                    serviceScope.launch(Dispatchers.IO) {
+                    serviceScope.launch(ioDispatcher) {
                          removeEpisodeUseCase(lastId, markAsPlayed = true)
                     }
                 }
@@ -166,7 +174,7 @@ class PlaybackService : MediaSessionService() {
 
         observeQueue()
 
-        serviceScope.launch(Dispatchers.Main) {
+        serviceScope.launch(mainDispatcher) {
             while (true) {
                 kotlinx.coroutines.delay(15000)
                 if (currentPlayer.isPlaying) {
@@ -203,7 +211,7 @@ class PlaybackService : MediaSessionService() {
     private fun observeQueue() {
         serviceScope.launch {
             queueDao.getQueueEpisodes().collect { episodes ->
-                withContext(Dispatchers.Main) {
+                withContext(mainDispatcher) {
                     val currentMediaId = currentPlayer.currentMediaItem?.mediaId ?: return@withContext
                     
                     val currentInNewIndex = episodes.indexOfFirst { it.id == currentMediaId }
@@ -257,7 +265,7 @@ class PlaybackService : MediaSessionService() {
     private fun saveCurrentPosition() {
         val mediaId = currentPlayer.currentMediaItem?.mediaId ?: return
         val position = currentPlayer.currentPosition
-        serviceScope.launch(Dispatchers.IO) {
+        serviceScope.launch(ioDispatcher) {
             episodeDao.updateLastPlayedPosition(mediaId, position)
         }
     }

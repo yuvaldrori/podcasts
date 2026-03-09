@@ -1,5 +1,6 @@
 package com.yuval.podcasts.data.repository
 
+import com.yuval.podcasts.data.Constants
 import android.content.Context
 import androidx.work.WorkManager
 import com.yuval.podcasts.data.db.AppDatabase
@@ -10,13 +11,13 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
-import com.yuval.podcasts.data.network.PodcastApi
-import com.yuval.podcasts.data.network.RssParser
+import com.yuval.podcasts.data.network.PodcastRemoteDataSource
+import com.yuval.podcasts.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -43,18 +44,20 @@ interface PodcastRepository {
     suspend fun markAllAsPlayed()
     suspend fun markAsPlayed(id: String)
     suspend fun reorderQueue(newOrderIds: List<String>)
+    suspend fun addLocalFile(uri: android.net.Uri): Result<Unit>
 }
 
 @Singleton
 class DefaultPodcastRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val database: AppDatabase,
-    private val podcastApi: PodcastApi,
-    private val rssParser: RssParser,
+    private val remoteDataSource: PodcastRemoteDataSource,
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
     private val queueDao: QueueDao,
-    private val workManager: WorkManager
+    private val workManager: WorkManager,
+    private val localMediaDataSource: LocalMediaDataSource,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : PodcastRepository {
 
     override val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
@@ -71,12 +74,10 @@ class DefaultPodcastRepository @Inject constructor(
     override fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?> = episodeDao.getEpisodeWithPodcastFlow(id).distinctUntilChanged()
 
     override suspend fun fetchAndStorePodcast(feedUrl: String) {
-        withContext(Dispatchers.IO) {
-            val inputStream = podcastApi.fetchRss(feedUrl)
-            val (podcast, episodes) = rssParser.parse(inputStream, feedUrl)
-            podcastDao.insertPodcast(podcast)
-            episodeDao.upsertEpisodes(episodes)
-        }
+        // Fetch is already dispatched to IO via remoteDataSource
+        val (podcast, episodes) = remoteDataSource.fetchPodcastData(feedUrl)
+        podcastDao.insertPodcast(podcast)
+        episodeDao.upsertEpisodes(episodes)
     }
 
     override suspend fun refreshAll() {
@@ -123,5 +124,54 @@ class DefaultPodcastRepository @Inject constructor(
         }
         episodeDao.deleteEpisodesByPodcast(feedUrl)
         podcastDao.deletePodcast(feedUrl)
+    }
+
+    override suspend fun addLocalFile(uri: android.net.Uri): Result<Unit> = withContext(ioDispatcher) {
+        try {
+            val localFeedUrl = Constants.LOCAL_PODCAST_FEED_URL
+
+            // 1. Ensure the Local Podcast feed exists
+            if (podcastDao.getPodcast(localFeedUrl) == null) {
+                podcastDao.insertPodcast(
+                    Podcast(
+                        feedUrl = localFeedUrl,
+                        title = "Local Files",
+                        description = "Manually imported audio files",
+                        imageUrl = "", 
+                        website = ""
+                    )
+                )
+            }
+
+            // 2. Delegate file IO and extraction to LocalMediaDataSource
+            val metadataResult = localMediaDataSource.copyAndExtract(uri)
+            val metadata = metadataResult.getOrThrow()
+
+            // 3. Insert Episode
+            val episodeId = "local_${System.currentTimeMillis()}_${metadata.destFile.name.hashCode()}"
+            episodeDao.insertEpisodes(listOf(
+                Episode(
+                    id = episodeId,
+                    podcastFeedUrl = localFeedUrl,
+                    title = metadata.title,
+                    description = metadata.description,
+                    audioUrl = metadata.destFile.absolutePath, 
+                    imageUrl = null,
+                    episodeWebLink = null, 
+                    pubDate = System.currentTimeMillis(),
+                    duration = metadata.durationSecs,
+                    downloadStatus = 2, // 2 = Downloaded
+                    localFilePath = metadata.destFile.absolutePath,
+                    isPlayed = false,
+                    lastPlayedPosition = 0L,
+                    completedAt = null
+                )
+            ))
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
     }
 }

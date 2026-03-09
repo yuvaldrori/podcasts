@@ -31,22 +31,14 @@ class FeedsViewModelTest {
 
     private lateinit var repository: PodcastRepository
     private lateinit var enqueueEpisodeUseCase: EnqueueEpisodeUseCase
-    private lateinit var refreshPodcastUseCase: RefreshPodcastUseCase
     private lateinit var refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase
-    private lateinit var markEpisodeAsPlayedUseCase: MarkEpisodeAsPlayedUseCase
-    private lateinit var markAllAsPlayedUseCase: MarkAllAsPlayedUseCase
-    private lateinit var unsubscribePodcastUseCase: UnsubscribePodcastUseCase
     private lateinit var viewModel: FeedsViewModel
 
     @Before
     fun setup() {
-        repository = mockk()
+        repository = mockk(relaxed = true)
         enqueueEpisodeUseCase = mockk(relaxed = true)
-        refreshPodcastUseCase = mockk(relaxed = true)
         refreshAllPodcastsUseCase = mockk(relaxed = true)
-        markEpisodeAsPlayedUseCase = mockk(relaxed = true)
-        markAllAsPlayedUseCase = mockk(relaxed = true)
-        unsubscribePodcastUseCase = mockk(relaxed = true)
         
         every { repository.allPodcasts } returns flowOf(emptyList())
         every { repository.unplayedEpisodes } returns flowOf(emptyList())
@@ -54,11 +46,7 @@ class FeedsViewModelTest {
         viewModel = FeedsViewModel(
             repository,
             enqueueEpisodeUseCase,
-            refreshPodcastUseCase,
-            refreshAllPodcastsUseCase,
-            markEpisodeAsPlayedUseCase,
-            markAllAsPlayedUseCase,
-            unsubscribePodcastUseCase
+            refreshAllPodcastsUseCase
         )
     }
 

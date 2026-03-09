@@ -5,9 +5,10 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.yuval.podcasts.data.db.dao.QueueDao
+import com.yuval.podcasts.di.IoDispatcher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -16,10 +17,11 @@ import java.io.File
 class CleanupWorker @AssistedInject constructor(
     @Assisted private val appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val queueDao: QueueDao
+    private val queueDao: QueueDao,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(appContext, workerParams) {
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+    override suspend fun doWork(): Result = withContext(ioDispatcher) {
         try {
             val downloadsDir = File(appContext.filesDir, "podcasts")
             if (!downloadsDir.exists() || !downloadsDir.isDirectory) {

@@ -20,7 +20,7 @@ class PlayerManagerInitializationTest {
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
         every { settingsRepository.getPlaybackSpeed() } returns 1.0f
 
-        val playerManager = PlayerManager(context, settingsRepository)
+        val playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined)
 
         val mediaItem = mockk<MediaItem>(relaxed = true)
         // MediaItem.mediaId is a val property, so MockK can't always mock it directly without problems if it's final. Let's just use a real MediaItem

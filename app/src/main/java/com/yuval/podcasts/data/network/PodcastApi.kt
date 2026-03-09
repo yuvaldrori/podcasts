@@ -1,6 +1,7 @@
 package com.yuval.podcasts.data.network
 
-import kotlinx.coroutines.Dispatchers
+import com.yuval.podcasts.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.InputStream
@@ -12,8 +13,10 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 @Singleton
-class PodcastApi @Inject constructor() {
-    suspend fun fetchRss(urlString: String): InputStream = withContext(Dispatchers.IO) {
+class PodcastApi @Inject constructor(
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+) {
+    suspend fun fetchRss(urlString: String): InputStream = withContext(ioDispatcher) {
         suspendCancellableCoroutine { continuation ->
             var connection: HttpURLConnection? = null
             try {

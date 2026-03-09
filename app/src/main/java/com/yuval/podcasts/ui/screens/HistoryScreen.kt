@@ -27,10 +27,12 @@ import java.util.Locale
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
 
+import kotlinx.collections.immutable.ImmutableList
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
-    history: List<EpisodeWithPodcast>,
+    history: ImmutableList<EpisodeWithPodcast>,
     onNavigateToEpisode: (String) -> Unit,
     onEnqueueEpisode: (EpisodeWithPodcast) -> Unit,
     modifier: Modifier = Modifier

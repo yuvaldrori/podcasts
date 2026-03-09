@@ -30,8 +30,6 @@ class QueueViewModelTest {
     private lateinit var repository: PodcastRepository
     private lateinit var playerManager: PlayerManager
     private lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
-    private lateinit var skipToNextEpisodeUseCase: SkipToNextEpisodeUseCase
-    private lateinit var reorderQueueUseCase: ReorderQueueUseCase
     private lateinit var viewModel: QueueViewModel
 
     private val listeningQueueFlow = MutableStateFlow<List<EpisodeWithPodcast>>(emptyList())
@@ -42,11 +40,9 @@ class QueueViewModelTest {
 
     @Before
     fun setup() {
-        repository = mockk()
-        playerManager = mockk()
-        removeEpisodeUseCase = mockk()
-        skipToNextEpisodeUseCase = mockk()
-        reorderQueueUseCase = mockk(relaxed = true)
+        repository = mockk(relaxed = true)
+        playerManager = mockk(relaxed = true)
+        removeEpisodeUseCase = mockk(relaxed = true)
 
         every { repository.listeningQueue } returns listeningQueueFlow
         every { playerManager.currentMediaId } returns currentMediaIdFlow
@@ -57,24 +53,22 @@ class QueueViewModelTest {
         viewModel = QueueViewModel(
             repository, 
             playerManager, 
-            removeEpisodeUseCase, 
-            skipToNextEpisodeUseCase, 
-            reorderQueueUseCase
+            removeEpisodeUseCase
         )
     }
 
     @Test
-    fun reorderQueue_callsUseCase() = runTest {
+    fun reorderQueue_callsRepository() = runTest {
         val newOrder = listOf("ep2", "ep1")
-        coEvery { reorderQueueUseCase(newOrder) } returns Unit
+        coEvery { repository.reorderQueue(newOrder) } returns Unit
         
         viewModel.reorderQueue(newOrder)
 
-        coVerify { reorderQueueUseCase(newOrder) }
+        coVerify { repository.reorderQueue(newOrder) }
     }
 
     @Test
-    fun removeFromQueue_nonPlayingEpisode_onlyCallsRepository() = runTest {
+    fun removeFromQueue_nonPlayingEpisode_onlyCallsRemoveEpisodeUseCase() = runTest {
         val episodeId = "ep1"
         currentMediaIdFlow.value = "other_ep"
         coEvery { removeEpisodeUseCase(episodeId, false) } returns Unit
@@ -82,20 +76,19 @@ class QueueViewModelTest {
         viewModel.removeFromQueue(episodeId)
 
         coVerify { removeEpisodeUseCase(episodeId, false) }
-        coVerify(exactly = 0) { skipToNextEpisodeUseCase() }
+        verify(exactly = 0) { playerManager.seekToNextMediaItem() }
     }
 
     @Test
-    fun removeFromQueue_playingEpisode_callsSkipToNext() = runTest {
+    fun removeFromQueue_playingEpisode_callsSeekToNext() = runTest {
         val episodeId = "ep1"
         currentMediaIdFlow.value = episodeId
         coEvery { removeEpisodeUseCase(episodeId, false) } returns Unit
-        coEvery { skipToNextEpisodeUseCase() } returns Unit
 
         viewModel.removeFromQueue(episodeId)
 
         coVerify { removeEpisodeUseCase(episodeId, false) }
-        coVerify { skipToNextEpisodeUseCase() }
+        verify { playerManager.seekToNextMediaItem() }
     }
 
     @Test

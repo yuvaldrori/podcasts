@@ -8,13 +8,15 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+
 class RemoveEpisodeUseCaseTest {
 
     private val episodeDao = mockk<EpisodeDao>(relaxed = true)
     private val queueDao = mockk<QueueDao>(relaxed = true)
     private val workManager = mockk<WorkManager>(relaxed = true)
     
-    private val useCase = RemoveEpisodeUseCase(episodeDao, queueDao, workManager)
+    private val useCase = RemoveEpisodeUseCase(episodeDao, queueDao, workManager, UnconfinedTestDispatcher())
 
     @Test
     fun invoke_withMarkAsPlayedTrue_updatesPlaybackStatusWithTimestamp() = runTest {

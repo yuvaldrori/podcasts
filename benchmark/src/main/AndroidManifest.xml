@@ -3,5 +3,5 @@
     <application
         android:label="Benchmark"
         android:allowBackup="false"
-        android:extractNativeLibs="false" />
+         />
 </manifest>

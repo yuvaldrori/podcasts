@@ -17,10 +17,12 @@ import com.yuval.podcasts.ui.components.EpisodeItem
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
 
+import kotlinx.collections.immutable.ImmutableList
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PodcastDetailScreen(
-    episodes: List<Episode>,
+    episodes: ImmutableList<Episode>,
     onBack: () -> Unit,
     onEpisodeClick: (String) -> Unit,
     onAddToQueue: (Episode) -> Unit

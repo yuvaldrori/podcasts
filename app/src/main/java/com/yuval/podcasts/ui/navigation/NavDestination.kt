@@ -9,21 +9,21 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.serialization.Serializable
 
-// Bottom Navigation Routes (String-based for NavController hierarchy comparisons)
-sealed class BottomNavRoute(val route: String, val title: String, val icon: ImageVector) {
-    object Queue : BottomNavRoute("queue_route", "Queue", Icons.AutoMirrored.Filled.List)
-    object NewEpisodes : BottomNavRoute("new_episodes_route", "New", Icons.Default.Notifications)
-    object Subscriptions : BottomNavRoute("subscriptions_route", "Podcasts", Icons.Default.Info)
-    object History : BottomNavRoute("history_route", "History", Icons.Default.History)
-    object Settings : BottomNavRoute("settings_route", "Settings", Icons.Default.Settings)
+// Bottom Navigation items
+sealed class BottomNavItem(val route: Any, val title: String, val icon: ImageVector) {
+    object Queue : BottomNavItem(QueueScreenRoute, "Queue", Icons.AutoMirrored.Filled.List)
+    object NewEpisodes : BottomNavItem(NewEpisodesScreenRoute, "New", Icons.Default.Notifications)
+    object Subscriptions : BottomNavItem(SubscriptionsScreenRoute, "Podcasts", Icons.Default.Info)
+    object History : BottomNavItem(HistoryScreenRoute, "History", Icons.Default.History)
+    object Settings : BottomNavItem(SettingsScreenRoute, "Settings", Icons.Default.Settings)
 }
 
 val bottomNavItems = listOf(
-    BottomNavRoute.Queue,
-    BottomNavRoute.NewEpisodes,
-    BottomNavRoute.Subscriptions,
-    BottomNavRoute.History,
-    BottomNavRoute.Settings
+    BottomNavItem.Queue,
+    BottomNavItem.NewEpisodes,
+    BottomNavItem.Subscriptions,
+    BottomNavItem.History,
+    BottomNavItem.Settings
 )
 
 // Type-Safe Compose Navigation Routes

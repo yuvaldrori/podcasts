@@ -13,9 +13,10 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.di.IoDispatcher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 @HiltWorker
@@ -23,10 +24,11 @@ class OpmlImportWorker @AssistedInject constructor(
     @Assisted private val appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val opmlManager: OpmlManager,
-    private val repository: PodcastRepository
+    private val repository: PodcastRepository,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(appContext, workerParams) {
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+    override suspend fun doWork(): Result = withContext(ioDispatcher) {
         val uriString = inputData.getString(KEY_URI) ?: return@withContext Result.failure()
         val uri = Uri.parse(uriString)
 

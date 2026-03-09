@@ -23,15 +23,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.yuval.podcasts.di.MainDispatcher
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class PlayerManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    @MainDispatcher private val mainDispatcher: CoroutineDispatcher
 ) {
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val scope = CoroutineScope(mainDispatcher + SupervisorJob())
 
     private var controllerFuture: ListenableFuture<MediaBrowser>? = null
     private var controller: MediaBrowser? = null
@@ -40,13 +45,19 @@ class PlayerManager @Inject constructor(
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
     private val _currentPosition = MutableStateFlow(0L)
+    private val positionTrigger = MutableStateFlow(0L)
 
-    val currentPosition: StateFlow<Long> = flow {
-        while (true) {
-            emit(controller?.currentPosition ?: 0L)
-            delay(1000)
-        }
-    }.stateIn(scope, SharingStarted.WhileSubscribed(5000), 0L)
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val currentPosition: StateFlow<Long> = combine(_isPlaying, positionTrigger) { isPlaying, _ -> isPlaying }
+        .flatMapLatest { isPlaying ->
+            flow {
+                emit(controller?.currentPosition ?: _currentPosition.value)
+                while (isPlaying) {
+                    delay(1000)
+                    emit(controller?.currentPosition ?: _currentPosition.value)
+                }
+            }
+        }.stateIn(scope, SharingStarted.WhileSubscribed(5000), 0L)
 
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
@@ -100,6 +111,15 @@ class PlayerManager @Inject constructor(
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 _currentMediaId.value = mediaItem?.mediaId
+            }
+
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                _currentPosition.value = newPosition.positionMs
+                positionTrigger.value = newPosition.positionMs
             }
         })
 

@@ -8,6 +8,9 @@ import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,8 +22,8 @@ import javax.inject.Inject
 sealed interface FeedsUiState {
     object Loading : FeedsUiState
     data class Success(
-        val podcasts: List<Podcast> = emptyList(),
-        val unplayedEpisodes: List<EpisodeWithPodcast> = emptyList(),
+        val podcasts: ImmutableList<Podcast> = persistentListOf(),
+        val unplayedEpisodes: ImmutableList<EpisodeWithPodcast> = persistentListOf(),
         val isRefreshing: Boolean = false,
         val errorMessage: String? = null
     ) : FeedsUiState
@@ -30,11 +33,7 @@ sealed interface FeedsUiState {
 class FeedsViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val enqueueEpisodeUseCase: EnqueueEpisodeUseCase,
-    private val refreshPodcastUseCase: RefreshPodcastUseCase,
-    private val refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase,
-    private val markEpisodeAsPlayedUseCase: MarkEpisodeAsPlayedUseCase,
-    private val markAllAsPlayedUseCase: MarkAllAsPlayedUseCase,
-    private val unsubscribePodcastUseCase: UnsubscribePodcastUseCase
+    private val refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase
 ) : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -47,8 +46,8 @@ class FeedsViewModel @Inject constructor(
         _errorMessage
     ) { podcasts, episodes, isRefreshing, error ->
         FeedsUiState.Success(
-            podcasts = podcasts,
-            unplayedEpisodes = episodes,
+            podcasts = podcasts.toImmutableList(),
+            unplayedEpisodes = episodes.toImmutableList(),
             isRefreshing = isRefreshing,
             errorMessage = error
         )
@@ -61,7 +60,7 @@ class FeedsViewModel @Inject constructor(
     fun refreshPodcast(feedUrl: String) {
         viewModelScope.launch {
             try {
-                refreshPodcastUseCase(feedUrl)
+                repository.fetchAndStorePodcast(feedUrl)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 _errorMessage.value = "Failed to refresh podcast: ${e.message}"
@@ -90,13 +89,13 @@ class FeedsViewModel @Inject constructor(
 
     fun dismissEpisode(episode: Episode) {
         viewModelScope.launch {
-            markEpisodeAsPlayedUseCase(episode.id)
+            repository.markAsPlayed(episode.id)
         }
     }
 
     fun dismissAll() {
         viewModelScope.launch {
-            markAllAsPlayedUseCase()
+            repository.markAllAsPlayed()
         }
     }
 
@@ -106,7 +105,7 @@ class FeedsViewModel @Inject constructor(
 
     fun unsubscribePodcast(feedUrl: String) {
         viewModelScope.launch {
-            unsubscribePodcastUseCase(feedUrl)
+            repository.unsubscribePodcast(feedUrl)
         }
     }
 }

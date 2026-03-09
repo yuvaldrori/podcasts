@@ -10,9 +10,10 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.yuval.podcasts.data.db.dao.EpisodeDao
+import com.yuval.podcasts.di.IoDispatcher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -23,7 +24,8 @@ import java.net.URL
 class DownloadWorker @AssistedInject constructor(
     @Assisted private val appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val episodeDao: EpisodeDao
+    private val episodeDao: EpisodeDao,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -31,7 +33,7 @@ class DownloadWorker @AssistedInject constructor(
         return createForegroundInfo(title)
     }
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+    override suspend fun doWork(): Result = withContext(ioDispatcher) {
         val episodeId = inputData.getString(KEY_EPISODE_ID) ?: return@withContext Result.failure()
         val audioUrl = inputData.getString(KEY_AUDIO_URL) ?: return@withContext Result.failure()
         val title = inputData.getString(KEY_EPISODE_TITLE) ?: "Episode"

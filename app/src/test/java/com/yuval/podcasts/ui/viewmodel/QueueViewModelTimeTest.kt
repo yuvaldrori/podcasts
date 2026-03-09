@@ -30,9 +30,7 @@ class QueueViewModelTimeTest {
     private lateinit var repository: PodcastRepository
     private lateinit var playerManager: PlayerManager
     private lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
-    private lateinit var skipToNextEpisodeUseCase: SkipToNextEpisodeUseCase
-    private lateinit var reorderQueueUseCase: ReorderQueueUseCase
-    
+
     private lateinit var viewModel: QueueViewModel
 
     private val queueFlow = MutableStateFlow<List<EpisodeWithPodcast>>(emptyList())
@@ -44,25 +42,21 @@ class QueueViewModelTimeTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        
-        repository = mockk()
-        playerManager = mockk()
-        removeEpisodeUseCase = mockk()
-        skipToNextEpisodeUseCase = mockk()
-        reorderQueueUseCase = mockk(relaxed = true)
-        
+
+        repository = mockk(relaxed = true)
+        playerManager = mockk(relaxed = true)
+        removeEpisodeUseCase = mockk(relaxed = true)
+
         every { repository.listeningQueue } returns queueFlow
         every { playerManager.playbackSpeed } returns playbackSpeedFlow
         every { playerManager.currentMediaId } returns currentMediaIdFlow
         every { playerManager.currentPosition } returns currentPositionFlow
         every { playerManager.duration } returns durationFlow
-        
+
         viewModel = QueueViewModel(
-            repository, 
-            playerManager, 
-            removeEpisodeUseCase, 
-            skipToNextEpisodeUseCase, 
-            reorderQueueUseCase
+            repository,
+            playerManager,
+            removeEpisodeUseCase
         )
     }
 

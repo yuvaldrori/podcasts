@@ -5,10 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
-import com.yuval.podcasts.domain.usecase.SkipToNextEpisodeUseCase
-import com.yuval.podcasts.domain.usecase.ReorderQueueUseCase
 import com.yuval.podcasts.media.PlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -19,7 +19,7 @@ import javax.inject.Inject
 sealed interface QueueUiState {
     object Loading : QueueUiState
     data class Success(
-        val queue: List<EpisodeWithPodcast>,
+        val queue: ImmutableList<EpisodeWithPodcast>,
         val queueTimeRemaining: Long
     ) : QueueUiState
 }
@@ -28,9 +28,7 @@ sealed interface QueueUiState {
 class QueueViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val playerManager: PlayerManager,
-    private val removeEpisodeUseCase: RemoveEpisodeUseCase,
-    private val skipToNextEpisodeUseCase: SkipToNextEpisodeUseCase,
-    private val reorderQueueUseCase: ReorderQueueUseCase
+    private val removeEpisodeUseCase: RemoveEpisodeUseCase
 ) : ViewModel() {
 
     val uiState: StateFlow<QueueUiState> = combine(
@@ -49,12 +47,12 @@ class QueueViewModel @Inject constructor(
             }
         }
         val remaining = if (speed > 0f) (totalMsRemaining / speed).toLong() else 0L
-        QueueUiState.Success(currentQueue, remaining)
+        QueueUiState.Success(currentQueue.toImmutableList(), remaining)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueueUiState.Loading)
 
     fun reorderQueue(newOrderIds: List<String>) {
         viewModelScope.launch {
-            reorderQueueUseCase(newOrderIds)
+            repository.reorderQueue(newOrderIds)
         }
     }
 
@@ -63,7 +61,7 @@ class QueueViewModel @Inject constructor(
             val isPlayingDismissed = playerManager.currentMediaId.value == episodeId
             removeEpisodeUseCase(episodeId, markAsPlayed = false)
             if (isPlayingDismissed) {
-                skipToNextEpisodeUseCase()
+                playerManager.seekToNextMediaItem()
             }
         }
     }

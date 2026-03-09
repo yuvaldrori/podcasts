@@ -17,6 +17,9 @@ interface PodcastDao {
     """)
     fun getAllPodcasts(): Flow<List<Podcast>>
 
+    @Query("SELECT * FROM podcasts WHERE feedUrl = :feedUrl")
+    suspend fun getPodcast(feedUrl: String): Podcast?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPodcast(podcast: Podcast)
 

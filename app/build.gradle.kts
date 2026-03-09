@@ -79,7 +79,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
         jniLibs {
-            keepDebugSymbols += "**/libandroidx.graphics.path.so"
+            keepDebugSymbols += setOf("**/libandroidx.graphics.path.so", "**/libbenchmarkNative.so", "**/libtracing_perfetto.so")
         }
     }
 }
@@ -92,6 +92,7 @@ dependencies {
     implementation("androidx.tracing:tracing-ktx:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
     val composeBom = platform("androidx.compose:compose-bom:2024.11.00")
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.7")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
@@ -149,9 +150,12 @@ dependencies {
     testImplementation("androidx.room:room-testing:$roomVersion")
     testImplementation("androidx.test.ext:junit:1.3.0")
     testImplementation("androidx.test:core-ktx:1.7.0")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.compose.ui:ui-test-manifest")
     
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    androidTestImplementation("androidx.test.espresso:espresso-intents:3.7.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

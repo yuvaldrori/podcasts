@@ -1,5 +1,4 @@
 package com.yuval.podcasts.ui.screens
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,17 +12,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.yuval.podcasts.data.db.entity.Podcast
-import com.yuval.podcasts.ui.viewmodel.FeedsViewModel
 
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
 
+import kotlinx.collections.immutable.ImmutableList
+
 @Composable
 fun SubscriptionsScreen(
-    podcasts: List<Podcast>,
+    podcasts: ImmutableList<Podcast>,
     onPodcastClick: (String) -> Unit,
     onUnsubscribe: (String) -> Unit
 ) {

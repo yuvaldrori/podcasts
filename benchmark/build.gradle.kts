@@ -31,3 +31,11 @@ dependencies {
     implementation("androidx.test.uiautomator:uiautomator:2.3.0")
     implementation("androidx.benchmark:benchmark-macro-junit4:1.3.3")
 }
+
+android {
+    packaging {
+        jniLibs {
+            keepDebugSymbols += setOf("**/libbenchmarkNative.so", "**/libtracing_perfetto.so")
+        }
+    }
+}

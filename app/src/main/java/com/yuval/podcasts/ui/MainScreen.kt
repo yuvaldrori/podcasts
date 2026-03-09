@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -29,6 +30,7 @@ import com.yuval.podcasts.ui.screens.HistoryScreen
 import com.yuval.podcasts.ui.screens.SettingsScreen
 import com.yuval.podcasts.ui.screens.SubscriptionsScreen
 import com.yuval.podcasts.ui.viewmodel.*
+import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun MainScreen(
@@ -130,7 +132,7 @@ fun MainScreen(
                 val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
                 
                 SubscriptionsScreen(
-                    podcasts = (feedsUiState as? FeedsUiState.Success)?.podcasts ?: emptyList(),
+                    podcasts = (feedsUiState as? FeedsUiState.Success)?.podcasts ?: persistentListOf(),
                     onPodcastClick = { feedUrl ->
                         navController.navigate(PodcastDetailScreenRoute(feedUrl))
                     },
@@ -151,12 +153,15 @@ fun MainScreen(
             }
             composable<SettingsScreenRoute> {
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
-                val importWorkInfo by settingsViewModel.importWorkInfo.collectAsStateWithLifecycle()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+                
                 SettingsScreen(
-                    importWorkInfo = importWorkInfo,
+                    uiState = settingsUiState,
                     onAddPodcast = { url -> settingsViewModel.addPodcast(url) },
                     onImportOpml = { uri -> settingsViewModel.importOpml(uri) },
-                    onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) }
+                    onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) },
+                    onImportLocalAudio = { uri -> settingsViewModel.importLocalAudio(uri) },
+                    onClearError = { settingsViewModel.clearError() }
                 )
             }
             composable<PodcastDetailScreenRoute> {
@@ -174,6 +179,7 @@ fun MainScreen(
             composable<EpisodeDetailScreenRoute> {
                 val episodeDetailViewModel: EpisodeDetailViewModel = hiltViewModel()
                 val episodeUiState by episodeDetailViewModel.uiState.collectAsStateWithLifecycle()
+                val context = LocalContext.current
                 EpisodeDetailScreen(
                     uiState = episodeUiState,
                     onBack = { navController.popBackStack() },

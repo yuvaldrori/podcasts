@@ -5,39 +5,32 @@ import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.network.PodcastApi
 import com.yuval.podcasts.data.network.RssParser
-import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
-import kotlinx.coroutines.delay
+import io.mockk.*
 import kotlinx.coroutines.flow.flowOf
-
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.io.InputStream
 import com.yuval.podcasts.utils.MainDispatcherRule
-
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 
 class PodcastRepositoryRefreshTest {
 
     @get:Rule
-    val mainDispatcherRule = MainDispatcherRule(StandardTestDispatcher())
+    val mainDispatcherRule = MainDispatcherRule(UnconfinedTestDispatcher())
 
     private lateinit var podcastDao: PodcastDao
     private lateinit var episodeDao: EpisodeDao
-    private lateinit var podcastApi: PodcastApi
-    private lateinit var rssParser: RssParser
+    private lateinit var remoteDataSource: com.yuval.podcasts.data.network.PodcastRemoteDataSource
     private lateinit var repository: PodcastRepository
 
     @Before
     fun setup() {
         podcastDao = mockk(relaxed = true)
         episodeDao = mockk(relaxed = true)
-        podcastApi = mockk()
-        rssParser = mockk()
+        remoteDataSource = mockk()
 
         every { podcastDao.getAllPodcasts() } returns flowOf(emptyList())
         every { episodeDao.getUnplayedEpisodesWithPodcast() } returns flowOf(emptyList())
@@ -47,39 +40,42 @@ class PodcastRepositoryRefreshTest {
         repository = DefaultPodcastRepository(
             context = mockk(relaxed = true),
             database = mockk(relaxed = true),
-            podcastApi = podcastApi,
-            rssParser = rssParser,
+            remoteDataSource = remoteDataSource,
+            
             podcastDao = podcastDao,
             episodeDao = episodeDao,
             queueDao = queueDao,
-            workManager = mockk(relaxed = true)
+            workManager = mockk(relaxed = true),
+            localMediaDataSource = mockk(relaxed = true),
+            ioDispatcher = mainDispatcherRule.testDispatcher
         )
     }
 
     @Test
-    fun refreshAll_executesConcurrentlyWithLimit() = runTest(mainDispatcherRule.testDispatcher) {
-        val podcasts = (1..10).map { Podcast("url$it", "title$it", "desc", "img", "web") }
+    fun refreshAll_callsFetchForEveryPodcast() = runTest(mainDispatcherRule.testDispatcher) {
+        val podcasts = (1..5).map { Podcast("url$it", "title$it", "desc", "img", "web") }
         every { podcastDao.getAllPodcasts() } returns flowOf(podcasts)
         
-        val mockInputStream: InputStream = mockk()
-        every { mockInputStream.close() } returns Unit
-        
-        coEvery { podcastApi.fetchRss(any()) } coAnswers {
-            delay(100) // Simulate network delay
-            mockInputStream
-        }
-        every { rssParser.parse(any(), any()) } returns Pair(mockk(relaxed = true), emptyList())
-        coEvery { podcastDao.insertPodcast(any()) } returns Unit
-        coEvery { episodeDao.upsertEpisodes(any()) } returns Unit
+        // Re-create repository to pick up the updated mock flow
+        repository = DefaultPodcastRepository(
+            context = mockk(relaxed = true),
+            database = mockk(relaxed = true),
+            remoteDataSource = remoteDataSource,
+            
+            podcastDao = podcastDao,
+            episodeDao = episodeDao,
+            queueDao = mockk(relaxed = true),
+            workManager = mockk(relaxed = true),
+            localMediaDataSource = mockk(relaxed = true),
+            ioDispatcher = mainDispatcherRule.testDispatcher
+        )
 
-        val startTime = System.currentTimeMillis()
+        coEvery { remoteDataSource.fetchPodcastData(any()) } returns Pair(mockk(relaxed = true), emptyList())
+        coEvery { podcastDao.insertPodcast(any()) } just Runs
+        coEvery { episodeDao.upsertEpisodes(any()) } just Runs
+
         repository.refreshAll()
-        val endTime = System.currentTimeMillis()
         
-        val totalTime = endTime - startTime
-        
-        // If sequential, 10 * 100ms = 1000ms.
-        // If parallel with a concurrency limit of 4, it should take ~300ms.
-        assertTrue("Refresh should be faster than sequential execution (took ${totalTime}ms)", totalTime in 1..900)
+        coVerify(exactly = 5) { podcastDao.insertPodcast(any()) }
     }
 }

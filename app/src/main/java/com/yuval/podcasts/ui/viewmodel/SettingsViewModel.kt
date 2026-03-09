@@ -24,6 +24,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import kotlinx.coroutines.flow.combine
+
+data class SettingsUiState(
+    val importWorkInfo: WorkInfo? = null,
+    val errorMessage: String? = null
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val repository: PodcastRepository,
@@ -32,13 +39,20 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    // Observe the active OPML import task
-    val importWorkInfo: StateFlow<WorkInfo?> = workManager.getWorkInfosForUniqueWorkLiveData("opml_import")
-        .asFlow()
-        .map { it.firstOrNull() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val uiState: StateFlow<SettingsUiState> = combine(
+        workManager.getWorkInfosForUniqueWorkLiveData("opml_import").asFlow().map { it.firstOrNull() },
+        _errorMessage
+    ) { workInfo, error ->
+        SettingsUiState(
+            importWorkInfo = workInfo,
+            errorMessage = error
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = SettingsUiState()
+    )
 
     fun addPodcast(url: String) {
         viewModelScope.launch {
@@ -61,6 +75,15 @@ class SettingsViewModel @Inject constructor(
             .build()
 
         workManager.enqueueUniqueWork("opml_import", ExistingWorkPolicy.REPLACE, request)
+    }
+
+    fun importLocalAudio(uri: Uri) {
+        viewModelScope.launch {
+            val result = repository.addLocalFile(uri)
+            if (result.isFailure) {
+                _errorMessage.value = "Failed to import local file: ${result.exceptionOrNull()?.message}"
+            }
+        }
     }
 
     fun exportOpml(context: Context, uri: Uri) {

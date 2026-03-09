@@ -76,7 +76,7 @@ class QueueDaoTest {
         // Setup Episodes
         val episode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null, 0L)
         val episode2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null, 0L)
-        episodeDao.testInsertEpisodes(listOf(episode1, episode2))
+        episodeDao.insertEpisodes(listOf(episode1, episode2))
 
         // Setup Queue (Reverse order)
         val queueItem1 = QueueState("ep1", position = 1)
