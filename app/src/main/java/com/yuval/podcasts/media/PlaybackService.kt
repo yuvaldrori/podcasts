@@ -67,11 +67,11 @@ class PlaybackService : MediaSessionService() {
             val keyEvent = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
             if (keyEvent?.action == KeyEvent.ACTION_DOWN) {
                 when (keyEvent.keyCode) {
-                    KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                    KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_NEXT -> {
                         seekForward()
                         return true
                     }
-                    KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                    KeyEvent.KEYCODE_MEDIA_REWIND, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
                         seekBackward()
                         return true
                     }
