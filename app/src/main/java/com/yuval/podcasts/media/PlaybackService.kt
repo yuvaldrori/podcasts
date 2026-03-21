@@ -154,6 +154,7 @@ class PlaybackService : MediaSessionService() {
                         serviceScope.launch(ioDispatcher) {
                             removeEpisodeUseCase(lastId, markAsPlayed = true)
                         }
+                        currentlyPlayingId = null
                     }
                 }
             }
@@ -165,7 +166,9 @@ class PlaybackService : MediaSessionService() {
                          removeEpisodeUseCase(lastId, markAsPlayed = true)
                     }
                 }
-                currentlyPlayingId = mediaItem?.mediaId
+                if (mediaItem != null) {
+                    currentlyPlayingId = mediaItem.mediaId
+                }
             }
         }
         

@@ -1,13 +1,15 @@
-.PHONY: build build-release test clean verify emulator install run help
+.PHONY: init build build-release test clean verify emulator install run help
 
 AVD_NAME=test_avd
 export ANDROID_AVD_HOME=$(HOME)/.config/.android/avd/
+SDK_MANAGER=$(ANDROID_HOME)/cmdline-tools/bin/sdkmanager
 
 # Default target
 all: verify
 
 help:
 	@echo "Available commands:"
+	@echo "  make init	 - Initialize environment (accept licenses, install SDK)"
 	@echo "  make build	 - Assemble debug APK"
 	@echo "  make build-release - Assemble release APK"
 	@echo "  make test	  - Run unit tests"
@@ -18,6 +20,13 @@ help:
 	@echo "  make emulator      - Start the Android emulator in background"
 	@echo "  make install       - Install the debug APK on connected device"
 	@echo "  make run	   - Install and launch the app"
+
+init:
+	@echo "Initializing environment..."
+	chmod +x gradlew
+	yes | $(SDK_MANAGER) --sdk_root=$(ANDROID_HOME) --licenses
+	$(SDK_MANAGER) --sdk_root=$(ANDROID_HOME) "platforms;android-36" "build-tools;36.1.0"
+	@echo "Environment initialized. Gradle will automatically handle JDK 21 if configured."
 
 build:
 	./gradlew assembleDebug

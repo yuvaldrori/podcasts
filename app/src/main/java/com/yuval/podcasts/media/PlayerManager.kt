@@ -105,12 +105,17 @@ class PlayerManager @Inject constructor(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     stopAndClear()
+                } else {
+                    val d = player.duration
+                    if (d != androidx.media3.common.C.TIME_UNSET) {
+                        _duration.value = d
+                    }
                 }
-                _duration.value = player.duration.coerceAtLeast(0L)
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 _currentMediaId.value = mediaItem?.mediaId
+                _duration.value = player.duration.coerceAtLeast(0L)
             }
 
             override fun onPositionDiscontinuity(

@@ -42,13 +42,22 @@ class PlayerViewModel @Inject constructor(
             if (id == null) flowOf(null) else repository.getEpisodeByIdFlow(id)
         }
     ) { values ->
+        val isPlaying = values[0] as Boolean
+        val isConnected = values[1] as Boolean
+        val currentPosition = values[2] as Long
+        val playerDuration = values[3] as Long
+        val playbackSpeed = values[4] as Float
+        val currentEpisode = values[5] as Episode?
+        
+        val finalDuration = if (playerDuration > 0) playerDuration else (currentEpisode?.duration ?: 0L) * 1000L
+        
         PlayerUiState(
-            isPlaying = values[0] as Boolean,
-            isConnected = values[1] as Boolean,
-            currentPosition = values[2] as Long,
-            duration = values[3] as Long,
-            playbackSpeed = values[4] as Float,
-            currentEpisode = values[5] as Episode?
+            isPlaying = isPlaying,
+            isConnected = isConnected,
+            currentPosition = currentPosition,
+            duration = finalDuration,
+            playbackSpeed = playbackSpeed,
+            currentEpisode = currentEpisode
         )
     }.stateIn(
         scope = viewModelScope,
