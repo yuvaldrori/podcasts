@@ -44,7 +44,7 @@ class EpisodeDetailViewModel @Inject constructor(
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<EpisodeDetailUiState> = combine(
         flowOf(episodeId).flatMapLatest { id ->
-            if (id != null) repository.getEpisodeWithPodcastFlow(id) else flowOf(null)
+            repository.getEpisodeWithPodcastFlow(id)
         },
         repository.listeningQueue
     ) { episodeData, queue ->

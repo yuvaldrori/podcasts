@@ -73,27 +73,27 @@ fun UnifiedPlayer(
                     IconButton(
                         onClick = onSeekBackward,
                         enabled = isConnected,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(Icons.Default.FastRewind, contentDescription = "-30s", modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.FastRewind, contentDescription = "-30s", modifier = Modifier.size(28.dp))
                     }
                     IconButton(
                         onClick = onPlayPause,
                         enabled = isConnected,
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(56.dp)
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isPlaying) "Pause" else "Play",
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(40.dp)
                         )
                     }
                     IconButton(
                         onClick = onSeekForward,
                         enabled = isConnected,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(Icons.Default.FastForward, contentDescription = "+30s", modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.FastForward, contentDescription = "+30s", modifier = Modifier.size(28.dp))
                     }
                 }
             }

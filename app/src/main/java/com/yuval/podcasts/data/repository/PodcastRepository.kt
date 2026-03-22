@@ -57,7 +57,7 @@ class DefaultPodcastRepository @Inject constructor(
     private val queueDao: QueueDao,
     private val workManager: WorkManager,
     private val localMediaDataSource: LocalMediaDataSource,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : PodcastRepository {
 
     override val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()

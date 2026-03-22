@@ -12,7 +12,7 @@ import javax.inject.Singleton
 class PodcastRemoteDataSource @Inject constructor(
     private val podcastApi: PodcastApi,
     private val rssParser: RssParser,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     /**
      * Fetches the RSS feed from the network and parses it into application data models.

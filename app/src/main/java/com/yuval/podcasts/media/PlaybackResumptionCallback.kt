@@ -19,6 +19,7 @@ class PlaybackResumptionCallback(
 ) : MediaSession.Callback {
 
     @UnstableApi
+    @Deprecated("Overriding deprecated Media3 member as part of current implementation")
     override fun onPlaybackResumption(
         mediaSession: MediaSession,
         controller: MediaSession.ControllerInfo

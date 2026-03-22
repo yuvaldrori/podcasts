@@ -33,11 +33,7 @@ class PodcastDetailViewModel @Inject constructor(
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val episodes: StateFlow<ImmutableList<Episode>> = flowOf(feedUrl)
         .flatMapLatest { url ->
-            if (url != null) {
-                repository.getEpisodes(url).map { it.toImmutableList() }
-            } else {
-                flowOf(persistentListOf())
-            }
+            repository.getEpisodes(url).map { it.toImmutableList() }
         }
         .stateIn(
             scope = viewModelScope,

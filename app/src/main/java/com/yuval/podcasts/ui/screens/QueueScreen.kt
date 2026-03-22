@@ -134,16 +134,20 @@ fun QueueScreen(
                                 containerColor = if (isCurrentlyPlaying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                                 trailingContent = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        IconButton(onClick = { 
-                                            val episodes = queue.map { it.episode }
-                                            val startIndex = episodes.indexOfFirst { it.id == episodeWithPodcast.episode.id }
-                                            if (startIndex != -1) {
-                                                onPlayQueue(episodes, startIndex, episodeWithPodcast.episode.lastPlayedPosition)
-                                            }
-                                        }) {
+                                        IconButton(
+                                            onClick = { 
+                                                val episodes = queue.map { it.episode }
+                                                val startIndex = episodes.indexOfFirst { it.id == episodeWithPodcast.episode.id }
+                                                if (startIndex != -1) {
+                                                    onPlayQueue(episodes, startIndex, episodeWithPodcast.episode.lastPlayedPosition)
+                                                }
+                                            },
+                                            modifier = Modifier.size(48.dp)
+                                        ) {
                                             Icon(
                                                 imageVector = if (isCurrentlyPlaying && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                                contentDescription = if (isCurrentlyPlaying && isPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
+                                                contentDescription = if (isCurrentlyPlaying && isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
+                                                modifier = Modifier.size(32.dp)
                                             )
                                         }
                                         IconButton(onClick = { onRemoveFromQueue(episodeWithPodcast.episode.id) }) {

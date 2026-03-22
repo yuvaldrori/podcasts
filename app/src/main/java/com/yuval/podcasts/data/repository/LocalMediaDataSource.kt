@@ -22,7 +22,7 @@ data class LocalMediaMetadata(
 @Singleton
 class LocalMediaDataSource @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     suspend fun copyAndExtract(uri: Uri): Result<LocalMediaMetadata> = withContext(ioDispatcher) {
         try {

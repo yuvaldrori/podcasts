@@ -12,7 +12,7 @@ import javax.inject.Inject
 class ExportOpmlUseCase @Inject constructor(
     private val opmlManager: OpmlManager,
     private val repository: PodcastRepository,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     suspend operator fun invoke(outputStream: OutputStream) = withContext(ioDispatcher) {
         val podcasts = repository.allPodcasts.first()

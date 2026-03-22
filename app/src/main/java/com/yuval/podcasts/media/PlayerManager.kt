@@ -34,7 +34,7 @@ import javax.inject.Singleton
 class PlayerManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
-    @MainDispatcher private val mainDispatcher: CoroutineDispatcher
+    @param:MainDispatcher private val mainDispatcher: CoroutineDispatcher
 ) {
     private val scope = CoroutineScope(mainDispatcher + SupervisorJob())
 

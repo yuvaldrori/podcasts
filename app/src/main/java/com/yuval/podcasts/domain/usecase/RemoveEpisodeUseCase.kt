@@ -18,7 +18,7 @@ class RemoveEpisodeUseCase @Inject constructor(
     private val episodeDao: EpisodeDao,
     private val queueDao: QueueDao,
     private val workManager: WorkManager,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     suspend operator fun invoke(episodeId: String, markAsPlayed: Boolean = false) = withContext(ioDispatcher) {
         if (markAsPlayed) {

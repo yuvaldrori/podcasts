@@ -45,3 +45,14 @@ build_warnings.txt
 # Stray screenshots in root
 /*.png
 
+# Local Android SDK tools and environment
+/.temp_sdk/
+/build-tools/
+/cmdline-tools/
+/emulator/
+/licenses/
+/platform-tools/
+/platforms/
+/system-images/
+/.knownPackages
+

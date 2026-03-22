@@ -80,6 +80,7 @@ class PlaybackService : MediaSessionService() {
             return super.onMediaButtonEvent(session, controllerInfo, intent)
         }
 
+        @Suppress("DEPRECATION")
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo
@@ -129,6 +130,7 @@ class PlaybackService : MediaSessionService() {
             .setCallback(mediaSessionCallback)
             .build()
 
+        @Suppress("DEPRECATION")
         castPlayer.setSessionAvailabilityListener(object : SessionAvailabilityListener {
             override fun onCastSessionAvailable() {
                 setCurrentPlayer(castPlayer)

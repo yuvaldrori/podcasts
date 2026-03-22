@@ -13,7 +13,7 @@ import javax.inject.Inject
 class ImportOpmlUseCase @Inject constructor(
     private val opmlManager: OpmlManager,
     private val repository: PodcastRepository,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     suspend operator fun invoke(inputStream: InputStream) = withContext(ioDispatcher) {
         val urls = opmlManager.parse(inputStream)

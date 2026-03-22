@@ -14,7 +14,7 @@ import kotlin.coroutines.resumeWithException
 
 @Singleton
 class PodcastApi @Inject constructor(
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     suspend fun fetchRss(urlString: String): InputStream = withContext(ioDispatcher) {
         suspendCancellableCoroutine { continuation ->

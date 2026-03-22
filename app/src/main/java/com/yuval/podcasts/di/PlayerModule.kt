@@ -25,6 +25,7 @@ object PlayerModule {
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     fun provideCastPlayer(@ApplicationContext context: Context): CastPlayer {
         // CastContext is initialized via the OptionsProvider in AndroidManifest.xml
+        @Suppress("DEPRECATION")
         return CastPlayer(CastContext.getSharedInstance(context))
     }
 }
