@@ -64,7 +64,7 @@ class EpisodeDaoTest {
         podcastDao.insertPodcast(podcast)
 
         val episode = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null, 0L)
-        episodeDao.upsertEpisodes(listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode(episode.id, episode.podcastFeedUrl, episode.title, episode.description, episode.audioUrl, episode.imageUrl, episode.episodeWebLink, episode.pubDate, episode.duration)))
+        episodeDao.syncNetworkEpisodes(listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode(episode.id, episode.podcastFeedUrl, episode.title, episode.description, episode.audioUrl, episode.imageUrl, episode.episodeWebLink, episode.pubDate, episode.duration)))
 
         episodeDao.updatePlaybackStatus("ep1", true, 12345L)
 
@@ -72,6 +72,33 @@ class EpisodeDaoTest {
         assertNotNull(fetchedEpisode)
         assertEquals(true, fetchedEpisode?.isPlayed)
         assertEquals(12345L, fetchedEpisode?.completedAt)
+    }
+
+    @Test
+    fun syncNetworkEpisodes_preservesLocalState() = runBlocking {
+        val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
+        podcastDao.insertPodcast(podcast)
+
+        // 1. Initial sync
+        val networkEp = com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", "url1", "Title", "Desc", "audio", null, null, 1000L, 100L)
+        episodeDao.syncNetworkEpisodes(listOf(networkEp))
+
+        // 2. User marks as played and downloads
+        episodeDao.updatePlaybackStatus("ep1", true, 555L)
+        episodeDao.updateDownloadStatus("ep1", 2, "/path/to/file")
+
+        // 3. Network sync again (e.g. title changed)
+        val updatedNetworkEp = networkEp.copy(title = "Updated Title")
+        episodeDao.syncNetworkEpisodes(listOf(updatedNetworkEp))
+
+        // 4. Verify local state is preserved
+        val fetched = episodeDao.getEpisodeById("ep1")
+        assertNotNull(fetched)
+        assertEquals("Updated Title", fetched?.title)
+        assertEquals(true, fetched?.isPlayed)
+        assertEquals(555L, fetched?.completedAt)
+        assertEquals(2, fetched?.downloadStatus)
+        assertEquals("/path/to/file", fetched?.localFilePath)
     }
 
     @Test
@@ -86,7 +113,7 @@ class EpisodeDaoTest {
         // Add an episode that's finished later (isPlayed=true, completedAt=2000)
         val ep3 = Episode("ep3", "url1", "E3", "D", "A", null, null, 3000L, 0L, 0, null, false, 0L, null, 0L)
         
-        episodeDao.upsertEpisodes(listOf(
+        episodeDao.syncNetworkEpisodes(listOf(
             com.yuval.podcasts.data.db.entity.NetworkEpisode(ep1.id, ep1.podcastFeedUrl, ep1.title, ep1.description, ep1.audioUrl, ep1.imageUrl, ep1.episodeWebLink, ep1.pubDate, ep1.duration),
             com.yuval.podcasts.data.db.entity.NetworkEpisode(ep2.id, ep2.podcastFeedUrl, ep2.title, ep2.description, ep2.audioUrl, ep2.imageUrl, ep2.episodeWebLink, ep2.pubDate, ep2.duration),
             com.yuval.podcasts.data.db.entity.NetworkEpisode(ep3.id, ep3.podcastFeedUrl, ep3.title, ep3.description, ep3.audioUrl, ep3.imageUrl, ep3.episodeWebLink, ep3.pubDate, ep3.duration)

@@ -26,6 +26,7 @@ init:
 	chmod +x gradlew
 	yes | $(SDK_MANAGER) --sdk_root=$(ANDROID_HOME) --licenses
 	$(SDK_MANAGER) --sdk_root=$(ANDROID_HOME) "platforms;android-36" "build-tools;36.1.0"
+	# Ensure the latest minor SDK is also available if needed by the toolchain
 	@echo "Environment initialized. Gradle will automatically handle JDK 21 if configured."
 
 build:

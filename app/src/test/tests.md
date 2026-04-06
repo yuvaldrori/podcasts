@@ -51,8 +51,6 @@ These tests verify the audio player, background playback, and media buttons.
 
 *   **`PlaybackServiceTest`**: The main audio service test. Ensures that when a track ends, it moves to the next track. Also checks that the service remembers where you paused if you close the app.
 *   **`PlaybackServiceQueueSyncTest`**: Makes sure that if you reorder or delete items in the queue screen, the actual audio player's internal playlist updates instantly to match.
-*   **`PlaybackServiceResumptionTest`**: Verifies that when Android tries to resume playback from the lock screen, the service can wake up and grab the last played episode successfully.
-*   **`PlaybackResumptionIntegrationTest`**: Similar to the above, but tests the full integration between the database queue and the Media3 lock-screen resumption system.
 *   **`MediaButtonRemappingTest`**: Ensures that pressing the "Fast Forward" or "Rewind" buttons on Bluetooth headphones correctly skips forward/backward by 30/10 seconds instead of skipping to the next episode.
 *   **`PlayerManagerTest`**: Tests the helper class that the UI uses to talk to the background service. It checks play, pause, and seeking functions.
 *   **`PlayerManagerInitializationTest`**: Checks that the PlayerManager doesn't try to send commands before it has successfully connected to the background audio service.

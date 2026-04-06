@@ -77,10 +77,10 @@ class DefaultPodcastRepository @Inject constructor(
         // Fetch is already dispatched to IO via remoteDataSource
         val (podcast, episodes) = remoteDataSource.fetchPodcastData(feedUrl)
         podcastDao.insertPodcast(podcast)
-        episodeDao.upsertEpisodes(episodes)
+        episodeDao.syncNetworkEpisodes(episodes)
     }
 
-    override suspend fun refreshAll() {
+    override suspend fun refreshAll(): Unit = withContext(ioDispatcher) {
         coroutineScope {
             val podcasts = allPodcasts.first()
             podcasts.map { podcast ->
@@ -98,22 +98,22 @@ class DefaultPodcastRepository @Inject constructor(
         }
     }
 
-    override suspend fun markAllAsPlayed() {
+    override suspend fun markAllAsPlayed(): Unit = withContext(ioDispatcher) {
         episodeDao.markAllUnplayedAsPlayed()
     }
 
-    override suspend fun markAsPlayed(id: String) {
+    override suspend fun markAsPlayed(id: String): Unit = withContext(ioDispatcher) {
         episodeDao.updatePlaybackStatus(id, true, System.currentTimeMillis())
     }
 
-    override suspend fun reorderQueue(newOrderIds: List<String>) {
+    override suspend fun reorderQueue(newOrderIds: List<String>): Unit = withContext(ioDispatcher) {
         val newQueue = newOrderIds.mapIndexed { index, id ->
             QueueState(id, index)
         }
         queueDao.updateQueue(newQueue)
     }
 
-    override suspend fun unsubscribePodcast(feedUrl: String) {
+    override suspend fun unsubscribePodcast(feedUrl: String): Unit = withContext(ioDispatcher) {
         val episodes = episodeDao.getEpisodesForPodcastSync(feedUrl)
         episodes.forEach { episode ->
             queueDao.removeFromQueue(episode.id)

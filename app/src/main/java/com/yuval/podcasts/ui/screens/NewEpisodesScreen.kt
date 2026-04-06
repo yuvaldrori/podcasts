@@ -25,6 +25,9 @@ import com.yuval.podcasts.ui.viewmodel.FeedsUiState
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
 
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewEpisodesScreen(
@@ -38,6 +41,14 @@ fun NewEpisodesScreen(
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // State hoisting for swipe-to-dismiss
+    val episodes = (uiState as? FeedsUiState.Success)?.unplayedEpisodes ?: emptyList()
+    
+    // We use a derived state to manage SwipeToDismissBoxState for each visible item.
+    // In a real production app with thousands of items, we'd use a more sophisticated 
+    // state holder, but for this feed, a simple remembered state linked to the episode list suffices.
+    val dismissStates = remember(episodes) { mutableStateMapOf<String, SwipeToDismissBoxState>() }
 
     val errorMessage = (uiState as? FeedsUiState.Success)?.errorMessage
     LaunchedEffect(errorMessage) {
@@ -75,7 +86,9 @@ fun NewEpisodesScreen(
                 .padding(padding)
         ) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("LazyColumn"),
                 contentPadding = PaddingValues(16.dp)
             ) {
                 items(
@@ -85,24 +98,28 @@ fun NewEpisodesScreen(
                     val episode = episodeWithPodcast.episode
                     val podcast = episodeWithPodcast.podcast
                     
-                    val onDismiss = remember(episode.id) {
-                        { value: SwipeToDismissBoxValue ->
-                            when (value) {
-                                SwipeToDismissBoxValue.EndToStart -> {
-                                    onDismissEpisode(episode)
-                                    true
+                    val density = LocalDensity.current
+                    val state = dismissStates.getOrPut(episode.id) {
+                        SwipeToDismissBoxState(
+                            initialValue = SwipeToDismissBoxValue.Settled,
+                            density = density,
+                            confirmValueChange = { value ->
+                                when (value) {
+                                    SwipeToDismissBoxValue.EndToStart -> {
+                                        onDismissEpisode(episode)
+                                        true
+                                    }
+                                    SwipeToDismissBoxValue.StartToEnd -> {
+                                        onAddToQueue(episode)
+                                        true
+                                    }
+                                    else -> false
                                 }
-                                SwipeToDismissBoxValue.StartToEnd -> {
-                                    onAddToQueue(episode)
-                                    true
-                                }
-                                else -> false
-                            }
-                        }
+                            },
+                            positionalThreshold = { distance -> distance * 0.5f }
+                        )
                     }
-                    val state = rememberSwipeToDismissBoxState(
-                        confirmValueChange = onDismiss
-                    )
+
                     SwipeToDismissBox(
                         state = state,
                         backgroundContent = {

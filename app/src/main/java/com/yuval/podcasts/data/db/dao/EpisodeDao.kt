@@ -39,12 +39,19 @@ interface EpisodeDao {
     """)
     suspend fun updateEpisodeDetails(id: String, title: String, description: String, audioUrl: String, imageUrl: String?, episodeWebLink: String?, pubDate: Long, duration: Long)
 
+    @Upsert
+    suspend fun upsertEpisodes(episodes: List<Episode>)
+
     @Transaction
-    suspend fun upsertEpisodes(episodes: List<NetworkEpisode>) {
+    suspend fun syncNetworkEpisodes(episodes: List<NetworkEpisode>) {
         episodes.forEach { networkEp ->
             val existing = getEpisodeById(networkEp.id)
             if (existing != null) {
-                updateEpisodeDetails(networkEp.id, networkEp.title, networkEp.description, networkEp.audioUrl, networkEp.imageUrl, networkEp.episodeWebLink, networkEp.pubDate, networkEp.duration)
+                updateEpisodeDetails(
+                    networkEp.id, networkEp.title, networkEp.description, 
+                    networkEp.audioUrl, networkEp.imageUrl, networkEp.episodeWebLink, 
+                    networkEp.pubDate, networkEp.duration
+                )
             } else {
                 insertEpisode(Episode(
                     id = networkEp.id,

@@ -1,5 +1,6 @@
 package com.yuval.podcasts.ui.viewmodel
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@Immutable
 sealed interface QueueUiState {
     object Loading : QueueUiState
     data class Success(

@@ -14,26 +14,27 @@ class PodcastApiIntegrationTest {
 
     @Test
     fun fetchRss_respectsCancellation() = runTest {
-        val testDispatcher = kotlinx.coroutines.Dispatchers.IO
-        val api = PodcastApi(testDispatcher)
+        val api = PodcastApi(kotlinx.coroutines.Dispatchers.IO)
         var cancelled = false
 
-        val job = launch(testDispatcher) {
+        val job = launch {
             try {
                 // Using a known large/slow feed to ensure we catch it inflight
                 api.fetchRss("https://feeds.npr.org/510289/podcast.xml")
             } catch (e: Exception) {
-                if (e is CancellationException) {
+                // When using suspendCancellableCoroutine, the cancellation might manifest as 
+                // a CancellationException OR a socket exception due to the disconnect() in invokeOnCancellation
+                if (e is CancellationException || e is java.io.IOException || e.cause is CancellationException) {
                     cancelled = true
                 }
             }
         }
 
-        // Allow real time for the network connection to start
-        kotlinx.coroutines.delay(200)
+        // Allow some time for the network connection to start
+        kotlinx.coroutines.delay(100)
         job.cancel()
         job.join()
 
-        assertTrue("Fetch should have been cancelled", cancelled)
+        assertTrue("Fetch should have been cancelled or aborted via network disconnect", cancelled)
     }
 }

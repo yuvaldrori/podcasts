@@ -85,11 +85,11 @@ class PodcastRepositoryTest {
         repository.fetchAndStorePodcast(feedUrl)
 
         coVerify { podcastDao.insertPodcast(podcast) }
-        coVerify { episodeDao.upsertEpisodes(episodes) }
+        coVerify { episodeDao.syncNetworkEpisodes(episodes) }
     }
 
     @Test
-    fun fetchAndStorePodcast_usesUpsert_preventsOverwritingUserStates() = runBlocking {
+    fun fetchAndStorePodcast_usesSyncNetworkEpisodes_preventsOverwritingUserStates() = runBlocking {
         val feedUrl = "http://test.com/feed"
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
         // The network parser returns a NetworkEpisode, which has NO isPlayed property
@@ -98,10 +98,8 @@ class PodcastRepositoryTest {
 
         repository.fetchAndStorePodcast(feedUrl)
 
-        // Verify that the DAO uses upsertEpisodes instead of insertEpisodes
-        // This implicitly proves the fix, because upsertEpisodes is hardcoded 
-        // to use the NetworkEpisode partial entity mapping in Room.
-        coVerify { episodeDao.upsertEpisodes(networkEpisodes) }
+        // Verify that the DAO uses syncNetworkEpisodes instead of insertEpisodes
+        coVerify { episodeDao.syncNetworkEpisodes(networkEpisodes) }
         coVerify(exactly = 0) { episodeDao.insertEpisodes(any()) }
     }
 

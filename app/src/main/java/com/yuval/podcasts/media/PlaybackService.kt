@@ -36,6 +36,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import android.view.KeyEvent
 
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 
 import androidx.media3.common.MediaMetadata
 
@@ -78,15 +79,6 @@ class PlaybackService : MediaSessionService() {
                 }
             }
             return super.onMediaButtonEvent(session, controllerInfo, intent)
-        }
-
-        @Suppress("DEPRECATION")
-        override fun onPlaybackResumption(
-            mediaSession: MediaSession,
-            controller: MediaSession.ControllerInfo
-        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
-            return PlaybackResumptionCallback(queueDao, serviceScope)
-                .onPlaybackResumption(mediaSession, controller)
         }
     }
 
@@ -176,6 +168,37 @@ class PlaybackService : MediaSessionService() {
         
         exoPlayer.addListener(listener)
         castPlayer.addListener(listener)
+
+        // Initialize state from queue for playback resumption
+        serviceScope.launch(mainDispatcher) {
+            val episodes = queueDao.getQueueEpisodes().first()
+            if (episodes.isNotEmpty() && currentPlayer.mediaItemCount == 0) {
+                val currentEp = episodes.first()
+                val mediaItems = episodes.mapNotNull { ep ->
+                    try {
+                        val uri = android.net.Uri.parse(ep.localFilePath ?: ep.audioUrl)
+                        val metadata = MediaMetadata.Builder()
+                            .setTitle(ep.title)
+                            .setArtist(ep.podcastFeedUrl)
+                            .setDisplayTitle(ep.title)
+                            .setArtworkUri(ep.imageUrl?.let { android.net.Uri.parse(it) })
+                            .build()
+                        MediaItem.Builder()
+                            .setMediaId(ep.id)
+                            .setUri(uri)
+                            .setMediaMetadata(metadata)
+                            .build()
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                if (mediaItems.isNotEmpty()) {
+                    currentPlayer.setMediaItems(mediaItems)
+                    currentPlayer.seekTo(0, currentEp.lastPlayedPosition)
+                    currentPlayer.prepare()
+                }
+            }
+        }
 
         observeQueue()
 
