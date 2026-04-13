@@ -44,32 +44,29 @@ interface EpisodeDao {
 
     @Transaction
     suspend fun syncNetworkEpisodes(episodes: List<NetworkEpisode>) {
-        episodes.forEach { networkEp ->
-            val existing = getEpisodeById(networkEp.id)
+        if (episodes.isEmpty()) return
+        
+        val podcastFeedUrl = episodes.first().podcastFeedUrl
+        val existingEpisodes = getEpisodesForPodcastSync(podcastFeedUrl).associateBy { it.id }
+        
+        val episodesToUpsert = episodes.map { networkEp ->
+            val existing = existingEpisodes[networkEp.id]
             if (existing != null) {
-                updateEpisodeDetails(
-                    networkEp.id, networkEp.title, networkEp.description, 
-                    networkEp.audioUrl, networkEp.imageUrl, networkEp.episodeWebLink, 
-                    networkEp.pubDate, networkEp.duration
-                )
-            } else {
-                insertEpisode(Episode(
-                    id = networkEp.id,
-                    podcastFeedUrl = networkEp.podcastFeedUrl,
+                // Merge network data with existing local state (isPlayed, downloadStatus, etc.)
+                existing.copy(
                     title = networkEp.title,
                     description = networkEp.description,
                     audioUrl = networkEp.audioUrl,
                     imageUrl = networkEp.imageUrl,
                     episodeWebLink = networkEp.episodeWebLink,
                     pubDate = networkEp.pubDate,
-                    duration = networkEp.duration,
-                    downloadStatus = 0,
-                    localFilePath = null,
-                    isPlayed = false,
-                    lastPlayedPosition = 0L
-                ))
+                    duration = networkEp.duration
+                )
+            } else {
+                networkEp.toEpisode()
             }
         }
+        upsertEpisodes(episodesToUpsert)
     }
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -96,6 +93,12 @@ interface EpisodeDao {
 
     @Query("UPDATE episodes SET isPlayed = :isPlayed, completedAt = :completedAt WHERE id = :id")
     suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long? = null)
+
+    @Query("SELECT * FROM episodes WHERE isPlayed = 1")
+    suspend fun getPlayedEpisodes(): List<Episode>
+
+    @Query("UPDATE episodes SET isPlayed = 1, completedAt = :completedAt WHERE id = :id")
+    suspend fun markAsPlayedBulk(id: String, completedAt: Long)
 
     @Transaction
     @Query("SELECT * FROM episodes WHERE completedAt IS NOT NULL ORDER BY completedAt DESC, pubDate DESC LIMIT 200")

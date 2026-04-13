@@ -1,3 +1,17 @@
+import java.util.Date
+import java.text.SimpleDateFormat
+import java.util.Properties
+import java.io.FileInputStream
+
+val versionProps = Properties().apply {
+    load(FileInputStream(rootProject.file("version.properties")))
+}
+
+val verMajor = versionProps.getProperty("VERSION_MAJOR").toInt()
+val verMinor = versionProps.getProperty("VERSION_MINOR").toInt()
+val verPatch = versionProps.getProperty("VERSION_PATCH").toInt()
+val verCode = versionProps.getProperty("VERSION_CODE").toInt()
+
 plugins {
     id("com.android.application")
     id("com.google.devtools.ksp")
@@ -20,8 +34,10 @@ android {
         applicationId = "com.yuval.podcasts"
         minSdk = 36
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = verCode
+        versionName = "$verMajor.$verMinor.$verPatch"
+
+        buildConfigField("String", "BUILD_DATE", "\"${SimpleDateFormat("yyyy.MM.dd-HH:mm").format(Date())}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -73,6 +89,7 @@ android {
     
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -159,4 +176,26 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+tasks.register("incrementVersionCode") {
+    val propsFile = rootProject.file("version.properties")
+    inputs.file(propsFile)
+    outputs.file(propsFile)
+    
+    doLast {
+        val props = Properties()
+        FileInputStream(propsFile).use { props.load(it) }
+        val code = props.getProperty("VERSION_CODE").toInt()
+        props.setProperty("VERSION_CODE", (code + 1).toString())
+        propsFile.writer().use { props.store(it, "Auto-incremented Version Code") }
+        println("Version Code incremented to ${code + 1}")
+    }
+}
+
+// Automatically increment version code for release builds
+tasks.whenTaskAdded {
+    if (name == "assembleRelease" || name == "bundleRelease") {
+        dependsOn("incrementVersionCode")
+    }
 }

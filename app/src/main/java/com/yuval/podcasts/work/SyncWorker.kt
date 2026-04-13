@@ -18,6 +18,7 @@ class SyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return try {
             repository.refreshAll()
+            repository.requeueMissingDownloads()
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()

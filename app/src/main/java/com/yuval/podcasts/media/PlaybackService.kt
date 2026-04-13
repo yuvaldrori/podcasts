@@ -14,12 +14,13 @@ import androidx.media3.session.MediaSessionService
 import com.yuval.podcasts.MainActivity
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.QueueDao
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
-
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import java.io.File
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import com.yuval.podcasts.data.repository.SettingsRepository
@@ -27,18 +28,19 @@ import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.di.MainDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
-
 import androidx.core.content.IntentCompat
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import android.view.KeyEvent
-
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
-
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.media3.common.MediaMetadata
+import com.yuval.podcasts.data.Constants
+
+import kotlinx.coroutines.guava.asListenableFuture
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @AndroidEntryPoint
@@ -80,14 +82,30 @@ class PlaybackService : MediaSessionService() {
             }
             return super.onMediaButtonEvent(session, controllerInfo, intent)
         }
+
+        override fun onAddMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>
+        ): ListenableFuture<MutableList<MediaItem>> {
+            return serviceScope.async(ioDispatcher) {
+                val resolvedItems = mediaItems.map { item ->
+                    if (item.localConfiguration != null) return@map item
+                    
+                    val episode = episodeDao.getEpisodeById(item.mediaId)
+                    episode?.let { MediaItemMapper.fromEpisode(it) } ?: item
+                }.toMutableList()
+                resolvedItems
+            }.asListenableFuture()
+        }
     }
 
-    private fun seekForward(ms: Long = 30000L) {
+    private fun seekForward(ms: Long = Constants.SEEK_FORWARD_MS) {
         val newPosition = (currentPlayer.currentPosition + ms).coerceAtMost(currentPlayer.duration.coerceAtLeast(0L))
         currentPlayer.seekTo(newPosition)
     }
 
-    private fun seekBackward(ms: Long = 15000L) {
+    private fun seekBackward(ms: Long = Constants.SEEK_BACKWARD_MS) {
         val newPosition = (currentPlayer.currentPosition - ms).coerceAtLeast(0L)
         currentPlayer.seekTo(newPosition)
     }
@@ -103,6 +121,8 @@ class PlaybackService : MediaSessionService() {
             
         exoPlayer.setAudioAttributes(audioAttributes, true)
         exoPlayer.setHandleAudioBecomingNoisy(true)
+        exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
+        castPlayer.repeatMode = Player.REPEAT_MODE_OFF
         
         val defaultSpeed = settingsRepository.getPlaybackSpeed()
         exoPlayer.setPlaybackParameters(androidx.media3.common.PlaybackParameters(defaultSpeed))
@@ -144,6 +164,7 @@ class PlaybackService : MediaSessionService() {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     val lastId = currentlyPlayingId
+                    android.util.Log.d("PlaybackService", "Playback ended. lastId=$lastId")
                     if (lastId != null) {
                         serviceScope.launch(ioDispatcher) {
                             removeEpisodeUseCase(lastId, markAsPlayed = true)
@@ -155,6 +176,7 @@ class PlaybackService : MediaSessionService() {
             
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val lastId = currentlyPlayingId
+                android.util.Log.d("PlaybackService", "Media item transition. lastId=$lastId, newMediaId=${mediaItem?.mediaId}, reason=$reason")
                 if (lastId != null && mediaItem != null && lastId != mediaItem.mediaId && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                     serviceScope.launch(ioDispatcher) {
                          removeEpisodeUseCase(lastId, markAsPlayed = true)
@@ -175,22 +197,7 @@ class PlaybackService : MediaSessionService() {
             if (episodes.isNotEmpty() && currentPlayer.mediaItemCount == 0) {
                 val currentEp = episodes.first()
                 val mediaItems = episodes.mapNotNull { ep ->
-                    try {
-                        val uri = android.net.Uri.parse(ep.localFilePath ?: ep.audioUrl)
-                        val metadata = MediaMetadata.Builder()
-                            .setTitle(ep.title)
-                            .setArtist(ep.podcastFeedUrl)
-                            .setDisplayTitle(ep.title)
-                            .setArtworkUri(ep.imageUrl?.let { android.net.Uri.parse(it) })
-                            .build()
-                        MediaItem.Builder()
-                            .setMediaId(ep.id)
-                            .setUri(uri)
-                            .setMediaMetadata(metadata)
-                            .build()
-                    } catch (e: Exception) {
-                        null
-                    }
+                    MediaItemMapper.fromEpisode(ep)
                 }
                 if (mediaItems.isNotEmpty()) {
                     currentPlayer.setMediaItems(mediaItems)
@@ -204,7 +211,7 @@ class PlaybackService : MediaSessionService() {
 
         serviceScope.launch(mainDispatcher) {
             while (true) {
-                kotlinx.coroutines.delay(15000)
+                kotlinx.coroutines.delay(Constants.SAVE_POSITION_INTERVAL_MS)
                 if (currentPlayer.isPlaying) {
                     saveCurrentPosition()
                 }
@@ -220,16 +227,8 @@ class PlaybackService : MediaSessionService() {
         
         // Transfer state if applicable
         if (playbackState != Player.STATE_ENDED && playbackState != Player.STATE_IDLE) {
-            val windowIndex = previousPlayer.currentMediaItemIndex
-            val positionMs = previousPlayer.currentPosition
-            val isPlaying = previousPlayer.isPlaying
-            
             previousPlayer.pause()
             previousPlayer.clearMediaItems()
-            
-            // Note: In a complete implementation, we'd transfer the full media items list here.
-            // Since our queue logic is reactive, we might need a small delay or rely on observeQueue 
-            // rebuilding it, but transferring the active item helps cast.
         }
         
         currentPlayer = newPlayer
@@ -238,12 +237,32 @@ class PlaybackService : MediaSessionService() {
 
     private fun observeQueue() {
         serviceScope.launch {
-            queueDao.getQueueEpisodes().collect { episodes ->
+            queueDao.getQueueEpisodes().distinctUntilChanged().collect { episodes ->
                 withContext(mainDispatcher) {
-                    val currentMediaId = currentPlayer.currentMediaItem?.mediaId ?: return@withContext
+                    if (episodes.isEmpty()) {
+                        if (currentPlayer.mediaItemCount > 0) {
+                            currentPlayer.stop()
+                            currentPlayer.clearMediaItems()
+                        }
+                        return@withContext
+                    }
+
+                    val currentMediaId = currentPlayer.currentMediaItem?.mediaId
                     
+                    if (currentMediaId == null) {
+                        // If nothing is playing, just set the items
+                        val mediaItems = episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
+                        currentPlayer.setMediaItems(mediaItems)
+                        return@withContext
+                    }
+
                     val currentInNewIndex = episodes.indexOfFirst { it.id == currentMediaId }
-                    if (currentInNewIndex == -1) return@withContext
+                    if (currentInNewIndex == -1) {
+                        android.util.Log.d("PlaybackService", "Current item removed from queue, stopping")
+                        currentPlayer.stop()
+                        currentPlayer.clearMediaItems()
+                        return@withContext
+                    }
 
                     val currentIds = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
                     val newIds = episodes.map { it.id }
@@ -261,19 +280,15 @@ class PlaybackService : MediaSessionService() {
                         currentPlayer.removeMediaItems(0, currentInPlayerIndex)
                     }
 
-                    val newMediaItems = episodes.map { ep ->
-                        val uri = android.net.Uri.parse(ep.localFilePath ?: ep.audioUrl)
-                        val metadata = MediaMetadata.Builder()
-                            .setTitle(ep.title)
-                            .setArtist(ep.podcastFeedUrl)
-                            .setDisplayTitle(ep.title)
-                            .setArtworkUri(ep.imageUrl?.let { android.net.Uri.parse(it) })
-                            .build()
-                        MediaItem.Builder()
-                            .setMediaId(ep.id)
-                            .setUri(uri)
-                            .setMediaMetadata(metadata)
-                            .build()
+                    // After removal, current item is at index 0
+                    val newMediaItems = episodes.mapNotNull { ep ->
+                        MediaItemMapper.fromEpisode(ep)
+                    }
+                    
+                    val updatedCurrentItem = newMediaItems[currentInNewIndex]
+                    val existingCurrentItem = currentPlayer.getMediaItemAt(0)
+                    if (updatedCurrentItem.mediaMetadata != existingCurrentItem.mediaMetadata) {
+                        currentPlayer.replaceMediaItem(0, updatedCurrentItem)
                     }
 
                     val beforeItems = newMediaItems.take(currentInNewIndex)

@@ -14,6 +14,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Episode
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.yuval.podcasts.R
+import com.yuval.podcasts.ui.utils.Formatter
 
 @Composable
 fun UnifiedPlayer(
@@ -48,7 +51,7 @@ fun UnifiedPlayer(
             ) {
                 // Episode Title
                 Text(
-                    text = currentEpisode?.title ?: "Not Playing",
+                    text = currentEpisode?.title ?: stringResource(R.string.not_playing),
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -75,7 +78,7 @@ fun UnifiedPlayer(
                         enabled = isConnected,
                         modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(Icons.Default.FastRewind, contentDescription = "-30s", modifier = Modifier.size(28.dp))
+                        Icon(Icons.Default.FastRewind, contentDescription = null, modifier = Modifier.size(28.dp))
                     }
                     IconButton(
                         onClick = onPlayPause,
@@ -84,7 +87,7 @@ fun UnifiedPlayer(
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
                             modifier = Modifier.size(40.dp)
                         )
                     }
@@ -93,58 +96,33 @@ fun UnifiedPlayer(
                         enabled = isConnected,
                         modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(Icons.Default.FastForward, contentDescription = "+30s", modifier = Modifier.size(28.dp))
+                        Icon(Icons.Default.FastForward, contentDescription = null, modifier = Modifier.size(28.dp))
                     }
                 }
             }
 
             // Bottom Row: Progress Slider and Times
-            PlayerScrubber(
-                currentPosition = currentPosition,
-                duration = duration,
-                onSeekTo = onSeekTo,
-                enabled = isConnected
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                val currentProgress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
+                Slider(
+                    value = currentProgress,
+                    onValueChange = { onSeekTo((it * duration).toLong()) },
+                    modifier = Modifier.fillMaxWidth().height(32.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = Formatter.formatTime(currentPosition),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Text(
+                        text = Formatter.formatTime(duration),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
         }
-    }
-}
-
-@Composable
-private fun PlayerScrubber(
-    currentPosition: Long,
-    duration: Long,
-    onSeekTo: (Long) -> Unit,
-    enabled: Boolean
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .offset(y = (-8).dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = formatTime(currentPosition), style = MaterialTheme.typography.labelSmall)
-        
-        val progress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
-        Slider(
-            value = progress,
-            onValueChange = { onSeekTo((it * duration).toLong()) },
-            enabled = enabled,
-            modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(24.dp)
-        )
-        
-        Text(text = formatTime(duration), style = MaterialTheme.typography.labelSmall)
-    }
-}
-
-private fun formatTime(ms: Long): String {
-    if (ms < 0) return "00:00"
-    val seconds = (ms / 1000) % 60
-    val minutes = (ms / (1000 * 60)) % 60
-    val hours = ms / (1000 * 60 * 60)
-    return if (hours > 0) {
-        String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(Locale.US, "%02d:%02d", minutes, seconds)
     }
 }

@@ -170,8 +170,8 @@ class EpisodeDaoTest {
         val podcast = Podcast("url2", "P2", "D2", "I2", "W2")
         podcastDao.insertPodcast(podcast)
 
-        val episode1 = Episode("ep3", "url2", "E3", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null, 0L)
-        val episode2 = Episode("ep4", "url2", "E4", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null, 0L)
+        val episode1 = Episode("ep3", "url2", "E3", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
+        val episode2 = Episode("ep4", "url2", "E4", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
         
         episodeDao.insertEpisodes(listOf(episode1, episode2))
 
@@ -188,8 +188,8 @@ class EpisodeDaoTest {
         podcastDao.insertPodcast(podcast1)
         podcastDao.insertPodcast(podcast2)
 
-        val ep1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null, 0L)
-        val ep2 = Episode("ep2", "url2", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null, 0L)
+        val ep1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
+        val ep2 = Episode("ep2", "url2", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
         episodeDao.insertEpisodes(listOf(ep1, ep2))
 
         episodeDao.deleteEpisodesByPodcast("url1")

@@ -28,6 +28,8 @@ import com.yuval.podcasts.R
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 
+import com.yuval.podcasts.ui.components.LoadingBox
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewEpisodesScreen(
@@ -39,6 +41,11 @@ fun NewEpisodesScreen(
     onAddToQueue: (Episode) -> Unit,
     onClearError: () -> Unit = {}
 ) {
+    if (uiState is FeedsUiState.Loading) {
+        LoadingBox()
+        return
+    }
+
     val pullToRefreshState = rememberPullToRefreshState()
     val snackbarHostState = remember { SnackbarHostState() }
 

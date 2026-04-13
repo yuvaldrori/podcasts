@@ -2,7 +2,7 @@ package com.yuval.podcasts.data.repository
 
 import com.yuval.podcasts.data.Constants
 import android.content.Context
-import androidx.work.WorkManager
+import androidx.work.*
 import com.yuval.podcasts.data.db.AppDatabase
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
@@ -13,6 +13,7 @@ import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.network.PodcastRemoteDataSource
 import com.yuval.podcasts.di.IoDispatcher
+import com.yuval.podcasts.work.DownloadWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -45,6 +46,9 @@ interface PodcastRepository {
     suspend fun markAsPlayed(id: String)
     suspend fun reorderQueue(newOrderIds: List<String>)
     suspend fun addLocalFile(uri: android.net.Uri): Result<Unit>
+    suspend fun requeueMissingDownloads()
+    suspend fun exportHistory(context: Context, uri: android.net.Uri): Result<Unit>
+    suspend fun importHistory(uri: android.net.Uri): Result<Unit>
 }
 
 @Singleton
@@ -168,6 +172,70 @@ class DefaultPodcastRepository @Inject constructor(
                 )
             ))
 
+            Result.success(Unit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun requeueMissingDownloads(): Unit = withContext(ioDispatcher) {
+        val missing = queueDao.getQueuedEpisodesNotDownloaded()
+        missing.forEach { episode ->
+            if (episode.isLocal) return@forEach
+
+            val downloadData = Data.Builder()
+                .putString(DownloadWorker.KEY_EPISODE_ID, episode.id)
+                .putString(DownloadWorker.KEY_AUDIO_URL, episode.audioUrl)
+                .putString(DownloadWorker.KEY_EPISODE_TITLE, episode.title)
+                .build()
+
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setConstraints(constraints)
+                .setInputData(downloadData)
+                .build()
+
+            workManager.enqueueUniqueWork(
+                "download_${episode.id}",
+                ExistingWorkPolicy.KEEP,
+                downloadWorkRequest
+            )
+        }
+    }
+
+    override suspend fun exportHistory(context: Context, uri: android.net.Uri): Result<Unit> = withContext(ioDispatcher) {
+        try {
+            val played = episodeDao.getPlayedEpisodes()
+            val backup = HistoryBackup(
+                entries = played.map { ep ->
+                    HistoryEntry(ep.id, ep.podcastFeedUrl, ep.completedAt ?: ep.pubDate)
+                }
+            )
+            val json = kotlinx.serialization.json.Json.encodeToString(HistoryBackup.serializer(), backup)
+            context.contentResolver.openOutputStream(uri)?.use { os ->
+                os.write(json.toByteArray())
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun importHistory(uri: android.net.Uri): Result<Unit> = withContext(ioDispatcher) {
+        try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                val json = inputStream.bufferedReader().readText()
+                val backup = kotlinx.serialization.json.Json.decodeFromString(HistoryBackup.serializer(), json)
+                
+                backup.entries.forEach { entry ->
+                    episodeDao.markAsPlayedBulk(entry.episodeId, entry.completedAt)
+                }
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             e.printStackTrace()

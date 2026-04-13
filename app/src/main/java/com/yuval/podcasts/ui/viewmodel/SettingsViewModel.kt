@@ -2,6 +2,7 @@ package com.yuval.podcasts.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
 import androidx.lifecycle.asFlow
@@ -50,7 +51,7 @@ class SettingsViewModel @Inject constructor(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS),
         initialValue = SettingsUiState()
     )
 
@@ -96,6 +97,24 @@ class SettingsViewModel @Inject constructor(
                         if (e is kotlinx.coroutines.CancellationException) throw e
                 e.printStackTrace()
                 _errorMessage.value = "Failed to export OPML: ${e.message}"
+            }
+        }
+    }
+
+    fun exportHistory(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            val result = repository.exportHistory(context, uri)
+            if (result.isFailure) {
+                _errorMessage.value = "Failed to export history: ${result.exceptionOrNull()?.message}"
+            }
+        }
+    }
+
+    fun importHistory(uri: Uri) {
+        viewModelScope.launch {
+            val result = repository.importHistory(uri)
+            if (result.isFailure) {
+                _errorMessage.value = "Failed to import history: ${result.exceptionOrNull()?.message}"
             }
         }
     }

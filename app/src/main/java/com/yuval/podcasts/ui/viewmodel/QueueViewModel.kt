@@ -3,6 +3,7 @@ package com.yuval.podcasts.ui.viewmodel
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
@@ -50,7 +51,7 @@ class QueueViewModel @Inject constructor(
         }
         val remaining = if (speed > 0f) (totalMsRemaining / speed).toLong() else 0L
         QueueUiState.Success(currentQueue.toImmutableList(), remaining)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueueUiState.Loading)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), QueueUiState.Loading)
 
     fun reorderQueue(newOrderIds: List<String>) {
         viewModelScope.launch {

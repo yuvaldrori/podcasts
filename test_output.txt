@@ -1,0 +1,343 @@
+Initialized native services in: /home/yuval/.gradle/native
+Initialized jansi services in: /home/yuval/.gradle/native
+The client will now receive all logging from the daemon (pid: 4927). The daemon log file: /home/yuval/.gradle/daemon/9.3.1/daemon-4927.out.log
+Starting 22nd build in daemon [uptime: 44 mins 40.275 secs, performance: 98%, GC rate: 0.01/s, heap usage: 5% of 4 GiB, non-heap usage: 60% of 1 GiB]
+Using 4 worker leases.
+Operational build model parameters: {requiresToolingModels=false, parallelProjectExecution=true, configureOnDemand=false, configurationCache=true, configurationCacheParallelStore=false, configurationCacheParallelLoad=true, isolatedProjects=false, parallelProjectConfiguration=false, intermediateModelCache=false, parallelToolingApiActions=true, invalidateCoupledProjects=false, modelAsProjectDependency=false, resilientModelBuilding=false}
+Encryption key source: default Gradle keystore (pkcs12)
+Now considering [/home/yuval/podcasts] as hierarchies to watch
+Calculating task graph as configuration cache cannot be reused because file 'app/build.gradle.kts' has changed.
+Now considering [/home/yuval/podcasts] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Settings evaluated using settings file '/home/yuval/podcasts/settings.gradle.kts'.
+Using local directory build cache for the root build (location = /home/yuval/.gradle/caches/build-cache-1, remove unused entries = after 7 days).
+Projects loaded. Root project using build file '/home/yuval/podcasts/build.gradle.kts'.
+Included projects: [root project 'Podcasts', project ':app', project ':benchmark']
+
+> Configure project :
+Evaluating root project 'Podcasts' using build file '/home/yuval/podcasts/build.gradle.kts'.
+Resolved plugin [id: 'com.github.ben-manes.versions', version: '0.53.0']
+Resolved plugin [id: 'com.android.application', version: '9.0.1', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.android', version: '2.2.10', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.compose', version: '2.2.10', apply: false]
+Resolved plugin [id: 'com.google.dagger.hilt.android', version: '2.59.2', apply: false]
+Resolved plugin [id: 'com.google.devtools.ksp', version: '2.3.5', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.serialization', version: '2.2.10', apply: false]
+
+> Configure project :app
+Evaluating project ':app' using build file '/home/yuval/podcasts/app/build.gradle.kts'.
+Resolved plugin [id: 'com.android.application']
+Resolved plugin [id: 'com.google.devtools.ksp']
+Resolved plugin [id: 'com.google.dagger.hilt.android']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.compose']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.serialization']
+Build e9044daa-303c-4307-8d89-fd5791b597e0 is started
+Using default execution profile
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+
+> Configure project :benchmark
+Evaluating project ':benchmark' using build file '/home/yuval/podcasts/benchmark/build.gradle.kts'.
+Resolved plugin [id: 'com.android.test']
+Using default execution profile
+All projects evaluated.
+Path for java installation '/usr/lib/jvm/openjdk-17' (Common Linux Locations) auto-detected does not contain a java executable
+Task name matched 'testDebugUnitTest'
+Selected primary task 'testDebugUnitTest' from project :
+Adding -Xuse-inline-scopes-numbers Kotlin compiler flag for task :app:compileDebugKotlin
+Tasks to be executed: [task ':app:preBuild', task ':app:preDebugBuild', task ':app:generateDebugResources', task ':app:packageDebugResources', task ':app:processDebugNavigationResources', task ':app:parseDebugLocalResources', task ':app:generateDebugRFile', task ':app:kspDebugKotlin', task ':app:compileDebugKotlin', task ':app:javaPreCompileDebug', task ':app:compileDebugJavaWithJavac', task ':app:hiltSyncDebug', task ':app:hiltAggregateDepsDebug', task ':app:hiltJavaCompileDebug', task ':app:checkDebugAarMetadata', task ':app:compileDebugNavigationResources', task ':app:mapDebugSourceSetPaths', task ':app:mergeDebugResources', task ':app:createDebugCompatibleScreenManifests', task ':app:extractDeepLinksDebug', task ':app:processDebugMainManifest', task ':app:processDebugManifest', task ':app:processDebugManifestForPackage', task ':app:processDebugResources', task ':app:transformDebugClassesWithAsm', task ':app:bundleDebugClassesToRuntimeJar', task ':app:preDebugUnitTestBuild', task ':app:processDebugJavaRes', task ':app:bundleDebugClassesToCompileJar', task ':app:kspDebugUnitTestKotlin', task ':app:compileDebugUnitTestKotlin', task ':app:processDebugUnitTestJavaRes', task ':app:javaPreCompileDebugUnitTest', task ':app:compileDebugUnitTestJavaWithJavac', task ':app:hiltSyncDebugUnitTest', task ':app:hiltAggregateDepsDebugUnitTest', task ':app:hiltJavaCompileDebugUnitTest', task ':app:transformDebugUnitTestClassesWithAsm', task ':app:testDebugUnitTest']
+Tasks that were excluded: []
+Build e9044daa-303c-4307-8d89-fd5791b597e0 is closed
+Using local directory build cache for the root build (location = /home/yuval/.gradle/caches/build-cache-1, remove unused entries = after 7 days).
+Ignoring listeners of task graph ready event, as this build (:) has already executed work.
+Resolve mutations for :app:preBuild (Thread[Execution worker,5,main]) started.
+Resolve mutations for :app:kspDebugKotlin (Thread[Execution worker Thread 2,5,main]) started.
+:app:preBuild (Thread[Execution worker,5,main]) started.
+work action Unknown value (Thread[included builds,5,main]) started.
+
+> Task :app:preBuild UP-TO-DATE
+Skipping task ':app:preBuild' as it has no actions.
+Resolve mutations for :app:preDebugBuild (Thread[Execution worker,5,main]) started.
+:app:preDebugBuild (Thread[Execution worker,5,main]) started.
+
+> Task :app:preDebugBuild UP-TO-DATE
+Skipping task ':app:preDebugBuild' as it has no actions.
+Resolve mutations for :app:generateDebugResources (Thread[Execution worker,5,main]) started.
+Resolve mutations for :app:processDebugNavigationResources (Thread[included builds,5,main]) started.
+:app:generateDebugResources (Thread[Execution worker,5,main]) started.
+Resolve mutations for :app:javaPreCompileDebug (Thread[Execution worker Thread 3,5,main]) started.
+:app:javaPreCompileDebug (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:generateDebugResources UP-TO-DATE
+Build cache key for task ':app:generateDebugResources' is def0131be7050e3a6e2f6161d8362db7
+Skipping task ':app:generateDebugResources' as it is up-to-date.
+Resolve mutations for :app:packageDebugResources (Thread[Execution worker,5,main]) started.
+:app:kspDebugKotlin (Thread[Execution worker Thread 2,5,main]) started.
+:app:packageDebugResources (Thread[Execution worker,5,main]) started.
+:app:processDebugNavigationResources (Thread[included builds,5,main]) started.
+
+> Task :app:javaPreCompileDebug UP-TO-DATE
+Build cache key for task ':app:javaPreCompileDebug' is 2296d759706b5406bd2ce941c3de3c9c
+Skipping task ':app:javaPreCompileDebug' as it is up-to-date.
+Resolve mutations for :app:checkDebugAarMetadata (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:packageDebugResources UP-TO-DATE
+Build cache key for task ':app:packageDebugResources' is 752aef46da965ff64d6a67ed826bab4d
+Skipping task ':app:packageDebugResources' as it is up-to-date.
+Resolve mutations for :app:mapDebugSourceSetPaths (Thread[Execution worker,5,main]) started.
+:app:checkDebugAarMetadata (Thread[Execution worker Thread 3,5,main]) started.
+:app:mapDebugSourceSetPaths (Thread[Execution worker,5,main]) started.
+
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+Caching disabled for task ':app:mapDebugSourceSetPaths' because:
+  Caching has been disabled for the task
+Skipping task ':app:mapDebugSourceSetPaths' as it is up-to-date.
+Resolve mutations for :app:mergeDebugResources (Thread[Execution worker,5,main]) started.
+:app:mergeDebugResources (Thread[Execution worker,5,main]) started.
+
+> Task :app:mergeDebugResources UP-TO-DATE
+Build cache key for task ':app:mergeDebugResources' is 359e1c352f568b4f8f6214207609cfa3
+Skipping task ':app:mergeDebugResources' as it is up-to-date.
+Resolve mutations for :app:createDebugCompatibleScreenManifests (Thread[Execution worker,5,main]) started.
+:app:createDebugCompatibleScreenManifests (Thread[Execution worker,5,main]) started.
+
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+Caching disabled for task ':app:createDebugCompatibleScreenManifests' because:
+  Caching has been disabled for the task
+Skipping task ':app:createDebugCompatibleScreenManifests' as it is up-to-date.
+Resolve mutations for :app:extractDeepLinksDebug (Thread[Execution worker,5,main]) started.
+:app:extractDeepLinksDebug (Thread[Execution worker,5,main]) started.
+
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+Caching disabled for task ':app:checkDebugAarMetadata' because:
+  Caching has been disabled for the task
+Skipping task ':app:checkDebugAarMetadata' as it is up-to-date.
+
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+Build cache key for task ':app:extractDeepLinksDebug' is 2b87d03c0d3ba799526ae6575bfc38be
+Skipping task ':app:extractDeepLinksDebug' as it is up-to-date.
+Resolve mutations for :app:processDebugMainManifest (Thread[Execution worker,5,main]) started.
+:app:processDebugMainManifest (Thread[Execution worker,5,main]) started.
+Resolve mutations for :app:preDebugUnitTestBuild (Thread[Execution worker Thread 3,5,main]) started.
+:app:preDebugUnitTestBuild (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+Skipping task ':app:preDebugUnitTestBuild' as it has no actions.
+Resolve mutations for :app:javaPreCompileDebugUnitTest (Thread[Execution worker Thread 3,5,main]) started.
+:app:javaPreCompileDebugUnitTest (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+Build cache key for task ':app:javaPreCompileDebugUnitTest' is c6a55fde05e74d5932ae0a8c1bedb984
+Skipping task ':app:javaPreCompileDebugUnitTest' as it is up-to-date.
+
+> Task :app:processDebugMainManifest UP-TO-DATE
+Build cache key for task ':app:processDebugMainManifest' is 252b279dd3408fe30b373d86923d0218
+Skipping task ':app:processDebugMainManifest' as it is up-to-date.
+Resolve mutations for :app:processDebugManifest (Thread[Execution worker,5,main]) started.
+:app:processDebugManifest (Thread[Execution worker,5,main]) started.
+
+> Task :app:processDebugManifest UP-TO-DATE
+Build cache key for task ':app:processDebugManifest' is 401bbd6ae036de971e89c8d4384aa7d6
+Skipping task ':app:processDebugManifest' as it is up-to-date.
+Resolve mutations for :app:processDebugManifestForPackage (Thread[Execution worker,5,main]) started.
+:app:processDebugManifestForPackage (Thread[Execution worker,5,main]) started.
+
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+Build cache key for task ':app:processDebugManifestForPackage' is 9a7ccd828f5f8b11d7faaf1d5a908d2c
+Skipping task ':app:processDebugManifestForPackage' as it is up-to-date.
+
+> Task :app:processDebugNavigationResources UP-TO-DATE
+Build cache key for task ':app:processDebugNavigationResources' is fed74da9b3481ef42f513e2edbe595dc
+Skipping task ':app:processDebugNavigationResources' as it is up-to-date.
+Resolve mutations for :app:parseDebugLocalResources (Thread[included builds,5,main]) started.
+Resolve mutations for :app:compileDebugNavigationResources (Thread[Execution worker,5,main]) started.
+:app:parseDebugLocalResources (Thread[included builds,5,main]) started.
+:app:compileDebugNavigationResources (Thread[Execution worker,5,main]) started.
+
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+Build cache key for task ':app:compileDebugNavigationResources' is 7a1f2e68068bf67448222a1a7bd6ba89
+Skipping task ':app:compileDebugNavigationResources' as it is up-to-date.
+
+> Task :app:parseDebugLocalResources UP-TO-DATE
+Build cache key for task ':app:parseDebugLocalResources' is 05d535613e37205fac26dffcfb1916ba
+Skipping task ':app:parseDebugLocalResources' as it is up-to-date.
+Resolve mutations for :app:generateDebugRFile (Thread[included builds,5,main]) started.
+:app:generateDebugRFile (Thread[included builds,5,main]) started.
+Resolve mutations for :app:processDebugResources (Thread[Execution worker Thread 3,5,main]) started.
+:app:processDebugResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:generateDebugRFile UP-TO-DATE
+Build cache key for task ':app:generateDebugRFile' is c122d9b409c86699458981e190b0ac27
+Skipping task ':app:generateDebugRFile' as it is up-to-date.
+
+> Task :app:processDebugResources UP-TO-DATE
+Build cache key for task ':app:processDebugResources' is f8c39a2300ae8b1e05d3b6e8caa0b627
+Skipping task ':app:processDebugResources' as it is up-to-date.
+
+> Task :app:kspDebugKotlin
+Build cache key for task ':app:kspDebugKotlin' is d59a6ac3ce98ef2d85f8010efedb804f
+Task ':app:kspDebugKotlin' is not up-to-date because:
+  Value of input property 'kspConfig.logLevel' has changed for task ':app:kspDebugKotlin'
+The input changes require a full rebuild for incremental task ':app:kspDebugKotlin'.
+i: [ksp] loaded provider(s): [androidx.hilt.AndroidXHiltKspProcessor$Provider, androidx.room.RoomKspProcessor$Provider, dagger.hilt.processor.internal.uninstallmodules.KspUninstallModulesProcessor$Provider, dagger.hilt.android.processor.internal.viewmodel.KspViewModelProcessor$Provider, dagger.hilt.processor.internal.earlyentrypoint.KspEarlyEntryPointProcessor$Provider, dagger.hilt.android.processor.internal.androidentrypoint.KspAndroidEntryPointProcessor$Provider, dagger.hilt.processor.internal.definecomponent.KspDefineComponentProcessor$Provider, dagger.hilt.processor.internal.originatingelement.KspOriginatingElementProcessor$Provider, dagger.hilt.android.processor.internal.bindvalue.KspBindValueProcessor$Provider, dagger.hilt.processor.internal.root.KspComponentTreeDepsProcessor$Provider, dagger.hilt.processor.internal.root.KspRootProcessor$Provider, dagger.hilt.processor.internal.aliasof.KspAliasOfProcessor$Provider, dagger.hilt.processor.internal.aggregateddeps.KspAggregatedDepsProcessor$Provider, dagger.hilt.processor.internal.generatesrootinput.KspGeneratesRootInputProcessor$Provider, dagger.hilt.android.processor.internal.customtestapplication.KspCustomTestApplicationProcessor$Provider, dagger.internal.codegen.KspComponentProcessor$Provider]
+Stored cache entry for task ':app:kspDebugKotlin' with cache key d59a6ac3ce98ef2d85f8010efedb804f
+Resolve mutations for :app:compileDebugKotlin (Thread[Execution worker Thread 2,5,main]) started.
+:app:compileDebugKotlin (Thread[Execution worker Thread 2,5,main]) started.
+
+> Task :app:compileDebugKotlin UP-TO-DATE
+file or directory '/home/yuval/podcasts/app/src/main/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/debug/java', not found
+file or directory '/home/yuval/podcasts/app/src/debug/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/debug/java', not found
+file or directory '/home/yuval/podcasts/app/src/main/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/debug/java', not found
+file or directory '/home/yuval/podcasts/app/src/debug/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/debug/java', not found
+file or directory '/home/yuval/podcasts/app/src/main/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/debug/java', not found
+file or directory '/home/yuval/podcasts/app/src/debug/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/debug/java', not found
+Build cache key for task ':app:compileDebugKotlin' is 33fbf75b64448161995f6afabc23118c
+Skipping task ':app:compileDebugKotlin' as it is up-to-date.
+Resolve mutations for :app:compileDebugJavaWithJavac (Thread[Execution worker,5,main]) started.
+Resolve mutations for :app:processDebugJavaRes (Thread[Execution worker Thread 3,5,main]) started.
+:app:processDebugJavaRes (Thread[Execution worker Thread 3,5,main]) started.
+:app:compileDebugJavaWithJavac (Thread[Execution worker,5,main]) started.
+
+> Task :app:processDebugJavaRes UP-TO-DATE
+file or directory '/home/yuval/podcasts/app/src/main/resources', not found
+file or directory '/home/yuval/podcasts/app/src/debug/resources', not found
+Caching disabled for task ':app:processDebugJavaRes' because:
+  Caching has been disabled for the task
+Skipping task ':app:processDebugJavaRes' as it is up-to-date.
+work action resolve out (project :app) (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+Build cache key for task ':app:compileDebugJavaWithJavac' is 3f4eea6eb27bcefdc4d9755657f1af58
+Skipping task ':app:compileDebugJavaWithJavac' as it is up-to-date.
+No compile result for :app:compileDebugJavaWithJavac
+Resolve mutations for :app:hiltSyncDebug (Thread[Execution worker Thread 3,5,main]) started.
+:app:hiltSyncDebug (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:hiltSyncDebug UP-TO-DATE
+Skipping task ':app:hiltSyncDebug' as it has no actions.
+Resolve mutations for :app:hiltAggregateDepsDebug (Thread[Execution worker Thread 3,5,main]) started.
+:app:hiltAggregateDepsDebug (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:hiltAggregateDepsDebug UP-TO-DATE
+Build cache key for task ':app:hiltAggregateDepsDebug' is d6395d07856a16195e66facedd4b8794
+Skipping task ':app:hiltAggregateDepsDebug' as it is up-to-date.
+Resolve mutations for :app:hiltJavaCompileDebug (Thread[Execution worker Thread 3,5,main]) started.
+:app:hiltJavaCompileDebug (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:hiltJavaCompileDebug UP-TO-DATE
+Build cache key for task ':app:hiltJavaCompileDebug' is 933c5faf5ea48dc89a3b96580e7340c6
+Skipping task ':app:hiltJavaCompileDebug' as it is up-to-date.
+No compile result for :app:hiltJavaCompileDebug
+Resolve mutations for :app:transformDebugClassesWithAsm (Thread[Execution worker,5,main]) started.
+:app:transformDebugClassesWithAsm (Thread[Execution worker,5,main]) started.
+Resolve mutations for :app:bundleDebugClassesToCompileJar (Thread[Execution worker Thread 3,5,main]) started.
+:app:bundleDebugClassesToCompileJar (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+Caching disabled for task ':app:bundleDebugClassesToCompileJar' because:
+  Caching has been disabled for the task
+Skipping task ':app:bundleDebugClassesToCompileJar' as it is up-to-date.
+work action resolve classes.jar (project :app) (Thread[Execution worker Thread 3,5,main]) started.
+Resolve mutations for :app:kspDebugUnitTestKotlin (Thread[Execution worker Thread 3,5,main]) started.
+:app:kspDebugUnitTestKotlin (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:transformDebugClassesWithAsm UP-TO-DATE
+Build cache key for task ':app:transformDebugClassesWithAsm' is 3ce68277d0b681896de3e259441d5474
+Skipping task ':app:transformDebugClassesWithAsm' as it is up-to-date.
+Resolve mutations for :app:bundleDebugClassesToRuntimeJar (Thread[Execution worker,5,main]) started.
+:app:bundleDebugClassesToRuntimeJar (Thread[Execution worker,5,main]) started.
+
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+Caching disabled for task ':app:bundleDebugClassesToRuntimeJar' because:
+  Caching has been disabled for the task
+Skipping task ':app:bundleDebugClassesToRuntimeJar' as it is up-to-date.
+work action resolve classes.jar (project :app) (Thread[Execution worker Thread 2,5,main]) started.
+AggregatedPackagesTransform (Thread[included builds,5,main]) started.
+AggregatedPackagesTransform (Thread[Execution worker Thread 2,5,main]) started.
+
+> Task :app:kspDebugUnitTestKotlin
+Build cache key for task ':app:kspDebugUnitTestKotlin' is ceb6981329d0e28cb2c970158163bb59
+Task ':app:kspDebugUnitTestKotlin' is not up-to-date because:
+  Value of input property 'kspConfig.logLevel' has changed for task ':app:kspDebugUnitTestKotlin'
+The input changes require a full rebuild for incremental task ':app:kspDebugUnitTestKotlin'.
+i: [ksp] loaded provider(s): [androidx.hilt.AndroidXHiltKspProcessor$Provider, androidx.room.RoomKspProcessor$Provider, dagger.hilt.processor.internal.uninstallmodules.KspUninstallModulesProcessor$Provider, dagger.hilt.android.processor.internal.viewmodel.KspViewModelProcessor$Provider, dagger.hilt.processor.internal.earlyentrypoint.KspEarlyEntryPointProcessor$Provider, dagger.hilt.android.processor.internal.androidentrypoint.KspAndroidEntryPointProcessor$Provider, dagger.hilt.processor.internal.definecomponent.KspDefineComponentProcessor$Provider, dagger.hilt.processor.internal.originatingelement.KspOriginatingElementProcessor$Provider, dagger.hilt.android.processor.internal.bindvalue.KspBindValueProcessor$Provider, dagger.hilt.processor.internal.root.KspComponentTreeDepsProcessor$Provider, dagger.hilt.processor.internal.root.KspRootProcessor$Provider, dagger.hilt.processor.internal.aliasof.KspAliasOfProcessor$Provider, dagger.hilt.processor.internal.aggregateddeps.KspAggregatedDepsProcessor$Provider, dagger.hilt.processor.internal.generatesrootinput.KspGeneratesRootInputProcessor$Provider, dagger.hilt.android.processor.internal.customtestapplication.KspCustomTestApplicationProcessor$Provider, dagger.internal.codegen.KspComponentProcessor$Provider]
+Stored cache entry for task ':app:kspDebugUnitTestKotlin' with cache key ceb6981329d0e28cb2c970158163bb59
+Resolve mutations for :app:compileDebugUnitTestKotlin (Thread[Execution worker Thread 3,5,main]) started.
+:app:compileDebugUnitTestKotlin (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:compileDebugUnitTestKotlin UP-TO-DATE
+file or directory '/home/yuval/podcasts/app/src/test/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/testDebug/java', not found
+file or directory '/home/yuval/podcasts/app/src/testDebug/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/testDebug/java', not found
+file or directory '/home/yuval/podcasts/app/src/test/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/testDebug/java', not found
+file or directory '/home/yuval/podcasts/app/src/testDebug/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/testDebug/java', not found
+file or directory '/home/yuval/podcasts/app/src/test/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/testDebug/java', not found
+file or directory '/home/yuval/podcasts/app/src/testDebug/kotlin', not found
+file or directory '/home/yuval/podcasts/app/src/testDebug/java', not found
+Build cache key for task ':app:compileDebugUnitTestKotlin' is 67955e0f622deb6f197abab36ae9dd35
+Skipping task ':app:compileDebugUnitTestKotlin' as it is up-to-date.
+Resolve mutations for :app:processDebugUnitTestJavaRes (Thread[Execution worker Thread 3,5,main]) started.
+:app:processDebugUnitTestJavaRes (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+file or directory '/home/yuval/podcasts/app/src/testDebug/resources', not found
+Caching disabled for task ':app:processDebugUnitTestJavaRes' because:
+  Caching has been disabled for the task
+Skipping task ':app:processDebugUnitTestJavaRes' as it is up-to-date.
+Resolve mutations for :app:compileDebugUnitTestJavaWithJavac (Thread[Execution worker Thread 3,5,main]) started.
+:app:compileDebugUnitTestJavaWithJavac (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+Skipping task ':app:compileDebugUnitTestJavaWithJavac' as it has no source files and no previous output files.
+Resolve mutations for :app:hiltSyncDebugUnitTest (Thread[Execution worker Thread 2,5,main]) started.
+:app:hiltSyncDebugUnitTest (Thread[Execution worker,5,main]) started.
+
+> Task :app:hiltSyncDebugUnitTest UP-TO-DATE
+Skipping task ':app:hiltSyncDebugUnitTest' as it has no actions.
+Resolve mutations for :app:hiltAggregateDepsDebugUnitTest (Thread[Execution worker,5,main]) started.
+:app:hiltAggregateDepsDebugUnitTest (Thread[Execution worker,5,main]) started.
+
+> Task :app:hiltAggregateDepsDebugUnitTest UP-TO-DATE
+Build cache key for task ':app:hiltAggregateDepsDebugUnitTest' is 83fb42212cdf9d366df7b94e9f1840d8
+Skipping task ':app:hiltAggregateDepsDebugUnitTest' as it is up-to-date.
+Resolve mutations for :app:hiltJavaCompileDebugUnitTest (Thread[Execution worker,5,main]) started.
+:app:hiltJavaCompileDebugUnitTest (Thread[Execution worker,5,main]) started.
+
+> Task :app:hiltJavaCompileDebugUnitTest NO-SOURCE
+Skipping task ':app:hiltJavaCompileDebugUnitTest' as it has no source files and no previous output files.
+Resolve mutations for :app:transformDebugUnitTestClassesWithAsm (Thread[Execution worker,5,main]) started.
+:app:transformDebugUnitTestClassesWithAsm (Thread[Execution worker,5,main]) started.
+
+> Task :app:transformDebugUnitTestClassesWithAsm UP-TO-DATE
+Build cache key for task ':app:transformDebugUnitTestClassesWithAsm' is 440442de2d37e61e27b52d3d9d4e9090
+Skipping task ':app:transformDebugUnitTestClassesWithAsm' as it is up-to-date.
+Resolve mutations for :app:testDebugUnitTest (Thread[Execution worker,5,main]) started.
+:app:testDebugUnitTest (Thread[Execution worker,5,main]) started.
+
+> Task :app:testDebugUnitTest UP-TO-DATE
+Build cache key for task ':app:testDebugUnitTest' is 7fe3e0e99e2eb3c80d339b17f615e1ae
+Skipping task ':app:testDebugUnitTest' as it is up-to-date.
+Build 93a31816-8b01-48ff-bad7-cb6c86d73a0c is started
+Build 93a31816-8b01-48ff-bad7-cb6c86d73a0c is closed
+
+See the complete report at file:///home/yuval/podcasts/build/reports/configuration-cache/awycnh8acosgu9alxgh8p6tgc/3e51s61sl0b3trfp6r5ssvv0z/configuration-cache-report.html
+
+BUILD SUCCESSFUL in 26s
+32 actionable tasks: 2 executed, 30 up-to-date
+Configuration cache entry stored.
+Configuration Cache (/home/yuval/podcasts/.gradle/configuration-cache) [subdir: /home/yuval/podcasts/.gradle/configuration-cache/bce9acc4-a2a9-428c-99b4-55cd5158970d] cleanup deleted 8 files/directories.

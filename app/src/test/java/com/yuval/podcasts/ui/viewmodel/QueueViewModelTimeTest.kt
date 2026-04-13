@@ -87,7 +87,9 @@ class QueueViewModelTimeTest {
             downloadStatus = 0, 
             localFilePath = null, 
             isPlayed = false, 
-            lastPlayedPosition = 3300000L
+            lastPlayedPosition = 3300000L,
+            completedAt = null,
+            localId = 0L
         )
         queueFlow.value = listOf(EpisodeWithPodcast(episode, podcast))
         

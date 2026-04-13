@@ -13,15 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
- 
-import com.yuval.podcasts.data.db.entity.Episode
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
-
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.yuval.podcasts.R
+import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.ui.utils.Formatter
 
 @Composable
 fun EpisodeItem(
@@ -37,29 +35,29 @@ fun EpisodeItem(
         colors = CardDefaults.cardColors(containerColor = containerColor),
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp) // Reduced outer margin from 4.dp to 2.dp
+            .padding(vertical = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(8.dp), // Reduced inner padding from 12.dp to 8.dp
+            modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (imageUrl != null) {
                 AsyncImage(
                     model = imageUrl,
-                    contentDescription = "Podcast Cover",
+                    contentDescription = stringResource(R.string.podcast_cover),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(48.dp) // Reduced image size from 56.dp to 48.dp
+                        .size(48.dp)
                         .clip(RoundedCornerShape(8.dp))
                 )
-                Spacer(modifier = Modifier.width(8.dp)) // Reduced spacing from 12.dp to 8.dp
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (showPlayedMarker && episode.isPlayed) {
                         Text(
-                            text = "[Played] ",
+                            text = stringResource(R.string.played_marker),
                             color = MaterialTheme.colorScheme.secondary,
                             style = MaterialTheme.typography.labelSmall
                         )
@@ -67,17 +65,16 @@ fun EpisodeItem(
                     Text(
                         text = episode.title, 
                         style = MaterialTheme.typography.titleSmall,
-                        maxLines = 2, // Added constraint to prevent massive vertical bloat
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-
                     val downloadIcon = when (episode.downloadStatus) {
-                        1 -> Icons.Default.HourglassTop // Downloading
-                        2 -> Icons.Default.CheckCircle // Downloaded
-                        else -> Icons.Default.CloudDownload // Not Downloaded
+                        1 -> Icons.Default.HourglassTop
+                        2 -> Icons.Default.CheckCircle
+                        else -> Icons.Default.CloudDownload
                     }
                     val downloadColor = when (episode.downloadStatus) {
                         1 -> MaterialTheme.colorScheme.tertiary
@@ -87,7 +84,7 @@ fun EpisodeItem(
                     
                     Icon(
                         imageVector = downloadIcon,
-                        contentDescription = "Download Status",
+                        contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = downloadColor
                     )
@@ -95,10 +92,10 @@ fun EpisodeItem(
                     
                     Text(
                         text = buildString {
-                            append(formatDate(episode.pubDate))
+                            append(Formatter.formatDate(episode.pubDate))
                             if (episode.duration > 0) {
                                 append(" • ")
-                                append(formatDurationForCard(episode.duration))
+                                append(Formatter.formatDurationShort(episode.duration))
                             }
                         },
                         style = MaterialTheme.typography.labelSmall,
@@ -117,7 +114,7 @@ fun EpisodeItem(
                 if (showProgress && episode.lastPlayedPosition > 0 && episode.duration > 0) {
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = { episode.lastPlayedPosition.toFloat() / episode.duration.toFloat() },
+                        progress = { episode.lastPlayedPosition.toFloat() / (episode.duration.toFloat() * 1000f).coerceAtLeast(1f) },
                         modifier = Modifier.fillMaxWidth().height(2.dp)
                     )
                 }
@@ -127,23 +124,5 @@ fun EpisodeItem(
                 trailingContent()
             }
         }
-    }
-}
-
-private val dateFormat = java.lang.ThreadLocal.withInitial { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-
-private fun formatDate(timestamp: Long): String {
-    if (timestamp == 0L) return ""
-    return dateFormat.get()?.format(Date(timestamp)) ?: ""
-}
-
-private fun formatDurationForCard(seconds: Long): String {
-    if (seconds <= 0) return ""
-    val hours = seconds / 3600
-    val minutes = (seconds % 3600) / 60
-    return if (hours > 0) {
-        "${hours}h ${minutes}m"
-    } else {
-        "${minutes}m"
     }
 }

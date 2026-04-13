@@ -2,6 +2,7 @@ package com.yuval.podcasts.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.media.PlayerManager
@@ -61,7 +62,7 @@ class PlayerViewModel @Inject constructor(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS),
         initialValue = PlayerUiState()
     )
 

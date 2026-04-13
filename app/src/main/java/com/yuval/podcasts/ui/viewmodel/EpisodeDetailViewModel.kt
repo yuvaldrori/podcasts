@@ -8,6 +8,7 @@ import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.yuval.podcasts.data.Constants
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -21,7 +22,6 @@ import com.yuval.podcasts.ui.navigation.EpisodeDetailScreenRoute
 
 import android.content.Context
 import com.yuval.podcasts.R
-import com.yuval.podcasts.data.Constants
 
 sealed interface EpisodeDetailUiState {
     object Loading : EpisodeDetailUiState
@@ -58,7 +58,7 @@ class EpisodeDetailViewModel @Inject constructor(
         }
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS),
         initialValue = EpisodeDetailUiState.Loading
     )
 

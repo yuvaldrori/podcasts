@@ -17,4 +17,20 @@ data class NetworkEpisode(
     val episodeWebLink: String?,
     val pubDate: Long,
     val duration: Long
-)
+) {
+    fun toEpisode(): Episode = Episode(
+        id = id,
+        podcastFeedUrl = podcastFeedUrl,
+        title = title,
+        description = description,
+        audioUrl = audioUrl,
+        imageUrl = imageUrl,
+        episodeWebLink = episodeWebLink,
+        pubDate = pubDate,
+        duration = duration,
+        downloadStatus = 0,
+        localFilePath = null,
+        isPlayed = false,
+        lastPlayedPosition = 0L
+    )
+}

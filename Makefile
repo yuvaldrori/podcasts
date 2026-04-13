@@ -1,7 +1,8 @@
 .PHONY: init build build-release test clean verify emulator install run help
 
+PROJECT_ROOT=$(shell pwd)
 AVD_NAME=test_avd
-export ANDROID_AVD_HOME=$(HOME)/.config/.android/avd/
+export ANDROID_AVD_HOME=/home/yuval/.config/.android/avd/
 SDK_MANAGER=$(ANDROID_HOME)/cmdline-tools/bin/sdkmanager
 
 # Default target
@@ -50,8 +51,17 @@ clean:
 verify: clean lint test build
 
 emulator:
-	@echo "Starting emulator $(AVD_NAME)..."
-	@$(ANDROID_HOME)/emulator/emulator -avd $(AVD_NAME) -no-snapshot-load > /dev/null 2>&1 &
+	@echo "Starting Pixel 8 Pro emulator in Performance Mode..."
+	@export ANDROID_HOME=$(PROJECT_ROOT) ANDROID_SDK_ROOT=$(PROJECT_ROOT) && \
+	nohup $(PROJECT_ROOT)/emulator/emulator -avd $(AVD_NAME) \
+		-no-snapshot \
+		-read-only \
+		-no-audio \
+		-gpu swiftshader_indirect \
+		-memory 3072 \
+		-cores 2 \
+		-qemu -enable-kvm > emulator_startup.log 2>&1 &
+	@echo "Emulator is starting in background. Check emulator_startup.log for progress."
 
 install:
 	./gradlew installDebug

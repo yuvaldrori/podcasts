@@ -1,6 +1,5 @@
 package com.yuval.podcasts.data.db
 
-import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.yuval.podcasts.data.db.entity.Podcast

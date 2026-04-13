@@ -4,8 +4,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsDisplayed
 import com.yuval.podcasts.ui.viewmodel.FeedsUiState
-import org.junit.Rule
-import org.junit.Test
 
 import androidx.compose.ui.test.*
 import com.yuval.podcasts.data.db.entity.Episode
@@ -44,7 +42,8 @@ class NewEpisodesScreenTest {
                     localFilePath = null,
                     isPlayed = false,
                     lastPlayedPosition = 0L,
-                    completedAt = null
+                    completedAt = null,
+                    localId = 0L
                 ),
                 podcast = Podcast("feed", "Podcast", "Desc", "url", "web")
             )

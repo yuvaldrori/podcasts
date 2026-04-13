@@ -29,6 +29,10 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
 
+import com.yuval.podcasts.ui.utils.Formatter
+
+import com.yuval.podcasts.ui.components.LoadingBox
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QueueScreen(
@@ -41,9 +45,7 @@ fun QueueScreen(
     onPlayQueue: (List<com.yuval.podcasts.data.db.entity.Episode>, Int, Long) -> Unit
 ) {
     if (uiState is QueueUiState.Loading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
+        LoadingBox()
         return
     }
     
@@ -69,7 +71,7 @@ fun QueueScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         if (queue.isNotEmpty()) {
             Text(
-                text = stringResource(R.string.queue_listening_time, formatQueueTime(queueTimeRemainingMs)),
+                text = stringResource(R.string.queue_listening_time, Formatter.formatRemainingTime(queueTimeRemainingMs)),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -202,18 +204,5 @@ fun QueueScreen(
                 )
             }
         }
-    }
-}
-
-
-private fun formatQueueTime(ms: Long): String {
-    if (ms <= 0) return "0 mins"
-    val minutes = (ms / (1000 * 60)) % 60
-    val hours = ms / (1000 * 60 * 60)
-    
-    return when {
-        hours > 0 && minutes > 0 -> "$hours hrs $minutes mins"
-        hours > 0 -> "$hours hrs"
-        else -> "$minutes mins"
     }
 }

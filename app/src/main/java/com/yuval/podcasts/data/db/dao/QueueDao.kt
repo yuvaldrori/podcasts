@@ -49,4 +49,11 @@ interface QueueDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQueueItem(queueState: QueueState)
+
+    @Query("""
+        SELECT episodes.* FROM episodes 
+        INNER JOIN queue ON episodes.id = queue.episodeId 
+        WHERE episodes.downloadStatus != 2
+    """)
+    suspend fun getQueuedEpisodesNotDownloaded(): List<Episode>
 }

@@ -19,6 +19,9 @@
     <string name="add_podcast_rss">Add Podcast RSS</string>
     <string name="add_podcast">Add Podcast</string>
     <string name="opml_import_export">OPML Import/Export</string>
+    <string name="history_import_export">History Import/Export (JSON)</string>
+    <string name="export_history_btn">Export History</string>
+    <string name="import_history_btn">Import History</string>
     <string name="queue_listening_time">%1$s of queue listening time</string>
     <string name="back">Back</string>
     <string name="dismiss">Dismiss</string>
@@ -34,4 +37,7 @@
     <string name="import_local_audio_title">Import Local Audio</string>
     <string name="import_local_audio_btn">Import MP3</string>
     <string name="listening_to">Listening to %1$s via Podcasts App</string>
+    <string name="played_marker">[Played] </string>
+    <string name="not_playing">Not Playing</string>
+    <string name="app_version">Version %1$s (%2$s)</string>
 </resources>

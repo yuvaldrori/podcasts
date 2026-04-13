@@ -160,6 +160,8 @@ fun MainScreen(
                     onAddPodcast = { url -> settingsViewModel.addPodcast(url) },
                     onImportOpml = { uri -> settingsViewModel.importOpml(uri) },
                     onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) },
+                    onExportHistory = { ctx, uri -> settingsViewModel.exportHistory(ctx, uri) },
+                    onImportHistory = { uri -> settingsViewModel.importHistory(uri) },
                     onImportLocalAudio = { uri -> settingsViewModel.importLocalAudio(uri) },
                     onClearError = { settingsViewModel.clearError() }
                 )

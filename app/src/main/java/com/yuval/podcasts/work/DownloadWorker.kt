@@ -9,6 +9,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.di.IoDispatcher
 import dagger.assisted.Assisted
@@ -46,8 +47,8 @@ class DownloadWorker @AssistedInject constructor(
             val url = URL(audioUrl)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
-            connection.connectTimeout = 30000
-            connection.readTimeout = 30000
+            connection.connectTimeout = Constants.NETWORK_TIMEOUT_MS
+            connection.readTimeout = Constants.NETWORK_TIMEOUT_MS
             connection.connect()
 
             if (connection.responseCode !in 200..299) {

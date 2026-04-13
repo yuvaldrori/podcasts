@@ -17,12 +17,17 @@ import com.yuval.podcasts.ui.viewmodel.SettingsUiState
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
 
+import androidx.compose.ui.Alignment
+import com.yuval.podcasts.BuildConfig
+
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
     onAddPodcast: (String) -> Unit,
     onImportOpml: (Uri) -> Unit,
     onExportOpml: (android.content.Context, Uri) -> Unit,
+    onExportHistory: (android.content.Context, Uri) -> Unit,
+    onImportHistory: (Uri) -> Unit,
     onImportLocalAudio: (Uri) -> Unit,
     onClearError: () -> Unit
 ) {
@@ -45,6 +50,16 @@ fun SettingsScreen(
     val opmlExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/x-opml"),
         onResult = { uri -> uri?.let { onExportOpml(context, it) } }
+    )
+
+    val historyExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json"),
+        onResult = { uri -> uri?.let { onExportHistory(context, it) } }
+    )
+
+    val historyImportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri -> uri?.let { onImportHistory(it) } }
     )
 
     val localAudioLauncher = rememberLauncherForActivityResult(
@@ -135,6 +150,26 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
+            Text(text = stringResource(R.string.history_import_export), style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = { historyImportLauncher.launch(arrayOf("*/*")) },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.import_history_btn))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = { historyExportLauncher.launch("podcasts_history.json") },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.export_history_btn))
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+
             Text(text = stringResource(R.string.import_local_audio_title), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
             Button(
@@ -143,6 +178,18 @@ fun SettingsScreen(
             ) {
                 Text(stringResource(R.string.import_local_audio_btn))
             }
+
+            Spacer(modifier = Modifier.height(48.dp))
+            Text(
+                text = stringResource(
+                    R.string.app_version, 
+                    BuildConfig.VERSION_NAME, 
+                    BuildConfig.BUILD_DATE
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
         }
     }
 }

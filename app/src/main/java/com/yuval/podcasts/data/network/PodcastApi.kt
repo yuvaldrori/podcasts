@@ -1,5 +1,6 @@
 package com.yuval.podcasts.data.network
 
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -23,8 +24,8 @@ class PodcastApi @Inject constructor(
                 val url = URL(urlString)
                 connection = url.openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
-                connection.connectTimeout = 15000
-                connection.readTimeout = 15000
+                connection.connectTimeout = Constants.NETWORK_TIMEOUT_MS
+                connection.readTimeout = Constants.NETWORK_TIMEOUT_MS
 
                 // Register cancellation handler to disconnect network socket early
                 continuation.invokeOnCancellation {

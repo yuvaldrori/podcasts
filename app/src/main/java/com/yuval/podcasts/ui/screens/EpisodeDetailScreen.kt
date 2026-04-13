@@ -22,12 +22,10 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.viewmodel.EpisodeDetailUiState
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
+import com.yuval.podcasts.ui.components.LoadingBox
+import com.yuval.podcasts.ui.utils.Formatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,11 +49,7 @@ fun EpisodeDetailScreen(
         }
     ) { padding ->
         when (uiState) {
-            is EpisodeDetailUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
+            is EpisodeDetailUiState.Loading -> LoadingBox(Modifier.padding(padding))
             is EpisodeDetailUiState.Error -> {
                 Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     Text("Episode not found")
@@ -97,69 +91,67 @@ fun EpisodeDetailScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = formatLongDate(data.episode.pubDate),
-                                style = MaterialTheme.typography.bodySmall,
+                                text = Formatter.formatDate(data.episode.pubDate),
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.outline
                             )
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = { onAddToQueue(data.episode) },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        enabled = !uiState.isInQueue
                     ) {
-                        if (!uiState.isInQueue && !data.episode.isPlayed) {
-                            FilledIconButton(
-                                onClick = { 
-                                    onAddToQueue(data.episode)
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
-                            }
-                        }
-                        
-                        OutlinedIconButton(
-                            onClick = {
-                                val shareIntent = Intent.createChooser(Intent().apply {
-                                    action = Intent.ACTION_SEND
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TITLE, data.episode.title)
-                                    val text = if (data.episode.isLocal) {
-                                        context.getString(R.string.listening_to, data.episode.title)
-                                    } else {
-                                        val urlToShare = data.episode.episodeWebLink ?: data.episode.audioUrl
-                                        "${data.episode.title}\n$urlToShare"
-                                    }
-                                    putExtra(Intent.EXTRA_TEXT, text)
-                                }, context.getString(R.string.share_episode))
-                                context.startActivity(shareIntent)
-                            },
-                            modifier = Modifier.weight(if (!uiState.isInQueue && !data.episode.isPlayed) 1f else 0.5f)
-                        ) {
-                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
-                        }
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (uiState.isInQueue) "In Queue" else stringResource(R.string.add_to_queue))
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            val sendIntent: Intent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                val shareText = if (!data.episode.isLocal && data.episode.episodeWebLink != null) {
+                                    "${data.episode.title}\n\n${data.episode.episodeWebLink}"
+                                } else {
+                                    context.getString(R.string.listening_to, data.episode.title)
+                                }
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                type = "text/plain"
+                            }
+                            val shareIntent = Intent.createChooser(sendIntent, null)
+                            context.startActivity(shareIntent)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.share))
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = "Description",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                     
-                    val parsedDescription = remember(data.episode.description) {
-                        Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toString()
+                    val spannedDescription = remember(data.episode.description) {
+                        Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT)
                     }
                     Text(
-                        text = parsedDescription,
-                        style = MaterialTheme.typography.bodyLarge
+                        text = spannedDescription.toString(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
     }
-}
-
-private fun formatLongDate(timestamp: Long): String {
-    if (timestamp == 0L) return ""
-    val dateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
-    return dateFormat.format(Date(timestamp))
 }

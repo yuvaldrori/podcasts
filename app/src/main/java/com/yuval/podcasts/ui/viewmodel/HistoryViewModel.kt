@@ -2,6 +2,7 @@ package com.yuval.podcasts.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
@@ -24,7 +25,7 @@ class HistoryViewModel @Inject constructor(
 
     val history: StateFlow<ImmutableList<EpisodeWithPodcast>> = repository.playHistory
         .map { it.toImmutableList() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), persistentListOf())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), persistentListOf())
 
     fun enqueueEpisode(episodeWithPodcast: EpisodeWithPodcast) {
         viewModelScope.launch {

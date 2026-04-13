@@ -12,6 +12,7 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.yuval.podcasts.data.repository.SettingsRepository
+import com.yuval.podcasts.data.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,7 +58,7 @@ class PlayerManager @Inject constructor(
                     emit(controller?.currentPosition ?: _currentPosition.value)
                 }
             }
-        }.stateIn(scope, SharingStarted.WhileSubscribed(5000), 0L)
+        }.stateIn(scope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), 0L)
 
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
@@ -215,7 +216,7 @@ class PlayerManager @Inject constructor(
         _currentPosition.value = positionMs
     }
 
-    fun seekForward(ms: Long = 30000L) {
+    fun seekForward(ms: Long = Constants.SEEK_FORWARD_MS) {
         controller?.let {
             val newPosition = (it.currentPosition + ms).coerceAtMost(it.duration.coerceAtLeast(0L))
             it.seekTo(newPosition)
@@ -223,7 +224,7 @@ class PlayerManager @Inject constructor(
         }
     }
 
-    fun seekBackward(ms: Long = 15000L) {
+    fun seekBackward(ms: Long = Constants.SEEK_BACKWARD_MS) {
         controller?.let {
             val newPosition = (it.currentPosition - ms).coerceAtLeast(0L)
             it.seekTo(newPosition)
