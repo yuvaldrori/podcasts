@@ -17,15 +17,21 @@ The following guidelines govern all code development, refactoring, and problem-s
 * **Follow Official Guidelines**: Write idiomatic code that aligns with the official best practices for the language and framework (e.g., Google's App Architecture Guidelines for Android, standard Kotlin conventions).
 * **Consult Documentation**: When unsure, consult the official documentation websites. Use the language's standard library source code as a benchmark for what good, idiomatic code looks like.
 
-## 5. Test-Driven Development (TDD)
-* **Write Failing Tests First**: Always write a failing test before implementing the code to fix it. This proves the test works and defines the exact bounds of the implementation.
-* **Maintain `TESTS.md`**: Whenever a new test is added or an existing test's behavior is changed, update `app/src/test/tests.md` (or the equivalent test documentation file). This file must explain what each test does in simple, human-readable English.
-* **Beyond Unit Tests**: Do not rely solely on unit tests. If the toolchain supports integration testing, UI testing, or running the code in a live environment (e.g., an Android Emulator), execute those tests to verify the behavior holistically.
-
-## 6. Performance & Efficiency
+## 5. Performance & Efficiency
 * **Monitor Resource Usage**: Actively consider the impact of new changes on performance, memory usage, and battery life.
+* **Bulk Operations**: Always prioritize bulk database operations over iterative queries. Use the "Fetch-Merge-Upsert" pattern demonstrated in `EpisodeDao.syncNetworkEpisodes` to handle large datasets efficiently.
+* **Non-blocking Media Bridge**: Never use `runBlocking` within `MediaSession` callbacks. Utilize the `asListenableFuture` bridge to resolve media items asynchronously, ensuring the UI thread remains responsive.
 * **Test for Constraints**: Ensure that background tasks, media players, and network calls are optimized, properly bounded to the correct threads (using explicit Dispatchers), and cancelled cleanly when no longer needed.
 
-## 7. Documentation & Visuals
-* **Keep Docs Synced**: Whenever making UI or layout changes, use an emulator or device to capture new screenshots of the updated screens. Ensure that the screenshots stored in `docs/images/` accurately reflect the current state of the application.
+## 6. Maintenance & Upgrades
+* **Stateless Upgrades**: During rapid development, prefer a "Stateless Maintenance" strategy. Instead of complex SQL migrations, utilize the OPML (Subscriptions) and JSON (History) export/import features to preserve user state across destructive database schema updates.
+* **Zero-Debt Schema**: If an experimental schema change is reverted, revert the database version number to match the stable version, avoiding unnecessary wipes for other developers.
 
+## 7. Test-Driven Development (TDD)
+* **Write Failing Tests First**: Always write a failing test before implementing the code to fix it. This proves the test works and defines the exact bounds of the implementation.
+* **Maintain `TESTS.md`**: Whenever a new test is added or an existing test's behavior is changed, update `app/src/test/tests.md` (or the equivalent test documentation file). This file must explain what each test does in simple, human-readable English.
+* **Beyond Unit Tests**: Do not rely solely on unit tests. Use integration tests for Background Workers and MediaSession callbacks.
+* **Benchmark Verification**: Any change affecting list performance (e.g., the New Episodes feed) must be validated using the `benchmark` module to ensure it maintains target frame timings.
+
+## 8. Documentation & Visuals
+* **Keep Docs Synced**: Whenever making UI or layout changes, use an emulator or device to capture new screenshots of the updated screens. Ensure that the screenshots stored in `docs/images/` accurately reflect the current state of the application.
