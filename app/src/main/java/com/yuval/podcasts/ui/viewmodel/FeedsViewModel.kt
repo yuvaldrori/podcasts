@@ -1,5 +1,7 @@
 package com.yuval.podcasts.ui.viewmodel
 
+import android.content.Context
+import com.yuval.podcasts.R
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -66,7 +68,7 @@ class FeedsViewModel @Inject constructor(
                 repository.fetchAndStorePodcast(feedUrl)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                _errorMessage.value = "Failed to refresh podcast: ${e.message}"
+                _errorMessage.value = repository.getString(R.string.error_refresh_podcast, e.message ?: "")
             }
         }
     }

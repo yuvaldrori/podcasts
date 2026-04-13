@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.yuval.podcasts.data.db.entity.Podcast
 
 @Composable
@@ -29,10 +28,9 @@ fun PodcastItem(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
+            PodcastCover(
                 model = podcast.imageUrl,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp)
+                size = 64.dp
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {

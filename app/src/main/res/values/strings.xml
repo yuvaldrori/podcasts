@@ -40,4 +40,21 @@
     <string name="played_marker">[Played] </string>
     <string name="not_playing">Not Playing</string>
     <string name="app_version">Version %1$s (%2$s)</string>
+    <string name="episode_not_found">Episode not found</string>
+    <string name="description_label">Description</string>
+    <string name="chapters_label">Chapters</string>
+    <string name="smart_silence_title">Smart Silence Trimming</string>
+    <string name="smart_silence_desc">Automatically skip periods of silence in podcasts</string>
+    <string name="local_files_title">Local Files</string>
+    <string name="local_files_desc">Manually imported audio files</string>
+    <string name="playback_speed_format">%1$sx</string>
+    <string name="in_queue">In Queue</string>
+    <string name="duration_hours_minutes">%1$dh %2$dm</string>
+    <string name="duration_minutes">%1$dm</string>
+    <string name="error_refresh_podcast">Failed to refresh podcast: %1$s</string>
+    <string name="error_add_podcast">Failed to add podcast: %1$s</string>
+    <string name="error_import_local">Failed to import local file: %1$s</string>
+    <string name="error_export_opml">Failed to export OPML: %1$s</string>
+    <string name="error_export_history">Failed to export history: %1$s</string>
+    <string name="error_import_history">Failed to import history: %1$s</string>
 </resources>

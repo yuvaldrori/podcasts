@@ -11,7 +11,7 @@ The app uses **Jetpack Compose** for a declarative UI and **Hilt** for Dependenc
 ### 1. UI Layer (`com.yuval.podcasts.ui`)
 *   **Screens**: Found in `ui/screens`. Each screen is a Compose function (e.g., `QueueScreen`, `SubscriptionsScreen`).
 *   **ViewModels**: Found in `ui/viewmodel`. These map data from the domain/repository layer to UI states. They expose `StateFlow`s that the Compose screens collect.
-*   **Components**: Reusable UI parts like `EpisodeItem` and the `UnifiedPlayer`.
+*   **Components**: Reusable UI parts like `EpisodeItem`, `PodcastCover`, and the `UnifiedPlayer`.
 *   **Dynamic Theme**: The app uses `androidx.palette` to extract colors from podcast artwork, providing a personalized Material You experience.
 
 ### 2. Domain Layer (`com.yuval.podcasts.domain.usecase`)
@@ -21,7 +21,8 @@ This layer houses the core business logic. Use cases encapsulate specific, atomi
 *   **Repository (`PodcastRepository`)**: The single source of truth for the app. It uses a bulk-synchronization pattern that merges network data with local state in memory before performing a single-transaction `@Upsert`.
 *   **Database (`db`)**: Uses **Room** to store `Podcast`, `Episode`, and `Chapter` entities.
 *   **History Sidecar**: To avoid complex migrations, history can be exported/imported as a JSON "Sidecar" file.
-*   **Network (`network`)**: Uses a custom `RssParser` with namespace awareness to parse RSS and Podlove Chapters.
+    *   **Placeholder Architecture**: The app supports importing history *before* podcasts are synced. It creates "placeholder" episodes that are later automatically merged with full network metadata during the next RSS sync.
+*   **Network (`network`)**: Uses a custom `RssParser` with namespace awareness to parse RSS, itunes tags (artwork), and Podlove Chapters.
 
 ---
 
@@ -63,6 +64,10 @@ The app uses **WorkManager** for asynchronous, guaranteed background tasks.
 This project includes a convenient `Makefile` to streamline daily developer tasks.
 
 ### Useful Makefile Commands:
+*   `make init` - Initialize the environment (SDK tools, licenses).
+*   `make avd-init` - Create the Pixel 8 Pro AVD image.
+*   `make emulator` - Start the optimized emulator in the background.
+*   `make stop-emulator` - Stop the running emulator.
 *   `make verify` - **Run this before pushing!** Clean build, lint, and all tests.
 *   `make test` - Runs all local unit tests.
 *   `make benchmark-run` - Runs macrobenchmarks on a connected device.

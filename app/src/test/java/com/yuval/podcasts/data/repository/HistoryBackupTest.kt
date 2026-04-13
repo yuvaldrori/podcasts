@@ -97,6 +97,10 @@ class HistoryBackupTest {
         val uri = mockk<Uri>()
         every { contentResolver.openInputStream(uri) } returns inputStream
         
+        // Setup existing episodes and podcasts
+        coEvery { podcastDao.getPodcast(any()) } returns mockk()
+        coEvery { episodeDao.getEpisodeById("ep1") } returns mockk()
+        coEvery { episodeDao.getEpisodeById("ep2") } returns mockk()
         coEvery { episodeDao.markAsPlayedBulk(any(), any()) } returns Unit
 
         val result = repository.importHistory(uri)
@@ -104,19 +108,16 @@ class HistoryBackupTest {
         assertTrue(result.isSuccess)
         coVerify { episodeDao.markAsPlayedBulk("ep1", 5000L) }
         coVerify { episodeDao.markAsPlayedBulk("ep2", 6000L) }
+        coVerify(exactly = 0) { episodeDao.insertEpisode(any()) }
     }
 
     @Test
-    fun importHistory_handlesMissingEpisodes_gracefully() = runTest {
-        // This simulates the edge case: user imports history JSON, 
-        // but the episodes aren't in the DB yet (sync not finished).
-        // markAsPlayedBulk in the DAO is an UPDATE query. 
-        // If the row doesn't exist, UPDATE simply updates 0 rows. SQL doesn't fail.
-        
+    fun importHistory_createsPlaceholders_whenEpisodesMissing() = runTest {
+        // This simulates the case where history is imported BEFORE the OPML syncs
         val json = """
             {
                 "entries": [
-                    {"episodeId": "not_in_db", "podcastFeedUrl": "url1", "completedAt": 7000}
+                    {"episodeId": "new_ep", "podcastFeedUrl": "new_url", "completedAt": 7000}
                 ]
             }
         """.trimIndent()
@@ -125,13 +126,28 @@ class HistoryBackupTest {
         val uri = mockk<Uri>()
         every { contentResolver.openInputStream(uri) } returns inputStream
         
-        // Mocking DAO to behave like SQL (completes without error even if 0 rows affected)
-        coEvery { episodeDao.markAsPlayedBulk(any(), any()) } returns Unit
+        coEvery { podcastDao.getPodcast("new_url") } returns null
+        coEvery { episodeDao.getEpisodeById("new_ep") } returns null
+        coEvery { podcastDao.insertPodcast(any()) } returns Unit
+        coEvery { episodeDao.insertEpisode(any()) } returns Unit
 
         val result = repository.importHistory(uri)
 
         assertTrue(result.isSuccess)
-        coVerify { episodeDao.markAsPlayedBulk("not_in_db", 7000L) }
+        
+        // Verify placeholder podcast was created
+        coVerify { 
+            podcastDao.insertPodcast(match { it.feedUrl == "new_url" && it.title == "" }) 
+        }
+        
+        // Verify placeholder episode was created
+        coVerify { 
+            episodeDao.insertEpisode(match { 
+                it.id == "new_ep" && it.isPlayed && it.completedAt == 7000L && it.title == "" 
+            }) 
+        }
+        
+        coVerify(exactly = 0) { episodeDao.markAsPlayedBulk(any(), any()) }
     }
 
     @Test

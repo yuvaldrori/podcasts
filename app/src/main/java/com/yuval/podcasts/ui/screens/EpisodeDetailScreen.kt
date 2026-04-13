@@ -29,6 +29,7 @@ import com.yuval.podcasts.ui.viewmodel.EpisodeDetailUiState
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
 import com.yuval.podcasts.ui.components.LoadingBox
+import com.yuval.podcasts.ui.components.PodcastCover
 import com.yuval.podcasts.ui.utils.Formatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,7 +58,7 @@ fun EpisodeDetailScreen(
             is EpisodeDetailUiState.Loading -> LoadingBox(Modifier.padding(padding))
             is EpisodeDetailUiState.Error -> {
                 Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text("Episode not found")
+                    Text(stringResource(R.string.episode_not_found))
                 }
             }
             is EpisodeDetailUiState.Success -> {
@@ -73,13 +74,9 @@ fun EpisodeDetailScreen(
                         verticalAlignment = Alignment.Top
                     ) {
                         val imageUrl = data.episode.imageUrl ?: data.podcast.imageUrl
-                        AsyncImage(
+                        PodcastCover(
                             model = imageUrl,
-                            contentDescription = stringResource(R.string.podcast_cover),
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(120.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                            size = 120.dp
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
@@ -111,7 +108,7 @@ fun EpisodeDetailScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (uiState.isInQueue) "In Queue" else stringResource(R.string.add_to_queue))
+                        Text(if (uiState.isInQueue) stringResource(R.string.in_queue) else stringResource(R.string.add_to_queue))
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -141,7 +138,7 @@ fun EpisodeDetailScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        text = "Description",
+                        text = stringResource(R.string.description_label),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -160,7 +157,7 @@ fun EpisodeDetailScreen(
 
                         if (uiState.chapters.isNotEmpty()) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-                            Text(text = "Chapters", style = MaterialTheme.typography.titleMedium)
+                            Text(text = stringResource(R.string.chapters_label), style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(8.dp))
                             LazyColumn(modifier = Modifier.weight(1f)) {
                                 items(uiState.chapters) { chapter ->

@@ -71,7 +71,8 @@ fun UnifiedPlayer(
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
                     ) {
-                        Text(text = if (playbackSpeed >= 2f) "2x" else "1x", style = MaterialTheme.typography.labelLarge)
+                        val speedText = if (playbackSpeed % 1f == 0f) playbackSpeed.toInt().toString() else playbackSpeed.toString()
+                        Text(text = stringResource(R.string.playback_speed_format, speedText), style = MaterialTheme.typography.labelLarge)
                     }
                     IconButton(
                         onClick = onSeekBackward,

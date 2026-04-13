@@ -37,15 +37,21 @@ class RssParser {
             if (parser.name == "channel") {
                 while (parser.next() != XmlPullParser.END_TAG) {
                     if (parser.eventType != XmlPullParser.START_TAG) continue
-                    when (parser.name) {
+                    val tagName = parser.name
+                    when (tagName) {
                         "title" -> podcastTitle = readText(parser)
                         "description" -> podcastDescription = readText(parser)
                         "link" -> podcastWebsite = readText(parser)
-                        "image" -> podcastImageUrl = readImage(parser)
-                        "itunes:image" -> {
+                        "image" -> {
+                            // itunes:image uses 'href' attribute in namespace-aware mode
                             val href = parser.getAttributeValue(null, "href")
-                            if (href != null) podcastImageUrl = href
-                            skip(parser)
+                            if (href != null) {
+                                podcastImageUrl = href
+                                skip(parser)
+                            } else {
+                                // Standard RSS <image> has a nested <url> tag
+                                podcastImageUrl = readImage(parser)
+                            }
                         }
                         "item" -> episodes.add(readItem(parser, feedUrl))
                         else -> skip(parser)
@@ -80,12 +86,13 @@ class RssParser {
         parser.require(XmlPullParser.START_TAG, null, "item")
         while (parser.next() != XmlPullParser.END_TAG) {
             if (parser.eventType != XmlPullParser.START_TAG) continue
-            when (parser.name) {
+            val tagName = parser.name
+            when (tagName) {
                 "title" -> title = readText(parser)
                 "description" -> description = readText(parser)
                 "link" -> episodeWebLink = readText(parser)
                 "guid" -> id = readText(parser)
-                "itunes:image" -> {
+                "image" -> {
                     val href = parser.getAttributeValue(null, "href")
                     if (href != null) imageUrl = href
                     skip(parser)
@@ -136,7 +143,7 @@ class RssParser {
         // We are at <psc:chapters> or <chapters>
         while (parser.next() != XmlPullParser.END_TAG) {
             if (parser.eventType != XmlPullParser.START_TAG) continue
-            if (parser.name == "psc:chapter" || parser.name == "chapter") {
+            if (parser.name == "chapter") {
                 val start = parser.getAttributeValue(null, "start") ?: "0"
                 val title = parser.getAttributeValue(null, "title") ?: ""
                 val href = parser.getAttributeValue(null, "href")

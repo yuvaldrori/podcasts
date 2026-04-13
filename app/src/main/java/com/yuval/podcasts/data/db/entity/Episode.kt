@@ -39,4 +39,9 @@ data class Episode(
     val isLocal: Boolean
         get() = podcastFeedUrl == com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL ||
                 (!audioUrl.startsWith("http") && episodeWebLink == null)
-}
+
+    val progress: Float
+        get() = if (duration > 0) {
+            lastPlayedPosition.toFloat() / (duration.toFloat() * 1000f).coerceAtLeast(1f)
+        } else 0f
+    }

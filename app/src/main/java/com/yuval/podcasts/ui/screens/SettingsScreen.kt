@@ -105,7 +105,34 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
             val isImporting = uiState.importWorkInfo?.state == androidx.work.WorkInfo.State.RUNNING
+            val progress = uiState.importWorkInfo?.progress?.getInt("PROGRESS", 0) ?: 0
+            val total = uiState.importWorkInfo?.progress?.getInt("TOTAL", 0) ?: 0
+
             Text(text = stringResource(R.string.opml_import_export), style = MaterialTheme.typography.titleLarge)
+            
+            if (isImporting) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.importing_podcasts, progress, total),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { if (total > 0) progress.toFloat() / total.toFloat() else 0f },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
@@ -152,9 +179,9 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Smart Silence Trimming", style = MaterialTheme.typography.titleLarge)
+                    Text(text = stringResource(R.string.smart_silence_title), style = MaterialTheme.typography.titleLarge)
                     Text(
-                        text = "Automatically skip periods of silence in podcasts", 
+                        text = stringResource(R.string.smart_silence_desc), 
                         style = MaterialTheme.typography.bodyMedium, 
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -180,8 +207,8 @@ fun SettingsScreen(
             Text(
                 text = stringResource(
                     R.string.app_version, 
-                    "1.0", 
-                    "April 2026"
+                    com.yuval.podcasts.BuildConfig.VERSION_NAME, 
+                    com.yuval.podcasts.BuildConfig.BUILD_DATE
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,

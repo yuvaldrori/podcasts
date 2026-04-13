@@ -19,8 +19,9 @@ The following guidelines govern all code development, refactoring, and problem-s
 
 ## 5. Performance & Efficiency
 * **Monitor Resource Usage**: Actively consider the impact of new changes on performance, memory usage, and battery life.
-* **Bulk Operations**: Always prioritize bulk database operations over iterative queries. Use the "Fetch-Merge-Upsert" pattern demonstrated in `EpisodeDao.syncNetworkEpisodes` to handle large datasets efficiently.
+* **Bulk Operations**: Always prioritize bulk database operations over iterative queries. Use the "Fetch-Merge-Upsert" pattern demonstrated in `EpisodeDao.syncNetworkEpisodes` to handle large datasets efficiently. For secondary data like Chapters, use bulk delete/insert transactions (e.g., `ChapterDao.updateChaptersBulk`).
 * **Non-blocking Media Bridge**: Never use `runBlocking` within `MediaSession` callbacks. Utilize the `asListenableFuture` bridge to resolve media items asynchronously, ensuring the UI thread remains responsive.
+* **Emulator Setup**: Use the `Makefile` commands `make avd-init` and `make emulator` to set up and run a performance-optimized Pixel 8 Pro environment for testing.
 * **Test for Constraints**: Ensure that background tasks, media players, and network calls are optimized, properly bounded to the correct threads (using explicit Dispatchers), and cancelled cleanly when no longer needed.
 
 ## 6. Maintenance & Upgrades

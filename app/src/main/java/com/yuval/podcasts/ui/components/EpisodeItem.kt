@@ -14,7 +14,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
-import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
@@ -42,14 +41,7 @@ fun EpisodeItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (imageUrl != null) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = stringResource(R.string.podcast_cover),
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                )
+                PodcastCover(model = imageUrl)
                 Spacer(modifier = Modifier.width(8.dp))
             }
 
@@ -114,7 +106,7 @@ fun EpisodeItem(
                 if (showProgress && episode.lastPlayedPosition > 0 && episode.duration > 0) {
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = { episode.lastPlayedPosition.toFloat() / (episode.duration.toFloat() * 1000f).coerceAtLeast(1f) },
+                        progress = { episode.progress },
                         modifier = Modifier.fillMaxWidth().height(2.dp)
                     )
                 }

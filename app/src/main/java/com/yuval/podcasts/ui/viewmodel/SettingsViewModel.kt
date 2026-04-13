@@ -20,10 +20,10 @@ import kotlinx.coroutines.flow.flowOf
 
 import android.content.Context
 import android.net.Uri
+import com.yuval.podcasts.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -68,7 +68,7 @@ class SettingsViewModel @Inject constructor(
                 repository.fetchAndStorePodcast(url)
             } catch (e: Exception) {
                         if (e is kotlinx.coroutines.CancellationException) throw e
-                _errorMessage.value = "Failed to add podcast: ${e.message}"
+                _errorMessage.value = repository.getString(R.string.error_add_podcast, e.message ?: "")
             }
         }
     }
@@ -89,7 +89,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val result = repository.addLocalFile(uri)
             if (result.isFailure) {
-                _errorMessage.value = "Failed to import local file: ${result.exceptionOrNull()?.message}"
+                _errorMessage.value = repository.getString(R.string.error_import_local, result.exceptionOrNull()?.message ?: "")
             }
         }
     }
@@ -102,8 +102,8 @@ class SettingsViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                         if (e is kotlinx.coroutines.CancellationException) throw e
-                e.printStackTrace()
-                _errorMessage.value = "Failed to export OPML: ${e.message}"
+                android.util.Log.e("SettingsViewModel", "Failed to export OPML", e)
+                _errorMessage.value = repository.getString(R.string.error_export_opml, e.message ?: "")
             }
         }
     }
@@ -112,7 +112,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val result = repository.exportHistory(context, uri)
             if (result.isFailure) {
-                _errorMessage.value = "Failed to export history: ${result.exceptionOrNull()?.message}"
+                _errorMessage.value = repository.getString(R.string.error_export_history, result.exceptionOrNull()?.message ?: "")
             }
         }
     }
@@ -121,7 +121,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val result = repository.importHistory(uri)
             if (result.isFailure) {
-                _errorMessage.value = "Failed to import history: ${result.exceptionOrNull()?.message}"
+                _errorMessage.value = repository.getString(R.string.error_import_history, result.exceptionOrNull()?.message ?: "")
             }
         }
     }

@@ -19,7 +19,7 @@ These tests ensure the app can talk to the internet and understand the podcast d
 
 *   **`PodcastApiIntegrationTest`**: Makes sure that if the app is trying to download an RSS feed and the user cancels the action (like closing the app), the network request stops immediately to save data and battery.
 *   **`PodcastRemoteDataSourceTest`**: Verifies that the remote data source correctly orchestrates the network fetch and RSS parsing into clean data models.
-*   **`RssParserTest`**: Feeds fake XML files (RSS feeds) to the parser to ensure it correctly extracts the podcast title, episode names, audio links, and publication dates.
+*   **`RssParserTest`**: Feeds fake XML files (RSS feeds) to the parser to ensure it correctly extracts the podcast title, episode names, audio links, publication dates, and artwork (handling both standard RSS and iTunes image tags).
 *   **`RssParserCrashTest`**: A safety test that feeds broken, corrupted, or badly formatted XML to the parser to ensure the app doesn't crash, but instead handles the error gracefully.
 
 ## 📁 Repository Tests
@@ -31,7 +31,7 @@ Repositories are the "managers" that decide whether to get data from the databas
 *   **`PodcastRepositoryRefreshTest`**: Checks the "Refresh All" feature. It makes sure that if you have 10 subscriptions, it refreshes them all quickly in parallel without freezing the app.
 *   **`AddLocalFileIntegrationTest`**: Tests the feature that lets users import their own local MP3 files. It checks if the app can read the MP3's metadata (title, artist, duration) and fake a "podcast episode" in the database.
 *   **`PodcastRepositoryAddLocalFileTest`**: A smaller test verifying that once the local MP3 is read, the repository properly saves it into the special "Local Files" subscription.
-*   **`HistoryBackupTest`**: Verifies the history export and import functionality. It ensures that played episodes are correctly saved to a JSON file and that importing this file correctly restores the "played" status in the database, even if the episodes don't exist yet (which handles the post-upgrade sync edge case).
+*   **`HistoryBackupTest`**: Verifies the history export and import functionality. It ensures that played episodes are correctly saved to a JSON file and that importing this file correctly restores the "played" status in the database. It explicitly handles the case where history is imported before the podcast is synced by creating "placeholder" records that are merged later.
 *   **`SettingsRepositoryTest`**: Checks that user preferences (like the default playback speed) are saved and loaded correctly from device storage.
 
 ## 💼 Domain Logic (Use Cases)

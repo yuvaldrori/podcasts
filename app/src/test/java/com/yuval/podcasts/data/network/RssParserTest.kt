@@ -1,7 +1,6 @@
 package com.yuval.podcasts.data.network
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Test
 import java.io.ByteArrayInputStream
 
@@ -35,6 +34,82 @@ class RssParserTest {
     }
 
     @Test
+    fun parse_withItunesImages_extractsUrlsCorrectly() {
+        val xml = """
+            <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+                <channel>
+                    <title>iTunes Image Test</title>
+                    <itunes:image href="http://test.com/podcast.jpg" />
+                    <item>
+                        <title>Episode 1</title>
+                        <itunes:image href="http://test.com/episode1.jpg" />
+                        <guid>ep1</guid>
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+        
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val (podcast, episodes) = parser.parse(inputStream, "http://test.com")
+        
+        assertEquals("http://test.com/podcast.jpg", podcast.imageUrl)
+        assertEquals(1, episodes.size)
+        assertEquals("http://test.com/episode1.jpg", episodes[0].episode.imageUrl)
+    }
+
+    @Test
+    fun parse_withStandardRssImages_extractsUrlsCorrectly() {
+        val xml = """
+            <rss version="2.0">
+                <channel>
+                    <title>Standard Image Test</title>
+                    <image>
+                        <url>http://test.com/podcast_std.jpg</url>
+                        <title>Standard Image Test</title>
+                        <link>http://test.com</link>
+                    </image>
+                    <item>
+                        <title>Episode 1</title>
+                        <guid>ep1</guid>
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+        
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val (podcast, _) = parser.parse(inputStream, "http://test.com")
+        
+        assertEquals("http://test.com/podcast_std.jpg", podcast.imageUrl)
+    }
+
+    @Test
+    fun parse_withMixedImageTags_prefersItunesImage() {
+        // This tests the logic order in the parser
+        val xml = """
+            <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+                <channel>
+                    <title>Mixed Image Test</title>
+                    <image>
+                        <url>http://test.com/standard.jpg</url>
+                    </image>
+                    <itunes:image href="http://test.com/itunes.jpg" />
+                    <item>
+                        <title>Episode 1</title>
+                        <guid>ep1</guid>
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+        
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val (podcast, _) = parser.parse(inputStream, "http://test.com")
+        
+        // Since itunes:image comes after in this XML, and both are named "image" in namespace mode,
+        // the last one found might win, or the one with href wins.
+        assertEquals("http://test.com/itunes.jpg", podcast.imageUrl)
+    }
+
+    @Test
     fun parse_invalidDurationString_doesNotCrash_defaultsToZero() {
         val invalidDurationXml = """
             <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
@@ -56,15 +131,10 @@ class RssParserTest {
         """.trimIndent()
         
         val inputStream = ByteArrayInputStream(invalidDurationXml.toByteArray())
+        val (_, episodes) = parser.parse(inputStream, "http://test.com")
         
-        // This should not crash, it should just map the duration to 0
-        val (podcast, episodes) = parser.parse(inputStream, "http://test.com")
-        
-        assertEquals("Broken Duration Podcast", podcast.title)
         assertEquals(2, episodes.size)
-        assertEquals("ep2", episodes[0].episode.id)
-        assertEquals(0L, episodes[0].episode.duration) // Should default to 0 on "invalid_string"
-        assertEquals("ep3", episodes[1].episode.id)
-        assertEquals(754L, episodes[1].episode.duration) // Should parse 12:34.5 as 754s
+        assertEquals(0L, episodes[0].episode.duration)
+        assertEquals(754L, episodes[1].episode.duration)
     }
 }

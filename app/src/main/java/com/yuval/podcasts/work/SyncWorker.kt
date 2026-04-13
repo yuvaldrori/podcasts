@@ -21,7 +21,7 @@ class SyncWorker @AssistedInject constructor(
             repository.requeueMissingDownloads()
             Result.success()
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("SyncWorker", "Sync failed", e)
             if (runAttemptCount < 3) {
                 Result.retry()
             } else {

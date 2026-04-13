@@ -16,7 +16,6 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.verify
 import io.mockk.mockk
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
@@ -30,6 +29,7 @@ import com.yuval.podcasts.data.repository.SettingsRepository
 import java.io.InputStream
 import java.io.OutputStream
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
 
     @get:Rule
@@ -66,6 +66,11 @@ class SettingsViewModelTest {
         every { context.contentResolver } returns contentResolver
         every { uri.toString() } returns "content://test.opml"
         
+        // Default mock for getString to return some string
+        every { repository.getString(any(), *anyVararg()) } answers { 
+            "Error: ${secondArg<Array<Any>>().firstOrNull() ?: ""}" 
+        }
+
         viewModel = SettingsViewModel(repository, settingsRepository, workManager, exportOpmlUseCase)
     }
 
@@ -85,6 +90,8 @@ class SettingsViewModelTest {
         val url = "http://example.com/feed"
         val errorMessage = "Invalid URL"
         coEvery { repository.fetchAndStorePodcast(url) } throws Exception(errorMessage)
+        every { repository.getString(any(), any()) } returns "Failed to add podcast: $errorMessage"
+        
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.addPodcast(url)
@@ -114,6 +121,8 @@ class SettingsViewModelTest {
     fun importLocalAudio_failure_setsErrorMessage() = runTest {
         val errorMsg = "Import failed"
         coEvery { repository.addLocalFile(uri) } returns Result.failure(Exception(errorMsg))
+        every { repository.getString(any(), any()) } returns "Failed to import local file: $errorMsg"
+        
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.importLocalAudio(uri)
@@ -156,6 +165,8 @@ class SettingsViewModelTest {
     fun exportHistory_failure_setsErrorMessage() = runTest {
         val errorMsg = "Export failed"
         coEvery { repository.exportHistory(context, uri) } returns Result.failure(Exception(errorMsg))
+        every { repository.getString(any(), any()) } returns "Failed to export history: $errorMsg"
+        
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.exportHistory(context, uri)
@@ -182,6 +193,8 @@ class SettingsViewModelTest {
     fun importHistory_failure_setsErrorMessage() = runTest {
         val errorMsg = "Import failed"
         coEvery { repository.importHistory(uri) } returns Result.failure(Exception(errorMsg))
+        every { repository.getString(any(), any()) } returns "Failed to import history: $errorMsg"
+        
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.importHistory(uri)
@@ -195,6 +208,8 @@ class SettingsViewModelTest {
     fun clearError_resetsErrorMessage() = runTest {
         val url = "http://example.com/feed"
         coEvery { repository.fetchAndStorePodcast(url) } throws Exception("Error")
+        every { repository.getString(any(), any()) } returns "Failed to add podcast: Error"
+        
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.addPodcast(url)

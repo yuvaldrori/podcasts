@@ -24,4 +24,10 @@ interface ChapterDao {
         deleteChaptersForEpisode(episodeId)
         insertChapters(chapters)
     }
+
+    @Transaction
+    suspend fun updateChaptersBulk(episodeIds: List<String>, chapters: List<Chapter>) {
+        episodeIds.forEach { deleteChaptersForEpisode(it) }
+        insertChapters(chapters)
+    }
 }

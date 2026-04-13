@@ -71,8 +71,7 @@ class DownloadWorker @AssistedInject constructor(
             
             Result.success()
         } catch (e: Exception) {
-                        if (e is kotlinx.coroutines.CancellationException) throw e
-            e.printStackTrace()
+            if (e is kotlinx.coroutines.CancellationException) throw e
             android.util.Log.e("DownloadWorker", "Download failed: ${e.message}", e)
             // Revert status on failure
             updateDownloadStatus(episodeId, 0, null)

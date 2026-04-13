@@ -1,8 +1,10 @@
 package com.yuval.podcasts.data.repository
 
+import android.util.Log
 import com.yuval.podcasts.data.Constants
 import android.content.Context
 import androidx.work.*
+import com.yuval.podcasts.R
 import com.yuval.podcasts.data.db.AppDatabase
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
@@ -51,6 +53,7 @@ interface PodcastRepository {
     suspend fun requeueMissingDownloads()
     suspend fun exportHistory(context: Context, uri: android.net.Uri): Result<Unit>
     suspend fun importHistory(uri: android.net.Uri): Result<Unit>
+    fun getString(resId: Int, vararg formatArgs: Any): String
 }
 
 @Singleton
@@ -90,11 +93,11 @@ class DefaultPodcastRepository @Inject constructor(
         val networkEpisodes = networkEpisodesWithChapters.map { it.episode }
         episodeDao.syncNetworkEpisodes(networkEpisodes)
         
-        // Update chapters for each episode
-        networkEpisodesWithChapters.forEach { item ->
-            if (item.chapters.isNotEmpty()) {
-                chapterDao.updateChapters(item.episode.id, item.chapters)
-            }
+        // Update chapters for all episodes in bulk
+        val allChapters = networkEpisodesWithChapters.flatMap { it.chapters }
+        if (allChapters.isNotEmpty()) {
+            val episodeIds = networkEpisodesWithChapters.map { it.episode.id }
+            chapterDao.updateChaptersBulk(episodeIds, allChapters)
         }
     }
 
@@ -108,7 +111,7 @@ class DefaultPodcastRepository @Inject constructor(
                             fetchAndStorePodcast(podcast.feedUrl)
                         } catch (e: Exception) {
                             if (e is kotlinx.coroutines.CancellationException) throw e
-                            e.printStackTrace()
+                            Log.e("PodcastRepository", "Failed to refresh podcast: ${podcast.feedUrl}", e)
                         }
                     }
                 }
@@ -153,8 +156,8 @@ class DefaultPodcastRepository @Inject constructor(
                 podcastDao.insertPodcast(
                     Podcast(
                         feedUrl = localFeedUrl,
-                        title = "Local Files",
-                        description = "Manually imported audio files",
+                        title = context.getString(R.string.local_files_title),
+                        description = context.getString(R.string.local_files_desc),
                         imageUrl = "", 
                         website = ""
                     )
@@ -189,7 +192,7 @@ class DefaultPodcastRepository @Inject constructor(
 
             Result.success(Unit)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("PodcastRepository", "Failed to add local file", e)
             Result.failure(e)
         }
     }
@@ -236,7 +239,7 @@ class DefaultPodcastRepository @Inject constructor(
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("PodcastRepository", "Failed to export history", e)
             Result.failure(e)
         }
     }
@@ -248,13 +251,52 @@ class DefaultPodcastRepository @Inject constructor(
                 val backup = kotlinx.serialization.json.Json.decodeFromString(HistoryBackup.serializer(), json)
                 
                 backup.entries.forEach { entry ->
-                    episodeDao.markAsPlayedBulk(entry.episodeId, entry.completedAt)
+                    // 1. Ensure Podcast exists (even as placeholder)
+                    if (podcastDao.getPodcast(entry.podcastFeedUrl) == null) {
+                        podcastDao.insertPodcast(
+                            Podcast(
+                                feedUrl = entry.podcastFeedUrl,
+                                title = "", // Placeholder
+                                description = "",
+                                imageUrl = "",
+                                website = ""
+                            )
+                        )
+                    }
+
+                    // 2. Ensure Episode exists and is marked played
+                    val existing = episodeDao.getEpisodeById(entry.episodeId)
+                    if (existing == null) {
+                        // Create placeholder episode if it doesn't exist yet
+                        // This allows history to be imported before OPML is fully synced
+                        episodeDao.insertEpisode(
+                            Episode(
+                                id = entry.episodeId,
+                                podcastFeedUrl = entry.podcastFeedUrl,
+                                title = "", // Placeholder
+                                description = "",
+                                audioUrl = "",
+                                pubDate = 0,
+                                duration = 0,
+                                downloadStatus = 0,
+                                localFilePath = null,
+                                isPlayed = true,
+                                completedAt = entry.completedAt
+                            )
+                        )
+                    } else {
+                        episodeDao.markAsPlayedBulk(entry.episodeId, entry.completedAt)
+                    }
                 }
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("PodcastRepository", "Failed to import history", e)
             Result.failure(e)
         }
+    }
+
+    override fun getString(resId: Int, vararg formatArgs: Any): String {
+        return context.getString(resId, *formatArgs)
     }
 }

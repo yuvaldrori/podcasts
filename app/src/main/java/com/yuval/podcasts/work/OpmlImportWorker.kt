@@ -51,7 +51,7 @@ class OpmlImportWorker @AssistedInject constructor(
                     repository.fetchAndStorePodcast(url)
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
-                    e.printStackTrace()
+                    android.util.Log.e("OpmlImportWorker", "Failed to import podcast: $url", e)
                     // If one fails, log it but continue processing the rest of the OPML
                 }
             }
