@@ -8,10 +8,12 @@ import org.junit.Assert.assertTrue
 import android.content.Context
 import androidx.work.WorkManager
 import com.yuval.podcasts.data.db.AppDatabase
+import com.yuval.podcasts.data.db.dao.ChapterDao
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.QueueDao
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.NetworkEpisodeWithChapters
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.network.PodcastApi
@@ -28,7 +30,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import kotlinx.coroutines.test.runTest
 
 class PodcastRepositoryTest {
 
@@ -41,6 +42,7 @@ class PodcastRepositoryTest {
     private lateinit var podcastDao: PodcastDao
     private lateinit var episodeDao: EpisodeDao
     private lateinit var queueDao: QueueDao
+    private lateinit var chapterDao: ChapterDao
     private lateinit var workManager: WorkManager
     private lateinit var repository: PodcastRepository
 
@@ -52,6 +54,7 @@ class PodcastRepositoryTest {
         podcastDao = mockk(relaxed = true)
         episodeDao = mockk(relaxed = true)
         queueDao = mockk(relaxed = true)
+        chapterDao = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
 
         val podcasts = listOf(
@@ -69,6 +72,7 @@ class PodcastRepositoryTest {
             podcastDao = podcastDao,
             episodeDao = episodeDao,
             queueDao = queueDao,
+            chapterDao = chapterDao,
             workManager = workManager,
             localMediaDataSource = mockk(relaxed = true),
             ioDispatcher = Dispatchers.Unconfined
@@ -79,13 +83,13 @@ class PodcastRepositoryTest {
     fun fetchAndStorePodcast_success_insertsToDb() = runBlocking {
         val feedUrl = "http://example.com/feed"
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
-        val episodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L))
+        val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
         coEvery { remoteDataSource.fetchPodcastData(feedUrl) } returns Pair(podcast, episodes)
 
         repository.fetchAndStorePodcast(feedUrl)
 
         coVerify { podcastDao.insertPodcast(podcast) }
-        coVerify { episodeDao.syncNetworkEpisodes(episodes) }
+        coVerify { episodeDao.syncNetworkEpisodes(match { it.size == 1 && it[0].id == "ep1" }) }
     }
 
     @Test
@@ -93,13 +97,13 @@ class PodcastRepositoryTest {
         val feedUrl = "http://test.com/feed"
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
         // The network parser returns a NetworkEpisode, which has NO isPlayed property
-        val networkEpisodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L))
+        val networkEpisodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
         coEvery { remoteDataSource.fetchPodcastData(feedUrl) } returns Pair(podcast, networkEpisodes)
 
         repository.fetchAndStorePodcast(feedUrl)
 
         // Verify that the DAO uses syncNetworkEpisodes instead of insertEpisodes
-        coVerify { episodeDao.syncNetworkEpisodes(networkEpisodes) }
+        coVerify { episodeDao.syncNetworkEpisodes(match { it.size == 1 && it[0].id == "ep1" }) }
         coVerify(exactly = 0) { episodeDao.insertEpisodes(any()) }
     }
 
@@ -113,7 +117,7 @@ class PodcastRepositoryTest {
         var threadName = ""
         
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
-        val episodes = listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L))
+        val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
         
         coEvery { remoteDataSource.fetchPodcastData(feedUrl) } coAnswers {
             usedDispatcher = currentCoroutineContext()[ContinuationInterceptor]

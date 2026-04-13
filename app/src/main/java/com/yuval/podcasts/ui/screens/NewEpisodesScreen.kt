@@ -95,7 +95,7 @@ fun NewEpisodesScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .testTag("LazyColumn"),
+                    .testTag("episode_list"),
                 contentPadding = PaddingValues(16.dp)
             ) {
                 items(

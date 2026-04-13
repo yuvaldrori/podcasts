@@ -1,6 +1,6 @@
 package com.yuval.podcasts.data.network
 
-import com.yuval.podcasts.data.db.entity.NetworkEpisode
+import com.yuval.podcasts.data.db.entity.NetworkEpisodeWithChapters
 import com.yuval.podcasts.data.db.entity.Podcast
 import io.mockk.coEvery
 import io.mockk.every
@@ -21,7 +21,7 @@ class PodcastRemoteDataSourceTest {
         
         val url = "http://test.com/feed"
         val expectedPodcast = Podcast(url, "Title", "Desc", "Img", "Web")
-        val expectedEpisodes = listOf<NetworkEpisode>(mockk())
+        val expectedEpisodes = listOf<NetworkEpisodeWithChapters>(mockk())
         
         coEvery { podcastApi.fetchRss(url) } returns mockInputStream
         every { rssParser.parse(mockInputStream, url) } returns Pair(expectedPodcast, expectedEpisodes)

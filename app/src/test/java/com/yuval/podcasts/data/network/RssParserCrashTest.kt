@@ -11,7 +11,7 @@ class RssParserCrashTest {
     @Test
     fun parse_invalidDurationString_throwsNumberFormatException() {
         val invalidDurationXml = """
-            <rss version="2.0">
+            <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
                 <channel>
                     <title>Broken Duration Podcast</title>
                     <description>A podcast for testing broken duration</description>

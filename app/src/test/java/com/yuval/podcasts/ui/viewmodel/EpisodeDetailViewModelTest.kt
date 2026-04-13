@@ -46,6 +46,7 @@ class EpisodeDetailViewModelTest {
 
         every { repository.getEpisodeWithPodcastFlow("ep1") } returns flowOf(episodeWithPodcast)
         every { repository.listeningQueue } returns flowOf(emptyList())
+        every { repository.getChapters(any()) } returns flowOf(emptyList())
         
         val savedStateHandle = androidx.lifecycle.SavedStateHandle()
         // Mock toRoute behavior manually because it relies on Bundle and Android internals which break in pure local unit tests without Robolectric
@@ -68,6 +69,7 @@ class EpisodeDetailViewModelTest {
         coEvery { enqueueEpisodeUseCase(episode) } returns Unit
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(null)
         every { repository.listeningQueue } returns flowOf(emptyList())
+        every { repository.getChapters(any()) } returns flowOf(emptyList())
 
         val savedStateHandle = androidx.lifecycle.SavedStateHandle()
         // Mock toRoute behavior manually because it relies on Bundle and Android internals which break in pure local unit tests without Robolectric
@@ -89,6 +91,7 @@ class EpisodeDetailViewModelTest {
 
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(episodeWithPodcast)
         every { repository.listeningQueue } returns flowOf(listOf(episodeWithPodcast))
+        every { repository.getChapters(any()) } returns flowOf(emptyList())
 
         val savedStateHandle = androidx.lifecycle.SavedStateHandle()
         // Mock toRoute behavior manually because it relies on Bundle and Android internals which break in pure local unit tests without Robolectric
@@ -111,6 +114,7 @@ class EpisodeDetailViewModelTest {
         val activeEpisode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(EpisodeWithPodcast(activeEpisode, podcast))
         every { repository.listeningQueue } returns flowOf(listOf(EpisodeWithPodcast(episodeInQueue, podcast)))
+        every { repository.getChapters(any()) } returns flowOf(emptyList())
 
         val savedStateHandle = androidx.lifecycle.SavedStateHandle()
         // Mock toRoute behavior manually because it relies on Bundle and Android internals which break in pure local unit tests without Robolectric

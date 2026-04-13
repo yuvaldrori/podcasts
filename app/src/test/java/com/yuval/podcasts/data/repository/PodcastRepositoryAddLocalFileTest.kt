@@ -3,6 +3,7 @@ package com.yuval.podcasts.data.repository
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
+import com.yuval.podcasts.data.db.dao.ChapterDao
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
 import io.mockk.coEvery
@@ -21,6 +22,7 @@ class PodcastRepositoryAddLocalFileTest {
 
     private lateinit var podcastDao: PodcastDao
     private lateinit var episodeDao: EpisodeDao
+    private lateinit var chapterDao: ChapterDao
     private lateinit var localMediaDataSource: LocalMediaDataSource
     private lateinit var repository: DefaultPodcastRepository
 
@@ -28,6 +30,7 @@ class PodcastRepositoryAddLocalFileTest {
     fun setup() {
         podcastDao = mockk(relaxed = true)
         episodeDao = mockk(relaxed = true)
+        chapterDao = mockk(relaxed = true)
         localMediaDataSource = mockk()
 
         repository = DefaultPodcastRepository(
@@ -38,6 +41,7 @@ class PodcastRepositoryAddLocalFileTest {
             podcastDao = podcastDao,
             episodeDao = episodeDao,
             queueDao = mockk(relaxed = true),
+            chapterDao = chapterDao,
             workManager = mockk(relaxed = true),
             localMediaDataSource = localMediaDataSource,
             ioDispatcher = Dispatchers.Unconfined

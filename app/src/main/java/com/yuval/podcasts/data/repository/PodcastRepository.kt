@@ -11,6 +11,7 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
+import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.network.PodcastRemoteDataSource
 import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.work.DownloadWorker
@@ -38,6 +39,7 @@ interface PodcastRepository {
     fun getEpisodes(feedUrl: String): Flow<List<Episode>>
     fun getEpisodeByIdFlow(id: String): Flow<Episode?>
     fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?>
+    fun getChapters(episodeId: String): Flow<List<Chapter>>
     
     suspend fun fetchAndStorePodcast(feedUrl: String)
     suspend fun refreshAll()
@@ -59,6 +61,7 @@ class DefaultPodcastRepository @Inject constructor(
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
     private val queueDao: QueueDao,
+    private val chapterDao: com.yuval.podcasts.data.db.dao.ChapterDao,
     private val workManager: WorkManager,
     private val localMediaDataSource: LocalMediaDataSource,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
@@ -77,11 +80,22 @@ class DefaultPodcastRepository @Inject constructor(
 
     override fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?> = episodeDao.getEpisodeWithPodcastFlow(id).distinctUntilChanged()
 
+    override fun getChapters(episodeId: String): Flow<List<Chapter>> = chapterDao.getChaptersForEpisode(episodeId).distinctUntilChanged()
+
     override suspend fun fetchAndStorePodcast(feedUrl: String) {
         // Fetch is already dispatched to IO via remoteDataSource
-        val (podcast, episodes) = remoteDataSource.fetchPodcastData(feedUrl)
+        val (podcast, networkEpisodesWithChapters) = remoteDataSource.fetchPodcastData(feedUrl)
         podcastDao.insertPodcast(podcast)
-        episodeDao.syncNetworkEpisodes(episodes)
+        
+        val networkEpisodes = networkEpisodesWithChapters.map { it.episode }
+        episodeDao.syncNetworkEpisodes(networkEpisodes)
+        
+        // Update chapters for each episode
+        networkEpisodesWithChapters.forEach { item ->
+            if (item.chapters.isNotEmpty()) {
+                chapterDao.updateChapters(item.episode.id, item.chapters)
+            }
+        }
     }
 
     override suspend fun refreshAll(): Unit = withContext(ioDispatcher) {
@@ -168,7 +182,8 @@ class DefaultPodcastRepository @Inject constructor(
                     localFilePath = metadata.destFile.absolutePath,
                     isPlayed = false,
                     lastPlayedPosition = 0L,
-                    completedAt = null
+                    completedAt = null,
+                    localId = 0L
                 )
             ))
 

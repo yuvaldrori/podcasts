@@ -118,4 +118,8 @@ class PlayerViewModel @Inject constructor(
     fun seekBackward() {
         playerManager.seekBackward()
     }
+
+    fun seekToChapter(chapter: com.yuval.podcasts.data.db.entity.Chapter) {
+        playerManager.seekTo(chapter.startTimeMs)
+    }
 }

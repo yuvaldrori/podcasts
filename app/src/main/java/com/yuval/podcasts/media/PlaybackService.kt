@@ -9,6 +9,8 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.cast.CastPlayer
 import androidx.media3.cast.SessionAvailabilityListener
+import androidx.media3.session.CommandButton
+import android.os.Bundle
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.yuval.podcasts.MainActivity
@@ -39,7 +41,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.media3.common.MediaMetadata
 import com.yuval.podcasts.data.Constants
-
 import kotlinx.coroutines.guava.asListenableFuture
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -62,6 +63,50 @@ class PlaybackService : MediaSessionService() {
     private lateinit var serviceScope: CoroutineScope
 
     private val mediaSessionCallback = object : MediaSession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult {
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                .add(SessionCommand("REWIND_10", Bundle.EMPTY))
+                .add(SessionCommand("SKIP_30", Bundle.EMPTY))
+                .build()
+            
+            return MediaSession.ConnectionResult.accept(
+                sessionCommands,
+                MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
+            )
+        }
+
+        override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            val customLayout = listOf(
+                CommandButton.Builder()
+                    .setDisplayName("Rewind 10s")
+                    .setIconResId(androidx.media3.ui.R.drawable.exo_ic_rewind)
+                    .setSessionCommand(SessionCommand("REWIND_10", Bundle.EMPTY))
+                    .build(),
+                CommandButton.Builder()
+                    .setDisplayName("Skip 30s")
+                    .setIconResId(androidx.media3.ui.R.drawable.exo_ic_forward)
+                    .setSessionCommand(SessionCommand("SKIP_30", Bundle.EMPTY))
+                    .build()
+            )
+            mediaSession?.setCustomLayout(controller, customLayout)
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                "REWIND_10" -> seekBackward(10000L)
+                "SKIP_30" -> seekForward(30000L)
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
         override fun onMediaButtonEvent(
             session: MediaSession,
             controllerInfo: MediaSession.ControllerInfo,
@@ -190,6 +235,13 @@ class PlaybackService : MediaSessionService() {
         
         exoPlayer.addListener(listener)
         castPlayer.addListener(listener)
+
+        // Live Silence Toggle
+        serviceScope.launch(mainDispatcher) {
+            settingsRepository.skipSilenceFlow().collect { enabled ->
+                exoPlayer.skipSilenceEnabled = enabled
+            }
+        }
 
         // Initialize state from queue for playback resumption
         serviceScope.launch(mainDispatcher) {

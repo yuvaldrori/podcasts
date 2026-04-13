@@ -4,6 +4,8 @@ import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 import com.yuval.podcasts.data.db.entity.NetworkEpisode
 import com.yuval.podcasts.data.db.entity.Podcast
+import com.yuval.podcasts.data.db.entity.Chapter
+import com.yuval.podcasts.data.db.entity.NetworkEpisodeWithChapters
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -13,21 +15,21 @@ class RssParser {
         SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US) 
     }
 
-    fun parse(inputStream: InputStream, feedUrl: String): Pair<Podcast, List<NetworkEpisode>> {
+    fun parse(inputStream: InputStream, feedUrl: String): Pair<Podcast, List<NetworkEpisodeWithChapters>> {
         val factory = XmlPullParserFactory.newInstance()
-        factory.isNamespaceAware = false
+        factory.isNamespaceAware = true
         val parser = factory.newPullParser()
         parser.setInput(inputStream, null)
         parser.nextTag()
         return readRss(parser, feedUrl)
     }
 
-    private fun readRss(parser: XmlPullParser, feedUrl: String): Pair<Podcast, List<NetworkEpisode>> {
+    private fun readRss(parser: XmlPullParser, feedUrl: String): Pair<Podcast, List<NetworkEpisodeWithChapters>> {
         var podcastTitle = ""
         var podcastDescription = ""
         var podcastImageUrl = ""
         var podcastWebsite = ""
-        val episodes = mutableListOf<NetworkEpisode>()
+        val episodes = mutableListOf<NetworkEpisodeWithChapters>()
 
         parser.require(XmlPullParser.START_TAG, null, "rss")
         while (parser.next() != XmlPullParser.END_TAG) {
@@ -64,7 +66,7 @@ class RssParser {
         return Pair(podcast, episodes)
     }
 
-    private fun readItem(parser: XmlPullParser, feedUrl: String): NetworkEpisode {
+    private fun readItem(parser: XmlPullParser, feedUrl: String): NetworkEpisodeWithChapters {
         var id = ""
         var title = ""
         var description = ""
@@ -73,6 +75,7 @@ class RssParser {
         var imageUrl: String? = null
         var pubDate = 0L
         var duration = 0L
+        val chapters = mutableListOf<Chapter>()
 
         parser.require(XmlPullParser.START_TAG, null, "item")
         while (parser.next() != XmlPullParser.END_TAG) {
@@ -100,26 +103,58 @@ class RssParser {
                     audioUrl = parser.getAttributeValue(null, "url") ?: ""
                     skip(parser)
                 }
-                "itunes:duration" -> {
+                "duration" -> {
                     val durationStr = readText(parser)
                     duration = parseDuration(durationStr)
+                }
+                "chapters" -> {
+                    chapters.addAll(readPodloveChapters(parser, id.ifEmpty { audioUrl }))
                 }
                 else -> skip(parser)
             }
         }
         if (id.isEmpty()) id = audioUrl
 
-        return NetworkEpisode(
-            id = id,
-            podcastFeedUrl = feedUrl,
-            title = title,
-            description = description,
-            audioUrl = audioUrl,
-            imageUrl = imageUrl,
-            episodeWebLink = episodeWebLink,
-            pubDate = pubDate,
-            duration = duration
+        return NetworkEpisodeWithChapters(
+            episode = NetworkEpisode(
+                id = id,
+                podcastFeedUrl = feedUrl,
+                title = title,
+                description = description,
+                audioUrl = audioUrl,
+                imageUrl = imageUrl,
+                episodeWebLink = episodeWebLink,
+                pubDate = pubDate,
+                duration = duration
+            ),
+            chapters = chapters
         )
+    }
+
+    private fun readPodloveChapters(parser: XmlPullParser, episodeId: String): List<Chapter> {
+        val chapters = mutableListOf<Chapter>()
+        // We are at <psc:chapters> or <chapters>
+        while (parser.next() != XmlPullParser.END_TAG) {
+            if (parser.eventType != XmlPullParser.START_TAG) continue
+            if (parser.name == "psc:chapter" || parser.name == "chapter") {
+                val start = parser.getAttributeValue(null, "start") ?: "0"
+                val title = parser.getAttributeValue(null, "title") ?: ""
+                val href = parser.getAttributeValue(null, "href")
+                val image = parser.getAttributeValue(null, "image")
+                
+                chapters.add(Chapter(
+                    episodeId = episodeId,
+                    title = title,
+                    startTimeMs = parseDuration(start) * 1000L,
+                    url = href,
+                    imageUrl = image
+                ))
+                skip(parser)
+            } else {
+                skip(parser)
+            }
+        }
+        return chapters
     }
 
     private fun readImage(parser: XmlPullParser): String {
@@ -163,9 +198,12 @@ class RssParser {
         return try {
             val parts = durationStr.split(":")
             when (parts.size) {
-                1 -> parts[0].toLong()
-                2 -> parts[0].toLong() * 60 + parts[1].toLong()
-                3 -> parts[0].toLong() * 3600 + parts[1].toLong() * 60 + parts[2].toLong()
+                1 -> {
+                    // Could be "seconds" or "seconds.milliseconds"
+                    parts[0].toDouble().toLong()
+                }
+                2 -> parts[0].toLong() * 60 + parts[1].toDouble().toLong()
+                3 -> parts[0].toLong() * 3600 + parts[1].toLong() * 60 + parts[2].toDouble().toLong()
                 else -> 0L
             }
         } catch (e: NumberFormatException) {

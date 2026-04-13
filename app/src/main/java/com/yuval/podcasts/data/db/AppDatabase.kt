@@ -5,17 +5,20 @@ import androidx.room.RoomDatabase
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.QueueState
+import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.QueueDao
+import com.yuval.podcasts.data.db.dao.ChapterDao
 
 @Database(
-    entities = [Podcast::class, Episode::class, QueueState::class],
-    version = 6,
+    entities = [Podcast::class, Episode::class, QueueState::class, Chapter::class],
+    version = 7,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun podcastDao(): PodcastDao
     abstract fun episodeDao(): EpisodeDao
     abstract fun queueDao(): QueueDao
+    abstract fun chapterDao(): ChapterDao
 }

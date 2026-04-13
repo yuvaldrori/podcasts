@@ -12,7 +12,7 @@ class RssParserTest {
     @Test
     fun parse_validFeed_returnsPodcastAndEpisodes() {
         val validXml = """
-            <rss version="2.0">
+            <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
                 <channel>
                     <title>Test Podcast</title>
                     <description>A podcast for testing</description>
@@ -30,14 +30,14 @@ class RssParserTest {
         
         assertEquals("Test Podcast", podcast.title)
         assertEquals(1, episodes.size)
-        assertEquals("ep1", episodes[0].id)
-        assertEquals(3900L, episodes[0].duration)
+        assertEquals("ep1", episodes[0].episode.id)
+        assertEquals(3900L, episodes[0].episode.duration)
     }
 
     @Test
     fun parse_invalidDurationString_doesNotCrash_defaultsToZero() {
         val invalidDurationXml = """
-            <rss version="2.0">
+            <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
                 <channel>
                     <title>Broken Duration Podcast</title>
                     <description>A podcast for testing broken duration</description>
@@ -62,9 +62,9 @@ class RssParserTest {
         
         assertEquals("Broken Duration Podcast", podcast.title)
         assertEquals(2, episodes.size)
-        assertEquals("ep2", episodes[0].id)
-        assertEquals(0L, episodes[0].duration) // Should default to 0 on "invalid_string"
-        assertEquals("ep3", episodes[1].id)
-        assertEquals(0L, episodes[1].duration) // Should default to 0 on "12:34.5"
+        assertEquals("ep2", episodes[0].episode.id)
+        assertEquals(0L, episodes[0].episode.duration) // Should default to 0 on "invalid_string"
+        assertEquals("ep3", episodes[1].episode.id)
+        assertEquals(754L, episodes[1].episode.duration) // Should parse 12:34.5 as 754s
     }
 }

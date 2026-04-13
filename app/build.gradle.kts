@@ -129,6 +129,7 @@ dependencies {
 
     // Coil
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("androidx.palette:palette-ktx:1.0.0")
 
     // Room
     val roomVersion = "2.8.4"

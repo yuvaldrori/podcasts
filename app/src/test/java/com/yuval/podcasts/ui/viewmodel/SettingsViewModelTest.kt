@@ -26,6 +26,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.yuval.podcasts.data.repository.SettingsRepository
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -38,6 +39,7 @@ class SettingsViewModelTest {
     val instantTaskExecutorRule = androidx.arch.core.executor.testing.InstantTaskExecutorRule()
 
     private lateinit var repository: PodcastRepository
+    private lateinit var settingsRepository: SettingsRepository
     private lateinit var workManager: WorkManager
     private lateinit var context: Context
     private lateinit var contentResolver: ContentResolver
@@ -50,6 +52,7 @@ class SettingsViewModelTest {
     @Before
     fun setup() {
         repository = mockk()
+        settingsRepository = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
         exportOpmlUseCase = mockk()
         context = mockk()
@@ -63,7 +66,7 @@ class SettingsViewModelTest {
         every { context.contentResolver } returns contentResolver
         every { uri.toString() } returns "content://test.opml"
         
-        viewModel = SettingsViewModel(repository, workManager, exportOpmlUseCase)
+        viewModel = SettingsViewModel(repository, settingsRepository, workManager, exportOpmlUseCase)
     }
 
     @Test

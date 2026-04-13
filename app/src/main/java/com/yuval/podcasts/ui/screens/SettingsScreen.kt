@@ -6,20 +6,19 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.work.WorkInfo
+import com.yuval.podcasts.R
 import com.yuval.podcasts.ui.viewmodel.SettingsUiState
 
-import androidx.compose.ui.res.stringResource
-import com.yuval.podcasts.R
-
-import androidx.compose.ui.Alignment
-import com.yuval.podcasts.BuildConfig
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
@@ -28,6 +27,7 @@ fun SettingsScreen(
     onExportOpml: (android.content.Context, Uri) -> Unit,
     onExportHistory: (android.content.Context, Uri) -> Unit,
     onImportHistory: (Uri) -> Unit,
+    onToggleSkipSilence: (Boolean) -> Unit,
     onImportLocalAudio: (Uri) -> Unit,
     onClearError: () -> Unit
 ) {
@@ -68,69 +68,45 @@ fun SettingsScreen(
     )
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { paddingValues ->
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_title)) }
+            )
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            Text(text = stringResource(R.string.add_podcast_rss), style = MaterialTheme.typography.titleLarge)
+            Text(text = stringResource(R.string.add_podcast), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
-            TextField(
+            OutlinedTextField(
                 value = rssUrl,
                 onValueChange = { rssUrl = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("https://example.com/rss") }
+                label = { Text(stringResource(R.string.add_podcast_rss)) },
+                modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = {
-                    if (rssUrl.isNotBlank()) {
-                        onAddPodcast(rssUrl)
-                        rssUrl = ""
-                    }
+                    onAddPodcast(rssUrl)
+                    rssUrl = ""
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = rssUrl.isNotBlank()
             ) {
                 Text(stringResource(R.string.add_podcast))
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
+            val isImporting = uiState.importWorkInfo?.state == androidx.work.WorkInfo.State.RUNNING
             Text(text = stringResource(R.string.opml_import_export), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
-            
-            val isImporting = uiState.importWorkInfo?.state == WorkInfo.State.RUNNING || uiState.importWorkInfo?.state == WorkInfo.State.ENQUEUED
-            if (isImporting) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        val progress = uiState.importWorkInfo?.progress?.getInt("PROGRESS", 0) ?: 0
-                        val total = uiState.importWorkInfo?.progress?.getInt("TOTAL", 1) ?: 1
-                        
-                        Text(
-                            text = stringResource(R.string.importing_podcasts, progress, total),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            progress = { if (total > 0) progress.toFloat() / total.toFloat() else 0f },
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
-                        )
-                    }
-                }
-            }
-
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = { opmlImportLauncher.launch(arrayOf("*/*")) },
@@ -170,6 +146,27 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Smart Silence Trimming", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = "Automatically skip periods of silence in podcasts", 
+                        style = MaterialTheme.typography.bodyMedium, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = uiState.skipSilenceEnabled,
+                    onCheckedChange = onToggleSkipSilence
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+
             Text(text = stringResource(R.string.import_local_audio_title), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
             Button(
@@ -179,12 +176,12 @@ fun SettingsScreen(
                 Text(stringResource(R.string.import_local_audio_btn))
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             Text(
                 text = stringResource(
                     R.string.app_version, 
-                    BuildConfig.VERSION_NAME, 
-                    BuildConfig.BUILD_DATE
+                    "1.0", 
+                    "April 2026"
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,

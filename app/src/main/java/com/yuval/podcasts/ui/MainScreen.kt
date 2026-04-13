@@ -162,6 +162,7 @@ fun MainScreen(
                     onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) },
                     onExportHistory = { ctx, uri -> settingsViewModel.exportHistory(ctx, uri) },
                     onImportHistory = { uri -> settingsViewModel.importHistory(uri) },
+                    onToggleSkipSilence = { enabled -> settingsViewModel.toggleSkipSilence(enabled) },
                     onImportLocalAudio = { uri -> settingsViewModel.importLocalAudio(uri) },
                     onClearError = { settingsViewModel.clearError() }
                 )
@@ -185,7 +186,8 @@ fun MainScreen(
                 EpisodeDetailScreen(
                     uiState = episodeUiState,
                     onBack = { navController.popBackStack() },
-                    onAddToQueue = { episode -> episodeDetailViewModel.addToQueue(episode) }
+                    onAddToQueue = { episode -> episodeDetailViewModel.addToQueue(episode) },
+                    onChapterClick = { chapter -> playerViewModel.seekToChapter(chapter) }
                 )
             }
         }

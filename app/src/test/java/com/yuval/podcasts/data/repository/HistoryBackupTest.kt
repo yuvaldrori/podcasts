@@ -7,6 +7,7 @@ import com.yuval.podcasts.data.db.AppDatabase
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.QueueDao
+import com.yuval.podcasts.data.db.dao.ChapterDao
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.network.PodcastRemoteDataSource
 import io.mockk.*
@@ -27,6 +28,7 @@ class HistoryBackupTest {
     private lateinit var podcastDao: PodcastDao
     private lateinit var episodeDao: EpisodeDao
     private lateinit var queueDao: QueueDao
+    private lateinit var chapterDao: ChapterDao
     private lateinit var repository: PodcastRepository
     private lateinit var contentResolver: ContentResolver
 
@@ -37,6 +39,7 @@ class HistoryBackupTest {
         podcastDao = mockk(relaxed = true)
         episodeDao = mockk(relaxed = true)
         queueDao = mockk(relaxed = true)
+        chapterDao = mockk(relaxed = true)
         contentResolver = mockk(relaxed = true)
 
         every { context.contentResolver } returns contentResolver
@@ -50,6 +53,7 @@ class HistoryBackupTest {
             podcastDao = podcastDao,
             episodeDao = episodeDao,
             queueDao = queueDao,
+            chapterDao = chapterDao,
             workManager = mockk(relaxed = true),
             localMediaDataSource = mockk(relaxed = true),
             ioDispatcher = Dispatchers.Unconfined

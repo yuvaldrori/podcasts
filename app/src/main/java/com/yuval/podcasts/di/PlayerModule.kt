@@ -11,14 +11,21 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+import com.yuval.podcasts.data.repository.SettingsRepository
+
 @Module
 @InstallIn(SingletonComponent::class)
 object PlayerModule {
 
     @Provides
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-    fun provideExoPlayer(@ApplicationContext context: Context): ExoPlayer {
-        return ExoPlayer.Builder(context).build()
+    fun provideExoPlayer(
+        @ApplicationContext context: Context,
+        settingsRepository: SettingsRepository
+    ): ExoPlayer {
+        return ExoPlayer.Builder(context).build().apply {
+            setSkipSilenceEnabled(settingsRepository.isSkipSilenceEnabled())
+        }
     }
 
     @Provides

@@ -41,6 +41,9 @@ object DatabaseModule {
     fun provideQueueDao(database: AppDatabase): QueueDao = database.queueDao()
 
     @Provides
+    fun provideChapterDao(database: AppDatabase): com.yuval.podcasts.data.db.dao.ChapterDao = database.chapterDao()
+
+    @Provides
     @Singleton
     fun provideOpmlManager(): com.yuval.podcasts.data.opml.OpmlManager = com.yuval.podcasts.data.opml.OpmlManager()
 }

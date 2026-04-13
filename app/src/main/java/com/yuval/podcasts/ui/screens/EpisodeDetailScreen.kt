@@ -2,7 +2,10 @@ package com.yuval.podcasts.ui.screens
 
 import android.content.Intent
 import android.text.Html
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.ui.viewmodel.EpisodeDetailUiState
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
@@ -32,7 +36,8 @@ import com.yuval.podcasts.ui.utils.Formatter
 fun EpisodeDetailScreen(
     uiState: EpisodeDetailUiState,
     onBack: () -> Unit,
-    onAddToQueue: (Episode) -> Unit
+    onAddToQueue: (Episode) -> Unit,
+    onChapterClick: (Chapter) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -61,7 +66,6 @@ fun EpisodeDetailScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .verticalScroll(rememberScrollState())
                         .padding(16.dp)
                 ) {
                     Row(
@@ -145,11 +149,44 @@ fun EpisodeDetailScreen(
                     val spannedDescription = remember(data.episode.description) {
                         Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT)
                     }
-                    Text(
-                        text = spannedDescription.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = spannedDescription.toString(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f, fill = false)
+                        )
+
+                        if (uiState.chapters.isNotEmpty()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                            Text(text = "Chapters", style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LazyColumn(modifier = Modifier.weight(1f)) {
+                                items(uiState.chapters) { chapter ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onChapterClick(chapter) }
+                                            .padding(vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = chapter.title,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = Formatter.formatTime(chapter.startTimeMs),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.outline
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

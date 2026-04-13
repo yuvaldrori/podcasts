@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
+import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,15 +20,14 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.navigation.toRoute
 import com.yuval.podcasts.ui.navigation.EpisodeDetailScreenRoute
-
-import android.content.Context
-import com.yuval.podcasts.R
+import kotlinx.coroutines.flow.map
 
 sealed interface EpisodeDetailUiState {
     object Loading : EpisodeDetailUiState
     data class Success(
         val episodeWithPodcast: EpisodeWithPodcast,
-        val isInQueue: Boolean
+        val isInQueue: Boolean,
+        val chapters: List<Chapter>
     ) : EpisodeDetailUiState
     object Error : EpisodeDetailUiState
 }
@@ -46,14 +46,16 @@ class EpisodeDetailViewModel @Inject constructor(
         flowOf(episodeId).flatMapLatest { id ->
             repository.getEpisodeWithPodcastFlow(id)
         },
-        repository.listeningQueue
-    ) { episodeData, queue ->
+        repository.listeningQueue,
+        repository.getChapters(episodeId)
+    ) { episodeData, queue, chapters ->
         if (episodeData == null) {
             EpisodeDetailUiState.Error
         } else {
             EpisodeDetailUiState.Success(
                 episodeWithPodcast = episodeData,
-                isInQueue = queue.any { it.episode.id == episodeData.episode.id }
+                isInQueue = queue.any { it.episode.id == episodeData.episode.id },
+                chapters = chapters
             )
         }
     }.stateIn(

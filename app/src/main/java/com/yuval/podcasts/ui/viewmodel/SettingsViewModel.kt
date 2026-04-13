@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
 import androidx.lifecycle.asFlow
 import androidx.work.Data
@@ -15,6 +16,7 @@ import com.yuval.podcasts.work.OpmlImportWorker
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.flowOf
 
 import android.content.Context
 import android.net.Uri
@@ -29,25 +31,30 @@ import kotlinx.coroutines.flow.combine
 
 data class SettingsUiState(
     val importWorkInfo: WorkInfo? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val skipSilenceEnabled: Boolean = false
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val repository: PodcastRepository,
+    private val settingsRepository: SettingsRepository,
     private val workManager: WorkManager,
     private val exportOpmlUseCase: ExportOpmlUseCase
 ) : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
+    private val _skipSilenceTrigger = MutableStateFlow(System.currentTimeMillis())
 
     val uiState: StateFlow<SettingsUiState> = combine(
         workManager.getWorkInfosForUniqueWorkLiveData("opml_import").asFlow().map { it.firstOrNull() },
-        _errorMessage
-    ) { workInfo, error ->
+        _errorMessage,
+        _skipSilenceTrigger
+    ) { workInfo, error, _ ->
         SettingsUiState(
             importWorkInfo = workInfo,
-            errorMessage = error
+            errorMessage = error,
+            skipSilenceEnabled = settingsRepository.isSkipSilenceEnabled()
         )
     }.stateIn(
         scope = viewModelScope,
@@ -117,6 +124,11 @@ class SettingsViewModel @Inject constructor(
                 _errorMessage.value = "Failed to import history: ${result.exceptionOrNull()?.message}"
             }
         }
+    }
+
+    fun toggleSkipSilence(enabled: Boolean) {
+        settingsRepository.saveSkipSilenceEnabled(enabled)
+        _skipSilenceTrigger.value = System.currentTimeMillis()
     }
 
     fun clearError() {

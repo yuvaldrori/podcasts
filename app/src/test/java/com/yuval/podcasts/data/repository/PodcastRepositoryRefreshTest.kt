@@ -2,6 +2,7 @@ package com.yuval.podcasts.data.repository
 
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
+import com.yuval.podcasts.data.db.dao.ChapterDao
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.network.PodcastApi
 import com.yuval.podcasts.data.network.RssParser
@@ -23,6 +24,7 @@ class PodcastRepositoryRefreshTest {
 
     private lateinit var podcastDao: PodcastDao
     private lateinit var episodeDao: EpisodeDao
+    private lateinit var chapterDao: ChapterDao
     private lateinit var remoteDataSource: com.yuval.podcasts.data.network.PodcastRemoteDataSource
     private lateinit var repository: PodcastRepository
 
@@ -30,6 +32,7 @@ class PodcastRepositoryRefreshTest {
     fun setup() {
         podcastDao = mockk(relaxed = true)
         episodeDao = mockk(relaxed = true)
+        chapterDao = mockk(relaxed = true)
         remoteDataSource = mockk()
 
         every { podcastDao.getAllPodcasts() } returns flowOf(emptyList())
@@ -45,6 +48,7 @@ class PodcastRepositoryRefreshTest {
             podcastDao = podcastDao,
             episodeDao = episodeDao,
             queueDao = queueDao,
+            chapterDao = chapterDao,
             workManager = mockk(relaxed = true),
             localMediaDataSource = mockk(relaxed = true),
             ioDispatcher = mainDispatcherRule.testDispatcher
@@ -65,6 +69,7 @@ class PodcastRepositoryRefreshTest {
             podcastDao = podcastDao,
             episodeDao = episodeDao,
             queueDao = mockk(relaxed = true),
+            chapterDao = chapterDao,
             workManager = mockk(relaxed = true),
             localMediaDataSource = mockk(relaxed = true),
             ioDispatcher = mainDispatcherRule.testDispatcher
