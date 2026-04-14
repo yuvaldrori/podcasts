@@ -6,6 +6,7 @@ import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.media.PlayerManager
+import com.yuval.podcasts.utils.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,8 @@ data class PlayerUiState(
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val repository: PodcastRepository,
-    private val playerManager: PlayerManager
+    private val playerManager: PlayerManager,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -41,20 +43,22 @@ class PlayerViewModel @Inject constructor(
         playerManager.playbackSpeed,
         playerManager.currentMediaId.flatMapLatest { id ->
             if (id == null) flowOf(null) else repository.getEpisodeByIdFlow(id)
-        }
+        },
+        networkMonitor.isOnline
     ) { values ->
         val isPlaying = values[0] as Boolean
-        val isConnected = values[1] as Boolean
+        val isPlayerConnected = values[1] as Boolean
         val currentPosition = values[2] as Long
         val playerDuration = values[3] as Long
         val playbackSpeed = values[4] as Float
         val currentEpisode = values[5] as Episode?
-        
+        val isOnline = values[6] as Boolean
+
         val finalDuration = if (playerDuration > 0) playerDuration else (currentEpisode?.duration ?: 0L) * 1000L
         
         PlayerUiState(
             isPlaying = isPlaying,
-            isConnected = isConnected,
+            isConnected = isPlayerConnected && isOnline,
             currentPosition = currentPosition,
             duration = finalDuration,
             playbackSpeed = playbackSpeed,

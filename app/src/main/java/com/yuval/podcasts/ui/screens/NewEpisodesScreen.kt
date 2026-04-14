@@ -52,19 +52,6 @@ fun NewEpisodesScreen(
     // State hoisting for swipe-to-dismiss
     val episodes = (uiState as? FeedsUiState.Success)?.unplayedEpisodes ?: emptyList()
     
-    // We use a derived state to manage SwipeToDismissBoxState for each visible item.
-    // In a real production app with thousands of items, we'd use a more sophisticated 
-    // state holder, but for this feed, a simple remembered state linked to the episode list suffices.
-    val dismissStates = remember(episodes) { mutableStateMapOf<String, SwipeToDismissBoxState>() }
-
-    val errorMessage = (uiState as? FeedsUiState.Success)?.errorMessage
-    LaunchedEffect(errorMessage) {
-        if (errorMessage != null) {
-            snackbarHostState.showSnackbar(errorMessage)
-            onClearError()
-        }
-    }
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -102,47 +89,51 @@ fun NewEpisodesScreen(
                     items = episodes,
                     key = { it.episode.id }
                 ) { episodeWithPodcast ->
-                    val episode = episodeWithPodcast.episode
-                    val podcast = episodeWithPodcast.podcast
-                    
-                    val density = LocalDensity.current
-                    val state = dismissStates.getOrPut(episode.id) {
-                        SwipeToDismissBoxState(
-                            initialValue = SwipeToDismissBoxValue.Settled,
-                            density = density,
-                            confirmValueChange = { value ->
-                                when (value) {
-                                    SwipeToDismissBoxValue.EndToStart -> {
-                                        onDismissEpisode(episode)
-                                        true
-                                    }
-                                    SwipeToDismissBoxValue.StartToEnd -> {
-                                        onAddToQueue(episode)
-                                        true
-                                    }
-                                    else -> false
-                                }
-                            },
-                            positionalThreshold = { distance -> distance * 0.5f }
-                        )
-                    }
+                val episode = episodeWithPodcast.episode
+                val podcast = episodeWithPodcast.podcast
 
-                    SwipeToDismissBox(
-                        state = state,
-                        backgroundContent = {
-                            val color = when (state.dismissDirection) {
-                                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primaryContainer
-                                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
-                                else -> MaterialTheme.colorScheme.surface
+                val dismissState = rememberSwipeToDismissBoxState()
+                LaunchedEffect(dismissState.currentValue) {
+                    if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+                        onDismissEpisode(episode)
+                    } else if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd) {
+                        onAddToQueue(episode)
+                    }
+                }
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateItem(),
+                    backgroundContent = {
+                        val color = when (dismissState.targetValue) {
+                            SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primaryContainer
+                            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+                            else -> MaterialTheme.colorScheme.surface
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(vertical = 4.dp)
+                                .background(color),
+                            contentAlignment = if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
+                        ) {
+                            val (icon, description) = when (dismissState.targetValue) {
+                                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.Add to stringResource(R.string.add_to_queue_action)
+                                SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete to stringResource(R.string.delete_episode_action)
+                                else -> null to null
                             }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(vertical = 4.dp)
-                                    .background(color),
-                            ) {
-                                // Background colors handled by Box
+                            if (icon != null && description != null) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = description,
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    tint = if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                                )
                             }
+                        }
+
                         },
                         content = {
                             val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }

@@ -28,6 +28,8 @@ class PodcastApplication : Application(), Configuration.Provider {
     private fun scheduleSync() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
+            .setRequiresStorageNotLow(true)
             .build()
 
         val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(12, TimeUnit.HOURS)
@@ -36,7 +38,7 @@ class PodcastApplication : Application(), Configuration.Provider {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "sync_work",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             syncRequest
         )
     }

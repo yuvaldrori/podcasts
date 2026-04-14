@@ -113,6 +113,7 @@ fun EpisodeDetailScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    val listeningToString = stringResource(R.string.listening_to, data.episode.title)
                     OutlinedButton(
                         onClick = {
                             val sendIntent: Intent = Intent().apply {
@@ -120,7 +121,7 @@ fun EpisodeDetailScreen(
                                 val shareText = if (!data.episode.isLocal && data.episode.episodeWebLink != null) {
                                     "${data.episode.title}\n\n${data.episode.episodeWebLink}"
                                 } else {
-                                    context.getString(R.string.listening_to, data.episode.title)
+                                    listeningToString
                                 }
                                 putExtra(Intent.EXTRA_TEXT, shareText)
                                 type = "text/plain"

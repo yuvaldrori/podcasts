@@ -6,6 +6,7 @@ import com.yuval.podcasts.data.db.entity.NetworkEpisode
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.db.entity.NetworkEpisodeWithChapters
+import com.yuval.podcasts.data.Constants
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -31,20 +32,20 @@ class RssParser {
         var podcastWebsite = ""
         val episodes = mutableListOf<NetworkEpisodeWithChapters>()
 
-        parser.require(XmlPullParser.START_TAG, null, "rss")
+        parser.require(XmlPullParser.START_TAG, null, Constants.Rss.RSS)
         while (parser.next() != XmlPullParser.END_TAG) {
             if (parser.eventType != XmlPullParser.START_TAG) continue
-            if (parser.name == "channel") {
+            if (parser.name == Constants.Rss.CHANNEL) {
                 while (parser.next() != XmlPullParser.END_TAG) {
                     if (parser.eventType != XmlPullParser.START_TAG) continue
                     val tagName = parser.name
                     when (tagName) {
-                        "title" -> podcastTitle = readText(parser)
-                        "description" -> podcastDescription = readText(parser)
-                        "link" -> podcastWebsite = readText(parser)
-                        "image" -> {
+                        Constants.Rss.TITLE -> podcastTitle = readText(parser)
+                        Constants.Rss.DESCRIPTION -> podcastDescription = readText(parser)
+                        Constants.Rss.LINK -> podcastWebsite = readText(parser)
+                        Constants.Rss.IMAGE -> {
                             // itunes:image uses 'href' attribute in namespace-aware mode
-                            val href = parser.getAttributeValue(null, "href")
+                            val href = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF)
                             if (href != null) {
                                 podcastImageUrl = href
                                 skip(parser)
@@ -53,7 +54,7 @@ class RssParser {
                                 podcastImageUrl = readImage(parser)
                             }
                         }
-                        "item" -> episodes.add(readItem(parser, feedUrl))
+                        Constants.Rss.ITEM -> episodes.add(readItem(parser, feedUrl))
                         else -> skip(parser)
                     }
                 }
@@ -83,21 +84,21 @@ class RssParser {
         var duration = 0L
         val chapters = mutableListOf<Chapter>()
 
-        parser.require(XmlPullParser.START_TAG, null, "item")
+        parser.require(XmlPullParser.START_TAG, null, Constants.Rss.ITEM)
         while (parser.next() != XmlPullParser.END_TAG) {
             if (parser.eventType != XmlPullParser.START_TAG) continue
             val tagName = parser.name
             when (tagName) {
-                "title" -> title = readText(parser)
-                "description" -> description = readText(parser)
-                "link" -> episodeWebLink = readText(parser)
-                "guid" -> id = readText(parser)
-                "image" -> {
-                    val href = parser.getAttributeValue(null, "href")
+                Constants.Rss.TITLE -> title = readText(parser)
+                Constants.Rss.DESCRIPTION -> description = readText(parser)
+                Constants.Rss.LINK -> episodeWebLink = readText(parser)
+                Constants.Rss.GUID -> id = readText(parser)
+                Constants.Rss.IMAGE -> {
+                    val href = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF)
                     if (href != null) imageUrl = href
                     skip(parser)
                 }
-                "pubDate" -> {
+                Constants.Rss.PUB_DATE -> {
                     val dateStr = readText(parser)
                     pubDate = try {
                         dateFormat.get()?.parse(dateStr)?.time ?: 0L
@@ -106,15 +107,15 @@ class RssParser {
                         0L
                     }
                 }
-                "enclosure" -> {
-                    audioUrl = parser.getAttributeValue(null, "url") ?: ""
+                Constants.Rss.ENCLOSURE -> {
+                    audioUrl = parser.getAttributeValue(null, Constants.Rss.ENCLOSURE_URL) ?: ""
                     skip(parser)
                 }
-                "duration" -> {
+                Constants.Rss.DURATION -> {
                     val durationStr = readText(parser)
                     duration = parseDuration(durationStr)
                 }
-                "chapters" -> {
+                Constants.Rss.CHAPTERS -> {
                     chapters.addAll(readPodloveChapters(parser, id.ifEmpty { audioUrl }))
                 }
                 else -> skip(parser)
@@ -143,11 +144,11 @@ class RssParser {
         // We are at <psc:chapters> or <chapters>
         while (parser.next() != XmlPullParser.END_TAG) {
             if (parser.eventType != XmlPullParser.START_TAG) continue
-            if (parser.name == "chapter") {
-                val start = parser.getAttributeValue(null, "start") ?: "0"
-                val title = parser.getAttributeValue(null, "title") ?: ""
-                val href = parser.getAttributeValue(null, "href")
-                val image = parser.getAttributeValue(null, "image")
+            if (parser.name == Constants.Rss.CHAPTER) {
+                val start = parser.getAttributeValue(null, Constants.Rss.CHAPTER_START) ?: "0"
+                val title = parser.getAttributeValue(null, Constants.Rss.CHAPTER_TITLE) ?: ""
+                val href = parser.getAttributeValue(null, Constants.Rss.CHAPTER_HREF)
+                val image = parser.getAttributeValue(null, Constants.Rss.CHAPTER_IMAGE)
                 
                 chapters.add(Chapter(
                     episodeId = episodeId,
@@ -166,10 +167,10 @@ class RssParser {
 
     private fun readImage(parser: XmlPullParser): String {
         var url = ""
-        parser.require(XmlPullParser.START_TAG, null, "image")
+        parser.require(XmlPullParser.START_TAG, null, Constants.Rss.IMAGE)
         while (parser.next() != XmlPullParser.END_TAG) {
             if (parser.eventType != XmlPullParser.START_TAG) continue
-            if (parser.name == "url") {
+            if (parser.name == Constants.Rss.IMAGE_URL) {
                 url = readText(parser)
             } else {
                 skip(parser)

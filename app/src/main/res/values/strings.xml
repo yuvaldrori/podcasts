@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Podcasts</string>
-    <string name="queue_title">Queue</string>
     <string name="new_episodes_title">New Episodes</string>
-    <string name="podcasts_title">Podcasts</string>
     <string name="history_title">History</string>
     <string name="settings_title">Settings</string>
     <string name="episodes_title">Episodes</string>
@@ -25,13 +23,11 @@
     <string name="queue_listening_time">%1$s of queue listening time</string>
     <string name="back">Back</string>
     <string name="dismiss">Dismiss</string>
-    <string name="remove">Remove</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
     <string name="reorder">Reorder</string>
     <string name="options">Options</string>
     <string name="unsubscribe">Unsubscribe</string>
-    <string name="share_episode">Share Episode</string>
     <string name="podcast_cover">Podcast Cover</string>
     <string name="empty_queue_message">Your queue is empty. Go to Podcasts or New Episodes to add some!</string>
     <string name="import_local_audio_title">Import Local Audio</string>
@@ -48,9 +44,16 @@
     <string name="local_files_title">Local Files</string>
     <string name="local_files_desc">Manually imported audio files</string>
     <string name="playback_speed_format">%1$sx</string>
+    <string name="playback_speed">Playback Speed</string>
+    <string name="fast_rewind">Fast Rewind</string>
+    <string name="fast_forward">Fast Forward</string>
     <string name="in_queue">In Queue</string>
-    <string name="duration_hours_minutes">%1$dh %2$dm</string>
-    <string name="duration_minutes">%1$dm</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="downloading">Downloading</string>
+    <string name="not_downloaded">Not Downloaded</string>
+    <string name="add_to_queue_action">Add to Queue</string>
+    <string name="remove_from_queue_action">Remove from Queue</string>
+    <string name="delete_episode_action">Delete Episode</string>
     <string name="error_refresh_podcast">Failed to refresh podcast: %1$s</string>
     <string name="error_add_podcast">Failed to add podcast: %1$s</string>
     <string name="error_import_local">Failed to import local file: %1$s</string>

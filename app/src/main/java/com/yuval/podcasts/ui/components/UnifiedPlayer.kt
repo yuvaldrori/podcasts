@@ -10,12 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.yuval.podcasts.data.db.entity.Episode
-import java.util.Locale
-import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
+import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.utils.Formatter
 
 @Composable
@@ -34,7 +35,7 @@ fun UnifiedPlayer(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.navigationBarsPadding(),
         tonalElevation = 8.dp,
         shadowElevation = 8.dp
     ) {
@@ -65,11 +66,14 @@ fun UnifiedPlayer(
                 ) {
                     CastButton()
                     
+                    val speedLabel = stringResource(R.string.playback_speed)
                     TextButton(
                         onClick = onToggleSpeed,
                         enabled = isConnected,
                         contentPadding = PaddingValues(0.dp),
-                        modifier = Modifier.defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
+                        modifier = Modifier
+                            .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
+                            .semantics { contentDescription = speedLabel }
                     ) {
                         val speedText = if (playbackSpeed % 1f == 0f) playbackSpeed.toInt().toString() else playbackSpeed.toString()
                         Text(text = stringResource(R.string.playback_speed_format, speedText), style = MaterialTheme.typography.labelLarge)
@@ -79,7 +83,11 @@ fun UnifiedPlayer(
                         enabled = isConnected,
                         modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(Icons.Default.FastRewind, contentDescription = null, modifier = Modifier.size(28.dp))
+                        Icon(
+                            imageVector = Icons.Default.FastRewind, 
+                            contentDescription = stringResource(R.string.fast_rewind), 
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                     IconButton(
                         onClick = onPlayPause,
@@ -97,7 +105,11 @@ fun UnifiedPlayer(
                         enabled = isConnected,
                         modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(Icons.Default.FastForward, contentDescription = null, modifier = Modifier.size(28.dp))
+                        Icon(
+                            imageVector = Icons.Default.FastForward, 
+                            contentDescription = stringResource(R.string.fast_forward), 
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                 }
             }

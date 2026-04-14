@@ -2,6 +2,7 @@ package com.yuval.podcasts.ui.viewmodel
 
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.media.PlayerManager
+import com.yuval.podcasts.utils.NetworkMonitor
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -11,21 +12,16 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
-import com.yuval.podcasts.utils.MainDispatcherRule
-import org.junit.Rule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.setMain
 
 class PlayerViewModelTest {
 
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule(testDispatcher)
-
     private lateinit var repository: PodcastRepository
     private lateinit var playerManager: PlayerManager
+    private lateinit var networkMonitor: NetworkMonitor
     private lateinit var viewModel: PlayerViewModel
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setup() {
@@ -33,6 +29,7 @@ class PlayerViewModelTest {
         
         repository = mockk(relaxed = true)
         playerManager = mockk(relaxed = true)
+        networkMonitor = mockk(relaxed = true)
         
         every { playerManager.isPlaying } returns MutableStateFlow(false)
         every { playerManager.isConnected } returns MutableStateFlow(false)
@@ -41,10 +38,11 @@ class PlayerViewModelTest {
         every { playerManager.playbackSpeed } returns MutableStateFlow(1f)
         every { playerManager.currentMediaId } returns MutableStateFlow(null)
         every { playerManager.isInitialized } returns MutableStateFlow(true)
+        every { networkMonitor.isOnline } returns MutableStateFlow(true)
         
         every { repository.listeningQueue } returns flowOf(emptyList())
 
-        viewModel = PlayerViewModel(repository, playerManager)
+        viewModel = PlayerViewModel(repository, playerManager, networkMonitor)
     }
 
     @Test

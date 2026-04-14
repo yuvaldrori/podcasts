@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -30,7 +31,7 @@ class OpmlImportWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = withContext(ioDispatcher) {
         val uriString = inputData.getString(KEY_URI) ?: return@withContext Result.failure()
-        val uri = Uri.parse(uriString)
+        val uri = uriString.toUri()
 
         try {
             setForeground(createForegroundInfo(0, 100))

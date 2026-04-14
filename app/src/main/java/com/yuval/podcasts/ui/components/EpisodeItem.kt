@@ -1,7 +1,6 @@
 package com.yuval.podcasts.ui.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
@@ -10,12 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.utils.Formatter
@@ -73,10 +70,15 @@ fun EpisodeItem(
                         2 -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.outline
                     }
+                    val downloadDesc = when (episode.downloadStatus) {
+                        1 -> stringResource(R.string.downloading)
+                        2 -> stringResource(R.string.downloaded)
+                        else -> stringResource(R.string.not_downloaded)
+                    }
                     
                     Icon(
                         imageVector = downloadIcon,
-                        contentDescription = null,
+                        contentDescription = downloadDesc,
                         modifier = Modifier.size(14.dp),
                         tint = downloadColor
                     )
@@ -106,7 +108,9 @@ fun EpisodeItem(
                 if (showProgress && episode.lastPlayedPosition > 0 && episode.duration > 0) {
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = { episode.progress },
+                        progress = { 
+                            if (episode.duration > 0) episode.lastPlayedPosition.toFloat() / (episode.duration * 1000f) else 0f 
+                        },
                         modifier = Modifier.fillMaxWidth().height(2.dp)
                     )
                 }

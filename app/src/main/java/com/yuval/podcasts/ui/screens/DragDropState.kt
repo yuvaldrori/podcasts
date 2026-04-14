@@ -1,7 +1,10 @@
 package com.yuval.podcasts.ui.screens
 
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 
 class DragDropState(
     private val lazyListState: LazyListState,
@@ -56,5 +59,22 @@ fun rememberDragDropState(
 ): DragDropState {
     return remember(lazyListState) {
         DragDropState(lazyListState, onMove)
+    }
+}
+
+fun Modifier.dragContainer(
+    index: Int,
+    dragDropState: DragDropState
+): Modifier {
+    return this.pointerInput(index, dragDropState) {
+        detectDragGesturesAfterLongPress(
+            onDragStart = { dragDropState.onDragStart(index) },
+            onDrag = { change, dragAmount ->
+                change.consume()
+                dragDropState.onDrag(dragAmount.y)
+            },
+            onDragEnd = { dragDropState.onDragEnd() },
+            onDragCancel = { dragDropState.onDragEnd() }
+        )
     }
 }

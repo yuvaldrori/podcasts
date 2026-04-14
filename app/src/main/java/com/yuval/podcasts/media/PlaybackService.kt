@@ -80,14 +80,14 @@ class PlaybackService : MediaSessionService() {
 
         override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
             val customLayout = listOf(
-                CommandButton.Builder()
+                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                     .setDisplayName("Rewind 10s")
-                    .setIconResId(androidx.media3.ui.R.drawable.exo_ic_rewind)
+                    .setCustomIconResId(android.R.drawable.ic_media_rew)
                     .setSessionCommand(SessionCommand("REWIND_10", Bundle.EMPTY))
                     .build(),
-                CommandButton.Builder()
+                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                     .setDisplayName("Skip 30s")
-                    .setIconResId(androidx.media3.ui.R.drawable.exo_ic_forward)
+                    .setCustomIconResId(android.R.drawable.ic_media_ff)
                     .setSessionCommand(SessionCommand("SKIP_30", Bundle.EMPTY))
                     .build()
             )
