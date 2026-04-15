@@ -17,15 +17,15 @@ class PlaybackServiceTest {
 
     @Test
     fun playerListener_onStateEnded_removesLastEpisode() = runTest {
-        // This is a unit test simulation of the PlaybackService's Player.Listener logic.
         val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
         val listenerSlot = slot<Player.Listener>()
         
         val player = mockk<Player>(relaxed = true)
+        // Set up the listener capture properly
         every { player.addListener(capture(listenerSlot)) } returns Unit
         
-        // Emulate the service setup manually for test isolation
-        player.addListener(object : Player.Listener {
+        // This is what happens in the service's listener
+        val serviceListener = object : Player.Listener {
             var currentlyPlayingId: String? = "episode_123"
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -35,14 +35,17 @@ class PlaybackServiceTest {
                     }
                 }
             }
-        })
+        }
+        
+        // "Register" our listener with the mock player
+        player.addListener(serviceListener)
 
         val listener = listenerSlot.captured
 
         // Simulate the player reaching the end of the playlist
         listener.onPlaybackStateChanged(Player.STATE_ENDED)
 
-        // Verify the fix triggers (this will fail before the fix because it's commented out in our mock)
+        // Verify the fix triggers
         coVerify(exactly = 1) { removeEpisodeUseCase("episode_123", true) }
     }
 
@@ -51,7 +54,6 @@ class PlaybackServiceTest {
         val lastPosition = 5000L
         val episodeId = "test_episode"
         
-        // Instantiate the data class instead of mocking it
         val dummyEpisode = Episode(
             id = episodeId,
             podcastFeedUrl = "feed",
@@ -71,8 +73,10 @@ class PlaybackServiceTest {
         )
 
         val player = mockk<Player>(relaxed = true)
-        val mediaItem = mockk<MediaItem>(relaxed = true)
-        every { mediaItem.mediaId } returns episodeId
+        val mediaItem = MediaItem.Builder()
+            .setMediaId(episodeId)
+            .build()
+            
         every { player.currentPosition } returns 0L
 
         // Emulate the listener logic from PlaybackService

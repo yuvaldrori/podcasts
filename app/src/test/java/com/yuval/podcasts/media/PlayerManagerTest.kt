@@ -50,7 +50,7 @@ class PlayerManagerTest {
 
     @Test
     fun togglePlayPause_whenPlaying_pauses() {
-        every { mediaController.isPlaying } returns true
+        every { mediaController.playWhenReady } returns true
         
         playerManager.togglePlayPause()
         
@@ -59,7 +59,7 @@ class PlayerManagerTest {
 
     @Test
     fun togglePlayPause_whenPaused_plays() {
-        every { mediaController.isPlaying } returns false
+        every { mediaController.playWhenReady } returns false
         
         playerManager.togglePlayPause()
         
@@ -135,7 +135,7 @@ class PlayerManagerTest {
         
         // Mock current state: ep1 is playing
         every { mediaController.currentMediaItem?.mediaId } returns "ep1"
-        every { mediaController.isPlaying } returns true
+        every { mediaController.playWhenReady } returns true
         
         // Use reflection to set _currentMediaId internal state to "ep1"
         val currentMediaIdField = PlayerManager::class.java.getDeclaredField("_currentMediaId")

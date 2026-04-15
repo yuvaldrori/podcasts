@@ -149,62 +149,6 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun exportHistory_success() = runTest {
-        coEvery { repository.exportHistory(context, uri) } returns Result.success(Unit)
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
-
-        viewModel.exportHistory(context, uri)
-        advanceUntilIdle()
-
-        coVerify { repository.exportHistory(context, uri) }
-        assertNull(viewModel.uiState.value.errorMessage)
-        job.cancel()
-    }
-
-    @Test
-    fun exportHistory_failure_setsErrorMessage() = runTest {
-        val errorMsg = "Export failed"
-        coEvery { repository.exportHistory(context, uri) } returns Result.failure(Exception(errorMsg))
-        every { repository.getString(any(), any()) } returns "Failed to export history: $errorMsg"
-        
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
-
-        viewModel.exportHistory(context, uri)
-        advanceUntilIdle()
-
-        assertEquals("Failed to export history: $errorMsg", viewModel.uiState.value.errorMessage)
-        job.cancel()
-    }
-
-    @Test
-    fun importHistory_success() = runTest {
-        coEvery { repository.importHistory(uri) } returns Result.success(Unit)
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
-
-        viewModel.importHistory(uri)
-        advanceUntilIdle()
-
-        coVerify { repository.importHistory(uri) }
-        assertNull(viewModel.uiState.value.errorMessage)
-        job.cancel()
-    }
-
-    @Test
-    fun importHistory_failure_setsErrorMessage() = runTest {
-        val errorMsg = "Import failed"
-        coEvery { repository.importHistory(uri) } returns Result.failure(Exception(errorMsg))
-        every { repository.getString(any(), any()) } returns "Failed to import history: $errorMsg"
-        
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
-
-        viewModel.importHistory(uri)
-        advanceUntilIdle()
-
-        assertEquals("Failed to import history: $errorMsg", viewModel.uiState.value.errorMessage)
-        job.cancel()
-    }
-
-    @Test
     fun clearError_resetsErrorMessage() = runTest {
         val url = "http://example.com/feed"
         coEvery { repository.fetchAndStorePodcast(url) } throws Exception("Error")

@@ -25,8 +25,6 @@ fun SettingsScreen(
     onAddPodcast: (String) -> Unit,
     onImportOpml: (Uri) -> Unit,
     onExportOpml: (android.content.Context, Uri) -> Unit,
-    onExportHistory: (android.content.Context, Uri) -> Unit,
-    onImportHistory: (Uri) -> Unit,
     onToggleSkipSilence: (Boolean) -> Unit,
     onImportLocalAudio: (Uri) -> Unit,
     onClearError: () -> Unit
@@ -50,16 +48,6 @@ fun SettingsScreen(
     val opmlExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/x-opml"),
         onResult = { uri -> uri?.let { onExportOpml(context, it) } }
-    )
-
-    val historyExportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json"),
-        onResult = { uri -> uri?.let { onExportHistory(context, it) } }
-    )
-
-    val historyImportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-        onResult = { uri -> uri?.let { onImportHistory(it) } }
     )
 
     val localAudioLauncher = rememberLauncherForActivityResult(
@@ -148,26 +136,6 @@ fun SettingsScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(stringResource(R.string.export_btn))
-                }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
-
-            Text(text = stringResource(R.string.history_import_export), style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Button(
-                    onClick = { historyImportLauncher.launch(arrayOf("*/*")) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.import_history_btn))
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = { historyExportLauncher.launch("podcasts_history.json") },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.export_history_btn))
                 }
             }
 

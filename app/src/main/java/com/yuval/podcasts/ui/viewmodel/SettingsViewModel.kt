@@ -108,24 +108,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun exportHistory(context: Context, uri: Uri) {
-        viewModelScope.launch {
-            val result = repository.exportHistory(context, uri)
-            if (result.isFailure) {
-                _errorMessage.value = repository.getString(R.string.error_export_history, result.exceptionOrNull()?.message ?: "")
-            }
-        }
-    }
-
-    fun importHistory(uri: Uri) {
-        viewModelScope.launch {
-            val result = repository.importHistory(uri)
-            if (result.isFailure) {
-                _errorMessage.value = repository.getString(R.string.error_import_history, result.exceptionOrNull()?.message ?: "")
-            }
-        }
-    }
-
     fun toggleSkipSilence(enabled: Boolean) {
         settingsRepository.saveSkipSilenceEnabled(enabled)
         _skipSilenceTrigger.value = System.currentTimeMillis()

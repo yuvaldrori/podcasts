@@ -102,36 +102,6 @@ class EpisodeDaoTest {
     }
 
     @Test
-    fun getPlayHistory_returnsCompletedEpisodesOnly() = runBlocking {
-        val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
-        podcastDao.insertPodcast(podcast)
-
-        // Add an episode that's simply enqueued (isPlayed=true, completedAt=null)
-        val ep1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null, 0L)
-        // Add an episode that's finished (isPlayed=true, completedAt=1000)
-        val ep2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null, 0L)
-        // Add an episode that's finished later (isPlayed=true, completedAt=2000)
-        val ep3 = Episode("ep3", "url1", "E3", "D", "A", null, null, 3000L, 0L, 0, null, false, 0L, null, 0L)
-        
-        episodeDao.syncNetworkEpisodes(listOf(
-            com.yuval.podcasts.data.db.entity.NetworkEpisode(ep1.id, ep1.podcastFeedUrl, ep1.title, ep1.description, ep1.audioUrl, ep1.imageUrl, ep1.episodeWebLink, ep1.pubDate, ep1.duration),
-            com.yuval.podcasts.data.db.entity.NetworkEpisode(ep2.id, ep2.podcastFeedUrl, ep2.title, ep2.description, ep2.audioUrl, ep2.imageUrl, ep2.episodeWebLink, ep2.pubDate, ep2.duration),
-            com.yuval.podcasts.data.db.entity.NetworkEpisode(ep3.id, ep3.podcastFeedUrl, ep3.title, ep3.description, ep3.audioUrl, ep3.imageUrl, ep3.episodeWebLink, ep3.pubDate, ep3.duration)
-        ))
-
-        episodeDao.updatePlaybackStatus("ep1", true, null)
-        episodeDao.updatePlaybackStatus("ep2", true, 1000L)
-        episodeDao.updatePlaybackStatus("ep3", true, 2000L)
-
-        val history = episodeDao.getPlayHistory().first()
-
-        assertEquals(2, history.size)
-        // Should be ordered by completedAt DESC
-        assertEquals("ep3", history[0].episode.id)
-        assertEquals("ep2", history[1].episode.id)
-    }
-
-    @Test
     fun getUnplayedEpisodesWithPodcast_returnsOnlyUnplayed() = runBlocking {
         val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
         podcastDao.insertPodcast(podcast)

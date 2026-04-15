@@ -8,10 +8,10 @@ The tests are split into two main categories: **Local Unit Tests** (which run fa
 
 These tests ensure the local Room database saves, retrieves, and migrates information correctly.
 
-*   **`EpisodeDaoTest`**: Verifies that we can insert, update, and delete podcast episodes. It also checks that we can correctly fetch the user's play history and a list of unplayed episodes.
+*   **`EpisodeDaoTest`**: Verifies that we can insert, update, and delete podcast episodes. It also checks that we can correctly fetch a list of unplayed episodes.
 *   **`PodcastDaoTest`**: Checks that adding and removing Podcast subscriptions works, and ensures that fetching "all podcasts" returns the correct list ordered alphabetically.
 *   **`QueueDaoTest`**: Confirms that adding episodes to the play queue, reordering the queue, and removing items from the queue behaves as expected in the database.
-*   **`AppDatabaseMigrationTest`**: **(New)** Ensures that user data (like episodes and history) is preserved during database updates. It specifically verifies the complex migration from version 5 to 6 where the primary key structure changed.
+*   **`AppDatabaseMigrationTest`**: Ensures that user data (like episodes and playback positions) is preserved during database updates. It specifically verifies the complex migration from version 5 to 6 where the primary key structure changed.
 
 ## 🌐 Network Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/data/network/`*
@@ -32,7 +32,6 @@ Repositories are the "managers" that decide whether to get data from the databas
 *   **`PodcastRepositoryRefreshTest`**: Checks the "Refresh All" feature. It makes sure that if you have 10 subscriptions, it refreshes them all quickly in parallel without freezing the app.
 *   **`AddLocalFileIntegrationTest`**: Tests the feature that lets users import their own local MP3 files. It checks if the app can read the MP3's metadata (title, artist, duration) and fake a "podcast episode" in the database.
 *   **`PodcastRepositoryAddLocalFileTest`**: A smaller test verifying that once the local MP3 is read, the repository properly saves it into the special "Local Files" subscription.
-*   **`HistoryBackupTest`**: Verifies the history export and import functionality. It ensures that played episodes are correctly saved to a JSON file and that importing this file correctly restores the "played" status in the database. It explicitly handles the case where history is imported before the podcast is synced by creating "placeholder" records that are merged later.
 *   **`SettingsRepositoryTest`**: Checks that user preferences (like the default playback speed) are saved and loaded correctly from device storage.
 
 ## 💼 Domain Logic (Use Cases)
@@ -82,7 +81,6 @@ ViewModels prepare data for the screen. These tests check that the data is corre
 *   **`QueueViewModelTimeTest`**: Verifies the math that calculates "Total Queue Time Remaining". If you have 3 hours of podcasts but you listen at 2x speed, it correctly tells you there is 1.5 hours remaining.
 *   **`EpisodeDetailViewModelTest`**: Ensures the episode details screen loads the correct episode and knows whether that episode is already in your queue or not.
 *   **`PodcastDetailViewModelTest`**: Ensures clicking a podcast loads only the episodes belonging to that specific podcast.
-*   **`HistoryViewModelTest`**: Checks that the history screen correctly pulls the list of previously finished episodes.
 *   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files (podcast backups) works and shows error messages if a file is broken.
 
 ## 🤖 Android UI Tests (Instrumented)
@@ -92,7 +90,7 @@ These tests actually boot up the UI on an Android device to "click" buttons and 
 
 *   **`EpisodeDetailScreenShareTest`**: Opens the Episode Detail screen and clicks the "Share" button. It verifies that for internet podcasts, it shares the website link. But for *local* files (like an imported voice memo), it just shares the text "Listening to [Name] via Podcasts App" since there is no link to share.
 *   **`NewEpisodesScreenTest`**: Opens the "New Episodes" feed, simulates pulling down from the top of the screen to refresh, and checks that the loading spinner appears and disappears correctly.
-*   **`QueueScreenTest`**: **(New)** Specifically tests the "Up Next" queue. It verifies that the Play/Pause buttons update their icons correctly when an episode starts playing. It also contains stress tests for the drag-and-drop gesture to ensure it doesn't crash or "snap" during rapid reordering.
+*   **`QueueScreenTest`**: Specifically tests the "Up Next" queue. It verifies that the Play/Pause buttons update their icons correctly when an episode starts playing. It also contains stress tests for the drag-and-drop gesture to ensure it doesn't crash or "snap" during rapid reordering.
 
 ---
 *Note: We also have `OpmlManagerTest` (checks OPML XML parsing/generation for backup files) and `PlayerModuleTest` (checks that our Dependency Injection provides the right ExoPlayer instances).*

@@ -16,15 +16,32 @@ class PlaybackServiceResumeTest {
     fun onMediaItemTransition_autoReason_seeksToLastPosition() = runTest {
         val episodeDao = mockk<EpisodeDao>()
         val player = mockk<Player>(relaxed = true)
-        val mediaItem = mockk<MediaItem>()
         val episodeId = "test_episode"
         val lastPosition = 5000L
 
-        every { mediaItem.mediaId } returns episodeId
-        coEvery { episodeDao.getEpisodeById(episodeId) } returns mockk<Episode>().apply {
-            every { id } returns episodeId
-            every { lastPlayedPosition } returns lastPosition
-        }
+        val mediaItem = MediaItem.Builder()
+            .setMediaId(episodeId)
+            .build()
+        
+        val dummyEpisode = Episode(
+            id = episodeId,
+            podcastFeedUrl = "feed",
+            title = "Ep 1",
+            description = "Desc",
+            audioUrl = "url",
+            imageUrl = null,
+            episodeWebLink = null,
+            pubDate = 0L,
+            duration = 1000,
+            downloadStatus = 0,
+            localFilePath = null,
+            isPlayed = false,
+            lastPlayedPosition = lastPosition,
+            completedAt = null,
+            localId = 1
+        )
+
+        coEvery { episodeDao.getEpisodeById(episodeId) } returns dummyEpisode
         every { player.currentPosition } returns 0L
 
         // Emulate the listener logic from PlaybackService without the CoroutineScope overhead

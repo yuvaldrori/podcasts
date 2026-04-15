@@ -35,7 +35,6 @@ import javax.inject.Singleton
 interface PodcastRepository {
     val allPodcasts: Flow<List<Podcast>>
     val listeningQueue: Flow<List<EpisodeWithPodcast>>
-    val playHistory: Flow<List<EpisodeWithPodcast>>
     val unplayedEpisodes: Flow<List<EpisodeWithPodcast>>
     
     fun getEpisodes(feedUrl: String): Flow<List<Episode>>
@@ -51,8 +50,6 @@ interface PodcastRepository {
     suspend fun reorderQueue(newOrderIds: List<String>)
     suspend fun addLocalFile(uri: android.net.Uri): Result<Unit>
     suspend fun requeueMissingDownloads()
-    suspend fun exportHistory(context: Context, uri: android.net.Uri): Result<Unit>
-    suspend fun importHistory(uri: android.net.Uri): Result<Unit>
     fun getString(resId: Int, vararg formatArgs: Any): String
 }
 
@@ -72,7 +69,6 @@ class DefaultPodcastRepository @Inject constructor(
 
     override val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
     override val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast()
-    override val playHistory: Flow<List<EpisodeWithPodcast>> = episodeDao.getPlayHistory()
 
     private val networkSemaphore = Semaphore(10)
     override val unplayedEpisodes: Flow<List<EpisodeWithPodcast>> = episodeDao.getUnplayedEpisodesWithPodcast().distinctUntilChanged()
@@ -222,77 +218,6 @@ class DefaultPodcastRepository @Inject constructor(
                 ExistingWorkPolicy.KEEP,
                 downloadWorkRequest
             )
-        }
-    }
-
-    override suspend fun exportHistory(context: Context, uri: android.net.Uri): Result<Unit> = withContext(ioDispatcher) {
-        try {
-            val played = episodeDao.getPlayedEpisodes()
-            val backup = HistoryBackup(
-                entries = played.map { ep ->
-                    HistoryEntry(ep.id, ep.podcastFeedUrl, ep.completedAt ?: ep.pubDate)
-                }
-            )
-            val json = kotlinx.serialization.json.Json.encodeToString(HistoryBackup.serializer(), backup)
-            context.contentResolver.openOutputStream(uri)?.use { os ->
-                os.write(json.toByteArray())
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e("PodcastRepository", "Failed to export history", e)
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun importHistory(uri: android.net.Uri): Result<Unit> = withContext(ioDispatcher) {
-        try {
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                val json = inputStream.bufferedReader().readText()
-                val backup = kotlinx.serialization.json.Json.decodeFromString(HistoryBackup.serializer(), json)
-                
-                backup.entries.forEach { entry ->
-                    // 1. Ensure Podcast exists (even as placeholder)
-                    if (podcastDao.getPodcast(entry.podcastFeedUrl) == null) {
-                        podcastDao.insertPodcast(
-                            Podcast(
-                                feedUrl = entry.podcastFeedUrl,
-                                title = "", // Placeholder
-                                description = "",
-                                imageUrl = "",
-                                website = ""
-                            )
-                        )
-                    }
-
-                    // 2. Ensure Episode exists and is marked played
-                    val existing = episodeDao.getEpisodeById(entry.episodeId)
-                    if (existing == null) {
-                        // Create placeholder episode if it doesn't exist yet
-                        // This allows history to be imported before OPML is fully synced
-                        episodeDao.insertEpisode(
-                            Episode(
-                                id = entry.episodeId,
-                                podcastFeedUrl = entry.podcastFeedUrl,
-                                title = "", // Placeholder
-                                description = "",
-                                audioUrl = "",
-                                pubDate = 0,
-                                duration = 0,
-                                downloadStatus = 0,
-                                localFilePath = null,
-                                isPlayed = true,
-                                completedAt = entry.completedAt
-                            )
-                        )
-                    } else {
-                        episodeDao.markAsPlayedBulk(entry.episodeId, entry.completedAt)
-                    }
-                }
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e("PodcastRepository", "Failed to import history", e)
-            Result.failure(e)
         }
     }
 

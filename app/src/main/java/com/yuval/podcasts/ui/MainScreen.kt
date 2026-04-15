@@ -17,7 +17,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -28,7 +27,6 @@ import com.yuval.podcasts.ui.screens.NewEpisodesScreen
 import com.yuval.podcasts.ui.screens.PodcastDetailScreen
 import com.yuval.podcasts.ui.screens.EpisodeDetailScreen
 import com.yuval.podcasts.ui.screens.QueueScreen
-import com.yuval.podcasts.ui.screens.HistoryScreen
 import com.yuval.podcasts.ui.screens.SettingsScreen
 import com.yuval.podcasts.ui.screens.SubscriptionsScreen
 import com.yuval.podcasts.ui.viewmodel.*
@@ -145,18 +143,6 @@ fun MainScreen(
                     onUnsubscribe = { feedUrl -> feedsViewModel.unsubscribePodcast(feedUrl) }
                 )
             }
-            composable<HistoryScreenRoute> {
-                val historyViewModel: HistoryViewModel = hiltViewModel()
-                val history by historyViewModel.history.collectAsStateWithLifecycle()
-                
-                HistoryScreen(
-                    history = history,
-                    onNavigateToEpisode = { episodeId ->
-                        navController.navigate(EpisodeDetailScreenRoute(episodeId))
-                    },
-                    onEnqueueEpisode = { ep -> historyViewModel.enqueueEpisode(ep) }
-                )
-            }
             composable<SettingsScreenRoute> {
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
                 val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -166,8 +152,6 @@ fun MainScreen(
                     onAddPodcast = { url -> settingsViewModel.addPodcast(url) },
                     onImportOpml = { uri -> settingsViewModel.importOpml(uri) },
                     onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) },
-                    onExportHistory = { ctx, uri -> settingsViewModel.exportHistory(ctx, uri) },
-                    onImportHistory = { uri -> settingsViewModel.importHistory(uri) },
                     onToggleSkipSilence = { enabled -> settingsViewModel.toggleSkipSilence(enabled) },
                     onImportLocalAudio = { uri -> settingsViewModel.importLocalAudio(uri) },
                     onClearError = { settingsViewModel.clearError() }
