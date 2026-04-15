@@ -66,17 +66,21 @@ class ThemeViewModel @Inject constructor(
             
             swatch?.let {
                 val seedColor = Color(it.rgb)
+                // Material 3 provides ColorScheme.fromSeed in newer versions, 
+                // but we can manually ensure better contrast for now.
                 _dynamicColorScheme.value = if (isDarkTheme) {
                     darkColorScheme(
                         primary = seedColor,
-                        secondary = seedColor.copy(alpha = 0.7f),
-                        tertiary = seedColor.copy(alpha = 0.5f)
+                        onPrimary = Color.White, // Force white text on dynamic primary for dark mode
+                        primaryContainer = seedColor.copy(alpha = 0.3f),
+                        onPrimaryContainer = Color.White
                     )
                 } else {
                     lightColorScheme(
                         primary = seedColor,
-                        secondary = seedColor.copy(alpha = 0.7f),
-                        tertiary = seedColor.copy(alpha = 0.5f)
+                        onPrimary = Color.Black, // Force black text on dynamic primary for light mode
+                        primaryContainer = seedColor.copy(alpha = 0.1f),
+                        onPrimaryContainer = Color.Black
                     )
                 }
             }

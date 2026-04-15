@@ -48,19 +48,19 @@ avd-init:
 	@echo "AVD $(AVD_NAME) created and path fixed."
 
 build:
-	./gradlew assembleDebug
+	./gradlew :app:assembleDebug
 
 build-release:
-	./gradlew assembleRelease
+	./gradlew :app:assembleRelease
 
 test:
-	./gradlew testDebugUnitTest
+	./gradlew :app:testDebugUnitTest
 
 lint:
-	./gradlew lintDebug -PwarningsAsErrors=true --warning-mode all
+	./gradlew :app:lintDebug -PwarningsAsErrors=true --warning-mode all
 
 deps:
-	./gradlew dependencyUpdates --no-parallel --no-configuration-cache
+	./gradlew :app:dependencyUpdates --no-parallel --no-configuration-cache
 
 clean:
 	./gradlew clean
@@ -90,7 +90,7 @@ stop-emulator:
 	@echo "Emulator stopped."
 
 install:
-	./gradlew installDebug
+	./gradlew :app:installDebug
 
 run: install
 	$(ADB) shell am start -n com.yuval.podcasts/.MainActivity

@@ -3,14 +3,15 @@
 This document explains what each automated test in the project does in simple, human-readable terms. 
 The tests are split into two main categories: **Local Unit Tests** (which run fast on your computer) and **Instrumented UI Tests** (which run on an Android emulator/device).
 
-## 🗄️ Database Tests (DAOs)
-*Located in: `app/src/test/java/com/yuval/podcasts/data/db/dao/`*
+## 🗄️ Database Tests (DAOs & Migrations)
+*Located in: `app/src/test/java/com/yuval/podcasts/data/db/dao/` and `app/src/androidTest/java/com/yuval/podcasts/data/db/`*
 
-These tests ensure the local Room database saves and retrieves information correctly.
+These tests ensure the local Room database saves, retrieves, and migrates information correctly.
 
 *   **`EpisodeDaoTest`**: Verifies that we can insert, update, and delete podcast episodes. It also checks that we can correctly fetch the user's play history and a list of unplayed episodes.
 *   **`PodcastDaoTest`**: Checks that adding and removing Podcast subscriptions works, and ensures that fetching "all podcasts" returns the correct list ordered alphabetically.
 *   **`QueueDaoTest`**: Confirms that adding episodes to the play queue, reordering the queue, and removing items from the queue behaves as expected in the database.
+*   **`AppDatabaseMigrationTest`**: **(New)** Ensures that user data (like episodes and history) is preserved during database updates. It specifically verifies the complex migration from version 5 to 6 where the primary key structure changed.
 
 ## 🌐 Network Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/data/network/`*
@@ -91,6 +92,7 @@ These tests actually boot up the UI on an Android device to "click" buttons and 
 
 *   **`EpisodeDetailScreenShareTest`**: Opens the Episode Detail screen and clicks the "Share" button. It verifies that for internet podcasts, it shares the website link. But for *local* files (like an imported voice memo), it just shares the text "Listening to [Name] via Podcasts App" since there is no link to share.
 *   **`NewEpisodesScreenTest`**: Opens the "New Episodes" feed, simulates pulling down from the top of the screen to refresh, and checks that the loading spinner appears and disappears correctly.
+*   **`QueueScreenTest`**: **(New)** Specifically tests the "Up Next" queue. It verifies that the Play/Pause buttons update their icons correctly when an episode starts playing. It also contains stress tests for the drag-and-drop gesture to ensure it doesn't crash or "snap" during rapid reordering.
 
 ---
 *Note: We also have `OpmlManagerTest` (checks OPML XML parsing/generation for backup files) and `PlayerModuleTest` (checks that our Dependency Injection provides the right ExoPlayer instances).*

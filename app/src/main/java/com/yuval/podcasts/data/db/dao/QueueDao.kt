@@ -38,8 +38,17 @@ interface QueueDao {
     """)
     suspend fun getNextEpisode(): Episode?
 
+    @Transaction
+    suspend fun updateQueue(queue: List<QueueState>) {
+        clearQueue()
+        insertQueue(queue)
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun updateQueue(queue: List<QueueState>)
+    suspend fun insertQueue(queue: List<QueueState>)
+
+    @Query("DELETE FROM queue")
+    suspend fun clearQueue()
 
     @Query("DELETE FROM queue WHERE episodeId = :episodeId")
     suspend fun removeFromQueue(episodeId: String)

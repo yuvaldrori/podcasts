@@ -4,6 +4,7 @@ The following guidelines govern all code development, refactoring, and problem-s
 
 ## 1. Planning & Communication
 * **Propose Before You Code**: Before diving into implementation for a new feature or complex refactoring, always outline a brief plan of action. We need to discuss and agree upon the architecture, libraries, and approach before you start modifying files.
+* **Never Remove Features Without Asking**: Always explicitly ask for confirmation before removing existing features, UI elements (e.g., buttons), or user-facing functionality, even if you suspect they are obsolete or replaced by a new pattern.
 
 ## 2. Simplicity & Dependencies
 * **Keep It Simple**: Prefer simple, readable, and maintainable code over overly clever or highly abstracted solutions.

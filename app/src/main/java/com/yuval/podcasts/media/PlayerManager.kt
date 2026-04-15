@@ -152,7 +152,7 @@ class PlayerManager @Inject constructor(
                 it.seekTo(startPositionMs)
             }
             it.prepare()
-            it.play()
+            android.util.Log.d("PlayerManager", "Playing!"); it.play()
         }
     }
 
@@ -197,16 +197,16 @@ class PlayerManager @Inject constructor(
             }
             it.setMediaItems(mediaItems, startIndex, startPositionMs)
             it.prepare()
-            it.play()
+            android.util.Log.d("PlayerManager", "Playing!"); it.play()
         }
     }
 
     fun togglePlayPause() {
         controller?.let {
-            if (it.isPlaying) {
-                it.pause()
+            if (it.playWhenReady) {
+                android.util.Log.d("PlayerManager", "Pausing!"); it.pause()
             } else {
-                it.play()
+                android.util.Log.d("PlayerManager", "Playing!"); it.play()
             }
         }
     }

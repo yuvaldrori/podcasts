@@ -17,6 +17,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
@@ -89,71 +90,31 @@ fun NewEpisodesScreen(
                     items = episodes,
                     key = { it.episode.id }
                 ) { episodeWithPodcast ->
-                val episode = episodeWithPodcast.episode
-                val podcast = episodeWithPodcast.podcast
+                    val episode = episodeWithPodcast.episode
+                    val podcast = episodeWithPodcast.podcast
 
-                val dismissState = rememberSwipeToDismissBoxState()
-                LaunchedEffect(dismissState.currentValue) {
-                    if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
-                        onDismissEpisode(episode)
-                    } else if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd) {
-                        onAddToQueue(episode)
-                    }
-                }
-
-                SwipeToDismissBox(
-                    state = dismissState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateItem(),
-                    backgroundContent = {
-                        val color = when (dismissState.targetValue) {
-                            SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primaryContainer
-                            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
-                            else -> MaterialTheme.colorScheme.surface
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(vertical = 4.dp)
-                                .background(color),
-                            contentAlignment = if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
-                        ) {
-                            val (icon, description) = when (dismissState.targetValue) {
-                                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.Add to stringResource(R.string.add_to_queue_action)
-                                SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete to stringResource(R.string.delete_episode_action)
-                                else -> null to null
-                            }
-                            if (icon != null && description != null) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = description,
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                    tint = if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            }
-                        }
-
-                        },
-                        content = {
-                            val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
-                            EpisodeItem(
-                                episode = episode,
-                                modifier = Modifier.clickable(onClick = clickHandler),
-                                imageUrl = podcast.imageUrl,
-                                trailingContent = {
-                                    Row {
-                                        IconButton(onClick = { onDismissEpisode(episode) }) {
-                                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.dismiss))
-                                        }
-                                        IconButton(onClick = { onAddToQueue(episode) }) {
-                                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
-                                        }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItem()
+                    ) {
+                        val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
+                        EpisodeItem(
+                            episode = episode,
+                            modifier = Modifier.clickable(onClick = clickHandler),
+                            imageUrl = podcast.imageUrl,
+                            trailingContent = {
+                                Row {
+                                    IconButton(onClick = { onDismissEpisode(episode) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.dismiss))
+                                    }
+                                    IconButton(onClick = { onAddToQueue(episode) }) {
+                                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
                                     }
                                 }
-                            )
-                        }
-                    )
+                            }
+                        )
+                    }
                 }
             }
         }

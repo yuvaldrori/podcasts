@@ -19,6 +19,22 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `episodes_new` (`id` TEXT NOT NULL, `podcastFeedUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `audioUrl` TEXT NOT NULL, `imageUrl` TEXT, `episodeWebLink` TEXT DEFAULT NULL, `pubDate` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `downloadStatus` INTEGER NOT NULL DEFAULT 0, `localFilePath` TEXT, `isPlayed` INTEGER NOT NULL DEFAULT 0, `lastPlayedPosition` INTEGER NOT NULL DEFAULT 0, `completedAt` INTEGER DEFAULT NULL, `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)"
+            )
+            db.execSQL(
+                "INSERT INTO `episodes_new` (`id`, `podcastFeedUrl`, `title`, `description`, `audioUrl`, `imageUrl`, `pubDate`, `duration`, `downloadStatus`, `localFilePath`, `isPlayed`, `lastPlayedPosition`, `completedAt`) SELECT `id`, `podcastFeedUrl`, `title`, `description`, `audioUrl`, `imageUrl`, `pubDate`, `duration`, `downloadStatus`, `localFilePath`, `isPlayed`, `lastPlayedPosition`, `completedAt` FROM `episodes`"
+            )
+            db.execSQL("DROP TABLE `episodes`")
+            db.execSQL("ALTER TABLE `episodes_new` RENAME TO `episodes`")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_episodes_id` ON `episodes` (`id`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isPlayed_pubDate` ON `episodes` (`isPlayed`, `pubDate`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_podcastFeedUrl` ON `episodes` (`podcastFeedUrl`)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -27,6 +43,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "podcasts_db"
         )
+        .addMigrations(MIGRATION_5_6)
         .fallbackToDestructiveMigration(true)
         .build()
     }

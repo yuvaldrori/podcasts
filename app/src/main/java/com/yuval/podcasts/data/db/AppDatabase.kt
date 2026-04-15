@@ -1,5 +1,6 @@
 package com.yuval.podcasts.data.db
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.yuval.podcasts.data.db.entity.Podcast
@@ -14,7 +15,11 @@ import com.yuval.podcasts.data.db.dao.ChapterDao
 @Database(
     entities = [Podcast::class, Episode::class, QueueState::class, Chapter::class],
     version = 7,
-    exportSchema = true
+    exportSchema = true,
+    autoMigrations = [
+        AutoMigration(from = 4, to = 5),
+        AutoMigration(from = 6, to = 7)
+    ]
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun podcastDao(): PodcastDao

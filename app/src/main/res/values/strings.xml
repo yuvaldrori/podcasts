@@ -3,6 +3,7 @@
     <string name="app_name">Podcasts</string>
     <string name="new_episodes_title">New Episodes</string>
     <string name="history_title">History</string>
+    <string name="queue_title">Queue</string>
     <string name="settings_title">Settings</string>
     <string name="episodes_title">Episodes</string>
     <string name="episode_details_title">Episode Details</string>

@@ -60,6 +60,7 @@ class PlaybackService : MediaSessionService() {
     @Inject @MainDispatcher lateinit var mainDispatcher: CoroutineDispatcher
 
     private var mediaSession: MediaSession? = null
+    private var lastResumedId: String? = null
     private lateinit var serviceScope: CoroutineScope
 
     private val mediaSessionCallback = object : MediaSession.Callback {
@@ -222,13 +223,33 @@ class PlaybackService : MediaSessionService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val lastId = currentlyPlayingId
                 android.util.Log.d("PlaybackService", "Media item transition. lastId=$lastId, newMediaId=${mediaItem?.mediaId}, reason=$reason")
+                
                 if (lastId != null && mediaItem != null && lastId != mediaItem.mediaId && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                     serviceScope.launch(ioDispatcher) {
                          removeEpisodeUseCase(lastId, markAsPlayed = true)
                     }
                 }
+
                 if (mediaItem != null) {
                     currentlyPlayingId = mediaItem.mediaId
+                    
+                    // If it's an automatic transition or a skip, check for saved position to resume
+                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+                        if (lastResumedId != mediaItem.mediaId) {
+                            lastResumedId = mediaItem.mediaId
+                            serviceScope.launch(ioDispatcher) {
+                                val episode = episodeDao.getEpisodeById(mediaItem.mediaId)
+                                if (episode != null && episode.lastPlayedPosition > 0) {
+                                    withContext(mainDispatcher) {
+                                        // Only seek if we are at the start (prevent fighting manual seeks)
+                                        if (currentPlayer.currentPosition < 2000) {
+                                            currentPlayer.seekTo(episode.lastPlayedPosition)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

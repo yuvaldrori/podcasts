@@ -10,11 +10,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -46,12 +48,25 @@ fun QueueScreen(
     val successState = uiState as QueueUiState.Success
     val lazyListState = rememberLazyListState()
     
-    val dragDropState = rememberDragDropState(lazyListState, onMove = { fromIndex, toIndex ->
-        val newList = successState.queue.toMutableList()
-        val item = newList.removeAt(fromIndex)
-        newList.add(toIndex, item)
-        onReorderQueue(newList.map { it.episode.id })
-    })
+    var queue by remember { mutableStateOf(successState.queue.toList()) }
+
+    val dragDropState = rememberDragDropState(
+        lazyListState = lazyListState,
+        onMove = { fromIndex, toIndex ->
+            queue = queue.toMutableList().apply {
+                add(toIndex, removeAt(fromIndex))
+            }
+        },
+        onDragEnd = {
+            onReorderQueue(queue.map { it.episode.id })
+        }
+    )
+
+    LaunchedEffect(successState.queue, dragDropState.draggedItemIndex) {
+        if (dragDropState.draggedItemIndex == null) {
+            queue = successState.queue.toList()
+        }
+    }
 
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
@@ -60,8 +75,8 @@ fun QueueScreen(
             TopAppBar(
                 title = { 
                     Column {
-                        Text(stringResource(R.string.history_title).replace("History", "Queue"))
-                        if (successState.queue.isNotEmpty()) {
+                        Text(stringResource(R.string.queue_title))
+                        if (queue.isNotEmpty()) {
                             Text(
                                 text = stringResource(R.string.queue_listening_time, queueTimeRemaining),
                                 style = MaterialTheme.typography.labelMedium,
@@ -70,17 +85,11 @@ fun QueueScreen(
                         }
                     }
                 },
-                actions = {
-                    if (successState.queue.isNotEmpty() && !isPlaying) {
-                        IconButton(onClick = { onPlayQueue(successState.queue.map { it.episode }, 0, 0) }) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.play))
-                        }
-                    }
-                }
+                actions = {}
             )
         }
     ) { padding ->
-        if (successState.queue.isEmpty()) {
+        if (queue.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -102,22 +111,14 @@ fun QueueScreen(
                     .testTag("queue_list"),
                 contentPadding = PaddingValues(16.dp)
             ) {
-                itemsIndexed(successState.queue, key = { _, item -> item.episode.id }) { index, episodeWithPodcast ->
+                itemsIndexed(queue, key = { _, item -> item.episode.id }) { index, episodeWithPodcast ->
                     val episode = episodeWithPodcast.episode
                     val isDragging = dragDropState.draggedItemIndex == index
                     val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "elevation")
                     
-                    val dismissState = rememberSwipeToDismissBoxState()
-                    LaunchedEffect(dismissState.currentValue) {
-                        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
-                            onRemoveFromQueue(episode.id)
-                        }
-                    }
-
-                    SwipeToDismissBox(
-                        state = dismissState,
-                        enableDismissFromStartToEnd = false,
+                    Box(
                         modifier = Modifier
+                            .fillMaxWidth()
                             .zIndex(if (isDragging) 1f else 0f)
                             .graphicsLayer {
                                 if (isDragging) {
@@ -125,49 +126,45 @@ fun QueueScreen(
                                 }
                                 shadowElevation = elevation.toPx()
                             }
-                            .animateItem(), 
-                        backgroundContent = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(vertical = 4.dp)
-                                    .background(MaterialTheme.colorScheme.errorContainer),
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = stringResource(R.string.remove_from_queue_action),
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                    tint = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            }
-                        },
-                        content = {
-                            val isCurrent = episode.id == currentMediaId
-                            val containerColor = if (isCurrent) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            }
+                            .animateItem()
+                    ) {
+                        val isCurrent = episode.id == currentMediaId
+                        val containerColor = if (isCurrent) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        }
 
-                            val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
-                            EpisodeItem(
-                                episode = episode,
-                                modifier = Modifier.clickable(onClick = clickHandler),
-                                imageUrl = episodeWithPodcast.podcast.imageUrl,
-                                containerColor = containerColor,
-                                trailingContent = {
+                        val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
+                        EpisodeItem(
+                            episode = episode,
+                            modifier = Modifier.clickable(onClick = clickHandler),
+                            imageUrl = episodeWithPodcast.podcast.imageUrl,
+                            containerColor = containerColor,
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    val isThisEpisodePlaying = isPlaying && currentMediaId == episode.id
+                                    IconButton(onClick = { 
+                                        onPlayQueue(queue.map { it.episode }, index, episode.lastPlayedPosition) 
+                                    }) {
+                                        val playIcon = if (isThisEpisodePlaying) Icons.Default.Pause else Icons.Default.PlayArrow
+                                        val description = stringResource(if (isThisEpisodePlaying) R.string.pause else R.string.play)
+                                        Icon(playIcon, contentDescription = description)
+                                    }
+                                    IconButton(onClick = { onRemoveFromQueue(episode.id) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove_from_queue_action))
+                                    }
                                     Icon(
                                         imageVector = Icons.Default.Reorder,
                                         contentDescription = stringResource(R.string.reorder),
                                         modifier = Modifier
                                             .padding(8.dp)
-                                            .dragContainer(index, dragDropState)
-                                    )
-                                }
-                            )
-                        }
-                    )
+                                            .testTag("reorder_handle_${episode.id}")
+                                            .dragContainer(episode.id, dragDropState)
+                                    )                                }
+                            }
+                        )
+                    }
                 }
             }
         }
