@@ -5,9 +5,11 @@ import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.yuval.podcasts.data.db.AppDatabase
-import com.yuval.podcasts.data.db.dao.PodcastDao
+import com.yuval.podcasts.data.db.dao.ChapterDao
 import com.yuval.podcasts.data.db.dao.EpisodeDao
+import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.QueueDao
+import com.yuval.podcasts.data.Constants
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,6 +23,7 @@ object DatabaseModule {
 
     val MIGRATION_5_6 = object : Migration(5, 6) {
         override fun migrate(db: SupportSQLiteDatabase) {
+            // Add episodeWebLink column
             db.execSQL(
                 "CREATE TABLE IF NOT EXISTS `episodes_new` (`id` TEXT NOT NULL, `podcastFeedUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `audioUrl` TEXT NOT NULL, `imageUrl` TEXT, `episodeWebLink` TEXT DEFAULT NULL, `pubDate` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `downloadStatus` INTEGER NOT NULL DEFAULT 0, `localFilePath` TEXT, `isPlayed` INTEGER NOT NULL DEFAULT 0, `lastPlayedPosition` INTEGER NOT NULL DEFAULT 0, `completedAt` INTEGER DEFAULT NULL, `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)"
             )
@@ -37,14 +40,13 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
+    fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
-            "podcasts_db"
+            Constants.DATABASE_NAME
         )
         .addMigrations(MIGRATION_5_6)
-        .fallbackToDestructiveMigration(true)
         .build()
     }
 
@@ -58,9 +60,5 @@ object DatabaseModule {
     fun provideQueueDao(database: AppDatabase): QueueDao = database.queueDao()
 
     @Provides
-    fun provideChapterDao(database: AppDatabase): com.yuval.podcasts.data.db.dao.ChapterDao = database.chapterDao()
-
-    @Provides
-    @Singleton
-    fun provideOpmlManager(): com.yuval.podcasts.data.opml.OpmlManager = com.yuval.podcasts.data.opml.OpmlManager()
+    fun provideChapterDao(database: AppDatabase): ChapterDao = database.chapterDao()
 }

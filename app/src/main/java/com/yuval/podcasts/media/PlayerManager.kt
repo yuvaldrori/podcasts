@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -233,7 +234,9 @@ class PlayerManager @Inject constructor(
     }
 
     fun setPlaybackSpeed(speed: Float) {
-        settingsRepository.savePlaybackSpeed(speed)
+        scope.launch {
+            settingsRepository.savePlaybackSpeed(speed)
+        }
         controller?.setPlaybackParameters(PlaybackParameters(speed))
         _playbackSpeed.value = speed
     }

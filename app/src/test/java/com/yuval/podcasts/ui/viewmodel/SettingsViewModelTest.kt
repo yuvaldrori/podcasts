@@ -71,6 +71,7 @@ class SettingsViewModelTest {
             "Error: ${secondArg<Array<Any>>().firstOrNull() ?: ""}" 
         }
 
+        every { settingsRepository.skipSilenceFlow } returns kotlinx.coroutines.flow.MutableStateFlow(false)
         viewModel = SettingsViewModel(repository, settingsRepository, workManager, exportOpmlUseCase)
     }
 

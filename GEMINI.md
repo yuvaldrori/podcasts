@@ -16,17 +16,18 @@ The following guidelines govern all code development, refactoring, and problem-s
 
 ## 4. Idiomatic Code & Best Practices
 * **Follow Official Guidelines**: Write idiomatic code that aligns with the official best practices for the language and framework (e.g., Google's App Architecture Guidelines for Android, standard Kotlin conventions).
-* **Consult Documentation**: When unsure, consult the official documentation websites. Use the language's standard library source code as a benchmark for what good, idiomatic code looks like.
+* **Consult Documentation**: When unsure, consult the official documentation using the `android docs search` command or the official documentation websites. Use the language's standard library source code as a benchmark for what good, idiomatic code looks like.
 
 ## 5. Performance & Efficiency
+* **Verification Tools**: Utilize `make layout` and `make screenshot` during development to empirically verify UI structure and visual fidelity on the Pixel 8 Pro.
 * **Monitor Resource Usage**: Actively consider the impact of new changes on performance, memory usage, and battery life.
 * **Bulk Operations**: Always prioritize bulk database operations over iterative queries. Use the "Fetch-Merge-Upsert" pattern demonstrated in `EpisodeDao.syncNetworkEpisodes` to handle large datasets efficiently. For secondary data like Chapters, use bulk delete/insert transactions (e.g., `ChapterDao.updateChaptersBulk`).
 * **Non-blocking Media Bridge**: Never use `runBlocking` within `MediaSession` callbacks. Utilize the `asListenableFuture` bridge to resolve media items asynchronously, ensuring the UI thread remains responsive.
-* **Emulator Setup**: Use the `Makefile` commands `make avd-init` and `make emulator` to set up and run a performance-optimized Pixel 8 Pro environment for testing.
+* **Emulator Setup**: Use the `Makefile` command `make emulator` to set up and run a performance-optimized Pixel 8 Pro environment. This target utilizes the `android` CLI for robust device management.
 * **Test for Constraints**: Ensure that background tasks, media players, and network calls are optimized, properly bounded to the correct threads (using explicit Dispatchers), and cancelled cleanly when no longer needed.
 
 ## 6. Maintenance & Upgrades
-* **Stateless Upgrades**: During rapid development, prefer a "Stateless Maintenance" strategy. Instead of complex SQL migrations, utilize the OPML (Subscriptions) and JSON (History) export/import features to preserve user state across destructive database schema updates.
+* **Stateless Upgrades**: During rapid development, prefer a "Stateless Maintenance" strategy. Instead of complex SQL migrations, utilize the OPML (Subscriptions) export/import features to preserve user state across destructive database schema updates.
 * **Zero-Debt Schema**: If an experimental schema change is reverted, revert the database version number to match the stable version, avoiding unnecessary wipes for other developers.
 
 ## 7. Test-Driven Development (TDD)

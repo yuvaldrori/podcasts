@@ -47,6 +47,10 @@
             </intent-filter>
         </receiver>
 
+        <receiver android:name="androidx.mediarouter.media.MediaTransferReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver" />
+
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"

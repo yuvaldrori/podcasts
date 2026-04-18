@@ -12,20 +12,22 @@ import androidx.work.WorkerParameters
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.di.IoDispatcher
+import com.yuval.podcasts.utils.StorageUtils
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-import java.io.File
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
+import java.io.IOException
 
 @HiltWorker
 class DownloadWorker @AssistedInject constructor(
     @Assisted private val appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val episodeDao: EpisodeDao,
+    private val okHttpClient: OkHttpClient,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(appContext, workerParams) {
 
@@ -44,24 +46,21 @@ class DownloadWorker @AssistedInject constructor(
             // Update status to Downloading
             updateDownloadStatus(episodeId, 1, null)
 
-            val url = URL(audioUrl)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = Constants.NETWORK_TIMEOUT_MS
-            connection.readTimeout = Constants.NETWORK_TIMEOUT_MS
-            connection.connect()
+            val request = Request.Builder()
+                .url(audioUrl)
+                .build()
 
-            if (connection.responseCode !in 200..299) {
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
                 updateDownloadStatus(episodeId, 0, null)
                 return@withContext Result.failure()
             }
 
-            val fileName = "episode_${episodeId.hashCode()}.mp3"
-            val downloadsDir = File(appContext.filesDir, "podcasts").apply { mkdirs() }
-            val outputFile = File(downloadsDir, fileName)
+            val body = response.body ?: throw IOException("Empty response body")
+            val outputFile = StorageUtils.getFileForEpisode(appContext, episodeId)
 
             FileOutputStream(outputFile).use { outputStream ->
-                connection.inputStream.use { inputStream ->
+                body.byteStream().use { inputStream ->
                     inputStream.copyTo(outputStream, 64 * 1024) // 64KB buffer for large audio files
                 }
             }
@@ -75,7 +74,7 @@ class DownloadWorker @AssistedInject constructor(
             android.util.Log.e("DownloadWorker", "Download failed: ${e.message}", e)
             // Revert status on failure
             updateDownloadStatus(episodeId, 0, null)
-            Result.failure()
+            Result.retry() // Retry for transient network issues
         }
     }
 
@@ -84,7 +83,6 @@ class DownloadWorker @AssistedInject constructor(
     }
 
     private fun createForegroundInfo(title: String): ForegroundInfo {
-        val notificationId = 1
         val channelId = "download_channel"
         
         val channel = NotificationChannel(
@@ -102,7 +100,7 @@ class DownloadWorker @AssistedInject constructor(
             .setOngoing(true)
             .build()
 
-        return ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        return ForegroundInfo(Constants.NOTIFICATION_ID_DOWNLOAD, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     }
 
     companion object {

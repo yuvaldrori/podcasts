@@ -44,17 +44,16 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
-    private val _skipSilenceTrigger = MutableStateFlow(System.currentTimeMillis())
 
     val uiState: StateFlow<SettingsUiState> = combine(
         workManager.getWorkInfosForUniqueWorkLiveData("opml_import").asFlow().map { it.firstOrNull() },
         _errorMessage,
-        _skipSilenceTrigger
-    ) { workInfo, error, _ ->
+        settingsRepository.skipSilenceFlow
+    ) { workInfo, error, skipSilence ->
         SettingsUiState(
             importWorkInfo = workInfo,
             errorMessage = error,
-            skipSilenceEnabled = settingsRepository.isSkipSilenceEnabled()
+            skipSilenceEnabled = skipSilence
         )
     }.stateIn(
         scope = viewModelScope,
@@ -109,8 +108,9 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun toggleSkipSilence(enabled: Boolean) {
-        settingsRepository.saveSkipSilenceEnabled(enabled)
-        _skipSilenceTrigger.value = System.currentTimeMillis()
+        viewModelScope.launch {
+            settingsRepository.saveSkipSilenceEnabled(enabled)
+        }
     }
 
     fun clearError() {

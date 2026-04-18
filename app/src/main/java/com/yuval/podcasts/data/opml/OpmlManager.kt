@@ -6,7 +6,11 @@ import org.xmlpull.v1.XmlPullParser
 import java.io.InputStream
 import java.io.OutputStream
 
-class OpmlManager {
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class OpmlManager @Inject constructor() {
 
     fun parse(inputStream: InputStream): List<String> {
         val urls = mutableListOf<String>()

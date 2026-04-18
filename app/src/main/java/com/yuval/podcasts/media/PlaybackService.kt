@@ -69,8 +69,8 @@ class PlaybackService : MediaSessionService() {
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                .add(SessionCommand("REWIND_10", Bundle.EMPTY))
-                .add(SessionCommand("SKIP_30", Bundle.EMPTY))
+                .add(SessionCommand(Constants.COMMAND_REWIND_10, Bundle.EMPTY))
+                .add(SessionCommand(Constants.COMMAND_SKIP_30, Bundle.EMPTY))
                 .build()
             
             return MediaSession.ConnectionResult.accept(
@@ -84,12 +84,12 @@ class PlaybackService : MediaSessionService() {
                 CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                     .setDisplayName("Rewind 10s")
                     .setCustomIconResId(android.R.drawable.ic_media_rew)
-                    .setSessionCommand(SessionCommand("REWIND_10", Bundle.EMPTY))
+                    .setSessionCommand(SessionCommand(Constants.COMMAND_REWIND_10, Bundle.EMPTY))
                     .build(),
                 CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                     .setDisplayName("Skip 30s")
                     .setCustomIconResId(android.R.drawable.ic_media_ff)
-                    .setSessionCommand(SessionCommand("SKIP_30", Bundle.EMPTY))
+                    .setSessionCommand(SessionCommand(Constants.COMMAND_SKIP_30, Bundle.EMPTY))
                     .build()
             )
             mediaSession?.setCustomLayout(controller, customLayout)
@@ -102,8 +102,8 @@ class PlaybackService : MediaSessionService() {
             args: Bundle
         ): ListenableFuture<SessionResult> {
             when (customCommand.customAction) {
-                "REWIND_10" -> seekBackward(10000L)
-                "SKIP_30" -> seekForward(30000L)
+                Constants.COMMAND_REWIND_10 -> seekBackward(Constants.REWIND_10_MS)
+                Constants.COMMAND_SKIP_30 -> seekForward(Constants.SKIP_30_MS)
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
@@ -259,7 +259,7 @@ class PlaybackService : MediaSessionService() {
 
         // Live Silence Toggle
         serviceScope.launch(mainDispatcher) {
-            settingsRepository.skipSilenceFlow().collect { enabled ->
+            settingsRepository.skipSilenceFlow.collect { enabled ->
                 exoPlayer.skipSilenceEnabled = enabled
             }
         }
@@ -295,15 +295,7 @@ class PlaybackService : MediaSessionService() {
     private fun setCurrentPlayer(newPlayer: Player) {
         if (currentPlayer == newPlayer) return
         
-        val previousPlayer = currentPlayer
-        val playbackState = previousPlayer.playbackState
-        
-        // Transfer state if applicable
-        if (playbackState != Player.STATE_ENDED && playbackState != Player.STATE_IDLE) {
-            previousPlayer.pause()
-            previousPlayer.clearMediaItems()
-        }
-        
+        // No manual state transfer needed as CastPlayer.setLocalPlayer handles it
         currentPlayer = newPlayer
         mediaSession?.player = newPlayer
     }

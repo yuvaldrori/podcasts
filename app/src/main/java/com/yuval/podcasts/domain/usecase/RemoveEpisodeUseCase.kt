@@ -27,7 +27,7 @@ class RemoveEpisodeUseCase @Inject constructor(
         }
 
         // Cancel any pending or active download for this episode
-        workManager.cancelUniqueWork("download_$episodeId")
+        workManager.cancelUniqueWork("${com.yuval.podcasts.data.Constants.WORK_TAG_DOWNLOAD_PREFIX}$episodeId")
 
         // Delete the physical audio file to reclaim storage
         val episode = episodeDao.getEpisodeById(episodeId)

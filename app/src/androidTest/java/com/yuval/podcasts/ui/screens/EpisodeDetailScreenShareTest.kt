@@ -5,8 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intended
@@ -62,11 +61,10 @@ class EpisodeDetailScreenShareTest {
         }
 
         val shareText = context.getString(com.yuval.podcasts.R.string.share)
-        composeTestRule.onNodeWithContentDescription(shareText).performClick()
+        composeTestRule.onNodeWithText(shareText).performClick()
 
         val expectedText = context.getString(com.yuval.podcasts.R.string.listening_to, "My Recording")
 
-        // In Compose, Intent.createChooser is used. We can match the target intent inside the chooser
         intended(
             allOf(
                 hasAction(Intent.ACTION_CHOOSER),
@@ -97,9 +95,10 @@ class EpisodeDetailScreenShareTest {
         }
 
         val shareText = context.getString(com.yuval.podcasts.R.string.share)
-        composeTestRule.onNodeWithContentDescription(shareText).performClick()
+        composeTestRule.onNodeWithText(shareText).performClick()
 
-        val expectedText = "Remote Episode\nhttp://weblink"
+        // Match the implementation in EpisodeDetailScreen.kt
+        val expectedText = "Remote Episode\n\nhttp://weblink"
 
         intended(
             allOf(

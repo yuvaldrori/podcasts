@@ -18,7 +18,8 @@ import com.yuval.podcasts.data.repository.SettingsRepository
 object PlayerModule {
 
     @Provides
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    @Singleton
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     fun provideExoPlayer(
         @ApplicationContext context: Context,
         settingsRepository: SettingsRepository
@@ -29,10 +30,17 @@ object PlayerModule {
     }
 
     @Provides
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-    fun provideCastPlayer(@ApplicationContext context: Context): CastPlayer {
-        // CastContext is initialized via the OptionsProvider in AndroidManifest.xml
-        @Suppress("DEPRECATION")
-        return CastPlayer(CastContext.getSharedInstance(context))
+    @Singleton
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    fun provideCastPlayer(
+        @ApplicationContext context: Context,
+        exoPlayer: ExoPlayer
+    ): CastPlayer {
+        // CastContext is still required for the Builder under the hood, but Media3 
+        // CastPlayer.Builder(context) usually handles it. 
+        // Actually, if we use the Builder(context) we might not need to manually get CastContext.
+        return CastPlayer.Builder(context)
+            .setLocalPlayer(exoPlayer)
+            .build()
     }
 }

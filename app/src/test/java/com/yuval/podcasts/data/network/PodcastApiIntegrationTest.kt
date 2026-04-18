@@ -1,20 +1,19 @@
 package com.yuval.podcasts.data.network
 
+import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import okhttp3.OkHttpClient
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.net.URL
-import javax.net.ssl.HttpsURLConnection
 
 class PodcastApiIntegrationTest {
 
     @Test
     fun fetchRss_respectsCancellation() = runTest {
-        val api = PodcastApi(kotlinx.coroutines.Dispatchers.IO)
+        val okHttpClient = OkHttpClient()
+        val api = PodcastApi(okHttpClient, kotlinx.coroutines.Dispatchers.IO)
         var cancelled = false
 
         val job = launch {
@@ -22,8 +21,7 @@ class PodcastApiIntegrationTest {
                 // Using a known large/slow feed to ensure we catch it inflight
                 api.fetchRss("https://feeds.npr.org/510289/podcast.xml")
             } catch (e: Exception) {
-                // When using suspendCancellableCoroutine, the cancellation might manifest as 
-                // a CancellationException OR a socket exception due to the disconnect() in invokeOnCancellation
+                // When using okhttp, cancellation manifests as an IOException
                 if (e is CancellationException || e is java.io.IOException || e.cause is CancellationException) {
                     cancelled = true
                 }

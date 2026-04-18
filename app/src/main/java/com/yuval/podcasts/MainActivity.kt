@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
             val workManager = WorkManager.getInstance(this)
             val cleanupRequest = OneTimeWorkRequestBuilder<CleanupWorker>().build()
             workManager.enqueueUniqueWork(
-                "cleanup_orphaned_files",
+                com.yuval.podcasts.data.Constants.WORK_NAME_CLEANUP,
                 ExistingWorkPolicy.KEEP,
                 cleanupRequest
             )

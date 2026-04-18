@@ -20,10 +20,10 @@ class PlaybackServiceSilenceToggleTest {
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
         val skipSilenceFlow = MutableStateFlow(false)
         
-        every { settingsRepository.skipSilenceFlow() } returns skipSilenceFlow
+        every { settingsRepository.skipSilenceFlow } returns skipSilenceFlow
 
         val job = launch {
-            settingsRepository.skipSilenceFlow().collect { enabled ->
+            settingsRepository.skipSilenceFlow.collect { enabled ->
                 exoPlayer.skipSilenceEnabled = enabled
             }
         }

@@ -73,13 +73,13 @@ class NewEpisodesScreenTest {
             }
 
         // 2. Scroll down so Episode 1 is off-screen
-        composeTestRule.onNodeWithTag("LazyColumn") // We might need to add this tag
+        composeTestRule.onNodeWithTag("episode_list")
             .performScrollToIndex(19)
         
         composeTestRule.waitForIdle()
 
         // 3. Scroll back to top
-        composeTestRule.onNodeWithTag("LazyColumn")
+        composeTestRule.onNodeWithTag("episode_list")
             .performScrollToIndex(0)
 
         composeTestRule.waitForIdle()

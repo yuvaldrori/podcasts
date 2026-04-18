@@ -64,9 +64,8 @@ class EnqueueEpisodeUseCase @Inject constructor(
             .build()
 
         workManager.enqueueUniqueWork(
-            "download_${episode.id}",
+            "${com.yuval.podcasts.data.Constants.WORK_TAG_DOWNLOAD_PREFIX}${episode.id}",
             ExistingWorkPolicy.KEEP,
             downloadWorkRequest
-        )
-    }
+        )    }
 }

@@ -20,12 +20,12 @@ import android.os.Bundle
 import androidx.media3.common.Player
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.guava.await
 
 @RunWith(AndroidJUnit4::class)
 class MediaSessionIntegrationTest {
 
     private lateinit var context: Context
-    private lateinit var controllerFuture: ListenableFuture<MediaController>
     private lateinit var controller: MediaController
 
     @Before
@@ -33,16 +33,16 @@ class MediaSessionIntegrationTest {
         context = ApplicationProvider.getApplicationContext()
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         
-        withContext(Dispatchers.Main) {
-            controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
-            controller = controllerFuture.get(10, TimeUnit.SECONDS)
+        // Use await() from kotlinx-coroutines-guava to avoid blocking the main thread
+        controller = withContext(Dispatchers.Main) {
+            MediaController.Builder(context, sessionToken).buildAsync().await()
         }
     }
 
     @After
     fun teardown() = runBlocking {
         withContext(Dispatchers.Main) {
-            MediaController.releaseFuture(controllerFuture)
+            controller.release()
         }
     }
 
@@ -50,11 +50,11 @@ class MediaSessionIntegrationTest {
     fun testCustomCommands() = runBlocking {
         withContext(Dispatchers.Main) {
             // Verify our custom commands are accepted by the session
-            val commandRewind = SessionCommand("REWIND_10", Bundle.EMPTY)
-            val commandSkip = SessionCommand("SKIP_30", Bundle.EMPTY)
+            val commandRewind = SessionCommand(com.yuval.podcasts.data.Constants.COMMAND_REWIND_10, Bundle.EMPTY)
+            val commandSkip = SessionCommand(com.yuval.podcasts.data.Constants.COMMAND_SKIP_30, Bundle.EMPTY)
             
-            val resultRewind = controller.sendCustomCommand(commandRewind, Bundle.EMPTY).get(5, TimeUnit.SECONDS)
-            val resultSkip = controller.sendCustomCommand(commandSkip, Bundle.EMPTY).get(5, TimeUnit.SECONDS)
+            val resultRewind = controller.sendCustomCommand(commandRewind, Bundle.EMPTY).await()
+            val resultSkip = controller.sendCustomCommand(commandSkip, Bundle.EMPTY).await()
             
             assertEquals(androidx.media3.session.SessionResult.RESULT_SUCCESS, resultRewind.resultCode)
             assertEquals(androidx.media3.session.SessionResult.RESULT_SUCCESS, resultSkip.resultCode)
@@ -69,11 +69,11 @@ class MediaSessionIntegrationTest {
             if (controller.isPlaying) {
                 controller.pause()
                 // Wait for state change
-                Thread.sleep(500)
+                kotlinx.coroutines.delay(500)
                 assertTrue(!controller.isPlaying || controller.playbackState == Player.STATE_BUFFERING)
             } else {
                 controller.play()
-                Thread.sleep(500)
+                kotlinx.coroutines.delay(500)
                 // Note: might be buffering if no network, but we verify the command was received
                 assertTrue(controller.playWhenReady)
             }

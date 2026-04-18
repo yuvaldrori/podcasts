@@ -7,10 +7,12 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaBrowser
 import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.data.db.entity.Episode
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -67,11 +69,13 @@ class PlayerManagerTest {
     }
 
     @Test
-    fun setPlaybackSpeed_updatesSettingsAndController() {
+    fun setPlaybackSpeed_updatesSettingsAndController() = runTest {
         playerManager.setPlaybackSpeed(2.0f)
         
-        verify { 
+        coVerify { 
             settingsRepository.savePlaybackSpeed(2.0f)
+        }
+        verify {
             mediaController.setPlaybackParameters(PlaybackParameters(2.0f))
         }
         assertEquals(2.0f, playerManager.playbackSpeed.value)

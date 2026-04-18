@@ -1,43 +1,51 @@
 package com.yuval.podcasts.data.repository
 
-import android.content.Context
-import android.content.SharedPreferences
-import androidx.core.content.edit
-import dagger.hilt.android.qualifiers.ApplicationContext
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.*
 import javax.inject.Inject
 import javax.inject.Singleton
-
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 
 @Singleton
 class SettingsRepository @Inject constructor(
-    @ApplicationContext context: Context
+    private val dataStore: DataStore<Preferences>
 ) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("podcast_settings", Context.MODE_PRIVATE)
-    private val _skipSilenceFlow = MutableSharedFlow<Boolean>(replay = 1)
-
-    fun getPlaybackSpeed(): Float {
-        return prefs.getFloat("playback_speed", 2f)
+    private object PreferencesKeys {
+        val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
+        val SKIP_SILENCE = booleanPreferencesKey("skip_silence")
     }
 
-    fun savePlaybackSpeed(speed: Float) {
-        prefs.edit { putFloat("playback_speed", speed) }
+    // Synchronous access for players that need immediate initialization values
+    fun getPlaybackSpeed(): Float = runBlocking {
+        dataStore.data.first()[PreferencesKeys.PLAYBACK_SPEED] ?: 2.0f
     }
 
-    fun isSkipSilenceEnabled(): Boolean {
-        return prefs.getBoolean("skip_silence", false)
+    suspend fun savePlaybackSpeed(speed: Float) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PLAYBACK_SPEED] = speed
+        }
     }
 
-    fun saveSkipSilenceEnabled(enabled: Boolean) {
-        prefs.edit { putBoolean("skip_silence", enabled) }
-        // For simple unit tests without a real collector, a direct emit might be better
-        // but SharedFlow.emit is suspend.
-        _skipSilenceFlow.tryEmit(enabled)
+    fun isSkipSilenceEnabled(): Boolean = runBlocking {
+        dataStore.data.first()[PreferencesKeys.SKIP_SILENCE] ?: false
     }
 
-    fun skipSilenceFlow(): Flow<Boolean> = _skipSilenceFlow.onStart {
-        emit(isSkipSilenceEnabled())
+    suspend fun saveSkipSilenceEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SKIP_SILENCE] = enabled
+        }
     }
+
+    val skipSilenceFlow: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.SKIP_SILENCE] ?: false
+        }
+
+    val playbackSpeedFlow: Flow<Float> = dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.PLAYBACK_SPEED] ?: 2.0f
+        }
 }

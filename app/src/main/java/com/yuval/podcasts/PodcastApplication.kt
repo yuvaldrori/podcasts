@@ -32,12 +32,12 @@ class PodcastApplication : Application(), Configuration.Provider {
             .setRequiresStorageNotLow(true)
             .build()
 
-        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(12, TimeUnit.HOURS)
+        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(com.yuval.podcasts.data.Constants.PERIODIC_SYNC_HOURS, TimeUnit.HOURS)
             .setConstraints(constraints)
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "sync_work",
+            com.yuval.podcasts.data.Constants.WORK_NAME_PERIODIC_SYNC,
             ExistingPeriodicWorkPolicy.UPDATE,
             syncRequest
         )

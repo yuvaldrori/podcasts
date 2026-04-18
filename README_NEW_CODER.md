@@ -20,8 +20,6 @@ This layer houses the core business logic. Use cases encapsulate specific, atomi
 ### 3. Data Layer (`com.yuval.podcasts.data`)
 *   **Repository (`PodcastRepository`)**: The single source of truth for the app. It uses a bulk-synchronization pattern that merges network data with local state in memory before performing a single-transaction `@Upsert`.
 *   **Database (`db`)**: Uses **Room** to store `Podcast`, `Episode`, and `Chapter` entities.
-*   **History Sidecar**: To avoid complex migrations, history can be exported/imported as a JSON "Sidecar" file.
-    *   **Placeholder Architecture**: The app supports importing history *before* podcasts are synced. It creates "placeholder" episodes that are later automatically merged with full network metadata during the next RSS sync.
 *   **Network (`network`)**: Uses a custom `RssParser` with namespace awareness to parse RSS, itunes tags (artwork), and Podlove Chapters.
 
 ---

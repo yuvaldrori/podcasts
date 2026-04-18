@@ -4,7 +4,7 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.yuval.podcasts.di.DatabaseModule.MIGRATION_5_6
+import com.yuval.podcasts.di.DatabaseModule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -38,7 +38,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to version 6
-        db = helper.runMigrationsAndValidate(TEST_DB, 6, true, MIGRATION_5_6)
+        db = helper.runMigrationsAndValidate(TEST_DB, 6, true, DatabaseModule.MIGRATION_5_6)
         
         // Query to see if the data survived the destructive change
         val cursor = db.query("SELECT * FROM episodes WHERE id = 'test_episode_1'")
