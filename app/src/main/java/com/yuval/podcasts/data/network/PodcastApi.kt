@@ -46,13 +46,7 @@ class PodcastApi @Inject constructor(
                         return
                     }
 
-                    val body = response.body
-                    if (body == null) {
-                        continuation.resumeWithException(IOException("Empty response body"))
-                        return
-                    }
-
-                    continuation.resume(body.byteStream())
+                    continuation.resume(response.body.byteStream())
                 }
             })
         }
