@@ -69,6 +69,7 @@ These tests verify the audio player, background playback, and media buttons.
 *   **`PlayerStopPlayTest`**: Ensures that stopping the player clears the current media and resets everything cleanly.
 *   **`PlayerLastEpisodeTest`**: Verifies that when the last episode in the queue finishes, the player correctly stops and does not restart the playlist from the beginning. It also ensures the repeat mode is always set to OFF.
 *   **`PlayerManagerBugTest`**: A specific regression test ensuring that when the app restarts, the UI correctly shows the paused state of the last played episode.
+*   **`PlaybackResumptionTest`**: Verifies that when the app is cold-started or connected to a car (Bluetooth), the current episode correctly resumes from its last played position instead of starting from the beginning. It tests both the manual initialization and the standard Media3 `onPlaybackResumption` mechanism.
 
 ## 📱 UI ViewModels
 *Located in: `app/src/test/java/com/yuval/podcasts/ui/viewmodel/`*

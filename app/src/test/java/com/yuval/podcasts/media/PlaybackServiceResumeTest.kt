@@ -50,7 +50,9 @@ class PlaybackServiceResumeTest {
 
             fun handleTransition(mediaItem: MediaItem?, reason: Int, episode: Episode?) {
                 if (mediaItem != null) {
-                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || 
+                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK ||
+                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
                         if (lastResumedId != mediaItem.mediaId) {
                             lastResumedId = mediaItem.mediaId
                             if (episode != null && episode.lastPlayedPosition > 0) {

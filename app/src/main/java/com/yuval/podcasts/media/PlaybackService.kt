@@ -144,6 +144,31 @@ class PlaybackService : MediaSessionService() {
                 resolvedItems
             }.asListenableFuture()
         }
+
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            return serviceScope.async(ioDispatcher) {
+                val episodes = queueDao.getQueueEpisodes().first()
+                if (episodes.isNotEmpty()) {
+                    val currentEp = episodes.first()
+                    val mediaItems = episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
+                    MediaSession.MediaItemsWithStartPosition(
+                        mediaItems,
+                        0, // Starting with the first item in queue
+                        currentEp.lastPlayedPosition
+                    )
+                } else {
+                    // Fallback or empty result if no queue
+                    MediaSession.MediaItemsWithStartPosition(
+                        mutableListOf(),
+                        0,
+                        0
+                    )
+                }
+            }.asListenableFuture()
+        }
     }
 
     private fun seekForward(ms: Long = Constants.SEEK_FORWARD_MS) {
@@ -233,8 +258,10 @@ class PlaybackService : MediaSessionService() {
                 if (mediaItem != null) {
                     currentlyPlayingId = mediaItem.mediaId
                     
-                    // If it's an automatic transition or a skip, check for saved position to resume
-                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+                    // If it's an automatic transition, a skip, or playlist change (initial load), check for saved position to resume
+                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || 
+                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK ||
+                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
                         if (lastResumedId != mediaItem.mediaId) {
                             lastResumedId = mediaItem.mediaId
                             serviceScope.launch(ioDispatcher) {

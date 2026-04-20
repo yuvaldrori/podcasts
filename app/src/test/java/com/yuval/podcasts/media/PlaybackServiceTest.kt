@@ -85,7 +85,9 @@ class PlaybackServiceTest {
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 if (mediaItem != null) {
-                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || 
+                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK ||
+                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
                         if (lastResumedId != mediaItem.mediaId) {
                             lastResumedId = mediaItem.mediaId
                             // Simulating the DB fetch and seek
