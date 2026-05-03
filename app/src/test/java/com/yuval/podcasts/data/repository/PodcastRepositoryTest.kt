@@ -20,6 +20,7 @@ import com.yuval.podcasts.data.network.PodcastApi
 import com.yuval.podcasts.data.network.RssParser
 import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.utils.MainDispatcherRule
+import com.yuval.podcasts.utils.LogManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -44,6 +45,7 @@ class PodcastRepositoryTest {
     private lateinit var queueDao: QueueDao
     private lateinit var chapterDao: ChapterDao
     private lateinit var workManager: WorkManager
+    private lateinit var logManager: LogManager
     private lateinit var repository: PodcastRepository
 
     @Before
@@ -56,6 +58,7 @@ class PodcastRepositoryTest {
         queueDao = mockk(relaxed = true)
         chapterDao = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
+        logManager = mockk(relaxed = true)
 
         val podcasts = listOf(
             Podcast("url1", "T1", "D1", "I1", "W1"),
@@ -75,7 +78,8 @@ class PodcastRepositoryTest {
             chapterDao = chapterDao,
             workManager = workManager,
             localMediaDataSource = mockk(relaxed = true),
-            ioDispatcher = Dispatchers.Unconfined
+            ioDispatcher = Dispatchers.Unconfined,
+            logManager = logManager
         )
     }
 

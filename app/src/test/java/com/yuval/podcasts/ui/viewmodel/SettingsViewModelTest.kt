@@ -47,6 +47,7 @@ class SettingsViewModelTest {
     private lateinit var inputStream: InputStream
     private lateinit var outputStream: OutputStream
     private lateinit var exportOpmlUseCase: com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
+    private lateinit var logManager: com.yuval.podcasts.utils.LogManager
     private lateinit var viewModel: SettingsViewModel
 
     @Before
@@ -55,6 +56,7 @@ class SettingsViewModelTest {
         settingsRepository = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
         exportOpmlUseCase = mockk()
+        logManager = mockk(relaxed = true)
         context = mockk()
         contentResolver = mockk()
         uri = mockk(relaxed = true)
@@ -72,7 +74,7 @@ class SettingsViewModelTest {
         }
 
         every { settingsRepository.skipSilenceFlow } returns kotlinx.coroutines.flow.MutableStateFlow(false)
-        viewModel = SettingsViewModel(repository, settingsRepository, workManager, exportOpmlUseCase)
+        viewModel = SettingsViewModel(repository, settingsRepository, workManager, exportOpmlUseCase, logManager)
     }
 
     @Test

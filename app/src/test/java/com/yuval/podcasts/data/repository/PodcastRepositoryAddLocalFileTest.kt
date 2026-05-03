@@ -6,6 +6,7 @@ import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.ChapterDao
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
+import com.yuval.podcasts.utils.LogManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -24,6 +25,7 @@ class PodcastRepositoryAddLocalFileTest {
     private lateinit var episodeDao: EpisodeDao
     private lateinit var chapterDao: ChapterDao
     private lateinit var localMediaDataSource: LocalMediaDataSource
+    private lateinit var logManager: LogManager
     private lateinit var repository: DefaultPodcastRepository
 
     @Before
@@ -32,6 +34,7 @@ class PodcastRepositoryAddLocalFileTest {
         episodeDao = mockk(relaxed = true)
         chapterDao = mockk(relaxed = true)
         localMediaDataSource = mockk()
+        logManager = mockk(relaxed = true)
 
         repository = DefaultPodcastRepository(
             context = mockk(relaxed = true),
@@ -44,7 +47,8 @@ class PodcastRepositoryAddLocalFileTest {
             chapterDao = chapterDao,
             workManager = mockk(relaxed = true),
             localMediaDataSource = localMediaDataSource,
-            ioDispatcher = Dispatchers.Unconfined
+            ioDispatcher = Dispatchers.Unconfined,
+            logManager = logManager
         )
     }
 

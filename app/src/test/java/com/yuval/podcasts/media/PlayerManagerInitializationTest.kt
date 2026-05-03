@@ -18,9 +18,10 @@ class PlayerManagerInitializationTest {
     fun playerManager_readsInitialPosition_onConnection() {
         val context = mockk<Context>(relaxed = true)
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
+        val logManager = mockk<com.yuval.podcasts.utils.LogManager>(relaxed = true)
         every { settingsRepository.getPlaybackSpeed() } returns 1.0f
 
-        val playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined)
+        val playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
 
         val mediaItem = mockk<MediaItem>(relaxed = true)
         // MediaItem.mediaId is a val property, so MockK can't always mock it directly without problems if it's final. Let's just use a real MediaItem

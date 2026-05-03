@@ -26,6 +26,7 @@ class PlayerManagerTest {
     private lateinit var context: Context
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var mediaController: MediaBrowser
+    private lateinit var logManager: com.yuval.podcasts.utils.LogManager
     private lateinit var playerManager: PlayerManager
 
     @Before
@@ -33,10 +34,11 @@ class PlayerManagerTest {
         context = mockk(relaxed = true)
         settingsRepository = mockk(relaxed = true)
         mediaController = mockk(relaxed = true)
+        logManager = mockk(relaxed = true)
 
         every { settingsRepository.getPlaybackSpeed() } returns 1.5f
         
-        playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined)
+        playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
 
         // Inject mock MediaBrowser via reflection to bypass complex async initialization
         val controllerField: Field = PlayerManager::class.java.getDeclaredField("controller")

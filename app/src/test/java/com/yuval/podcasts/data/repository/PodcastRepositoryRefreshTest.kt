@@ -15,6 +15,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.InputStream
 import com.yuval.podcasts.utils.MainDispatcherRule
+import com.yuval.podcasts.utils.LogManager
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 
 class PodcastRepositoryRefreshTest {
@@ -26,6 +27,7 @@ class PodcastRepositoryRefreshTest {
     private lateinit var episodeDao: EpisodeDao
     private lateinit var chapterDao: ChapterDao
     private lateinit var remoteDataSource: com.yuval.podcasts.data.network.PodcastRemoteDataSource
+    private lateinit var logManager: LogManager
     private lateinit var repository: PodcastRepository
 
     @Before
@@ -34,6 +36,7 @@ class PodcastRepositoryRefreshTest {
         episodeDao = mockk(relaxed = true)
         chapterDao = mockk(relaxed = true)
         remoteDataSource = mockk()
+        logManager = mockk(relaxed = true)
 
         every { podcastDao.getAllPodcasts() } returns flowOf(emptyList())
         every { episodeDao.getUnplayedEpisodesWithPodcast() } returns flowOf(emptyList())
@@ -51,7 +54,8 @@ class PodcastRepositoryRefreshTest {
             chapterDao = chapterDao,
             workManager = mockk(relaxed = true),
             localMediaDataSource = mockk(relaxed = true),
-            ioDispatcher = mainDispatcherRule.testDispatcher
+            ioDispatcher = mainDispatcherRule.testDispatcher,
+            logManager = logManager
         )
     }
 
@@ -72,7 +76,8 @@ class PodcastRepositoryRefreshTest {
             chapterDao = chapterDao,
             workManager = mockk(relaxed = true),
             localMediaDataSource = mockk(relaxed = true),
-            ioDispatcher = mainDispatcherRule.testDispatcher
+            ioDispatcher = mainDispatcherRule.testDispatcher,
+            logManager = logManager
         )
 
         coEvery { remoteDataSource.fetchPodcastData(any()) } returns Pair(mockk(relaxed = true), emptyList())

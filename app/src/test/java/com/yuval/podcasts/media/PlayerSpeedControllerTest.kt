@@ -20,8 +20,9 @@ class PlayerSpeedControllerTest {
     fun testStopAndClear() {
         val browser = mockk<MediaBrowser>(relaxed = true)
         val repo = mockk<com.yuval.podcasts.data.repository.SettingsRepository>(relaxed = true)
+        val logManager = mockk<com.yuval.podcasts.utils.LogManager>(relaxed = true)
         every { repo.getPlaybackSpeed() } returns 2.0f
-        val manager = PlayerManager(ApplicationProvider.getApplicationContext(), repo, kotlinx.coroutines.Dispatchers.Unconfined)
+        val manager = PlayerManager(ApplicationProvider.getApplicationContext(), repo, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
         
         val controllerField = PlayerManager::class.java.getDeclaredField("controller")
         controllerField.isAccessible = true
