@@ -30,7 +30,7 @@ data class LogEntry(
 
 @Singleton
 class LogManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val logDir = File(context.filesDir, "logs").apply { if (!exists()) mkdirs() }
