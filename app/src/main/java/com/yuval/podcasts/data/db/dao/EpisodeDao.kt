@@ -50,21 +50,7 @@ interface EpisodeDao {
         val existingEpisodes = getEpisodesForPodcastSync(podcastFeedUrl).associateBy { it.id }
         
         val episodesToUpsert = episodes.map { networkEp ->
-            val existing = existingEpisodes[networkEp.id]
-            if (existing != null) {
-                // Merge network data with existing local state (isPlayed, downloadStatus, etc.)
-                existing.copy(
-                    title = networkEp.title,
-                    description = networkEp.description,
-                    audioUrl = networkEp.audioUrl,
-                    imageUrl = networkEp.imageUrl,
-                    episodeWebLink = networkEp.episodeWebLink,
-                    pubDate = networkEp.pubDate,
-                    duration = networkEp.duration
-                )
-            } else {
-                networkEp.toEpisode()
-            }
+            networkEp.mergeWithLocal(existingEpisodes[networkEp.id])
         }
         upsertEpisodes(episodesToUpsert)
     }

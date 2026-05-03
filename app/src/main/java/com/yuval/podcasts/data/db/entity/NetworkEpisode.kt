@@ -33,4 +33,16 @@ data class NetworkEpisode(
         isPlayed = false,
         lastPlayedPosition = 0L
     )
+
+    fun mergeWithLocal(existing: Episode?): Episode {
+        return existing?.copy(
+            title = title,
+            description = description,
+            audioUrl = audioUrl,
+            imageUrl = imageUrl,
+            episodeWebLink = episodeWebLink,
+            pubDate = pubDate,
+            duration = duration
+        ) ?: toEpisode()
+    }
 }
