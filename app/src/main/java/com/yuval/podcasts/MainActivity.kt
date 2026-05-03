@@ -28,6 +28,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
+        window.isNavigationBarContrastEnforced = false
+        
         trace("MainActivity.onCreate") {
             val workManager = WorkManager.getInstance(this)
             val cleanupRequest = OneTimeWorkRequestBuilder<CleanupWorker>().build()

@@ -69,7 +69,6 @@ fun QueueScreen(
     }
 
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
         topBar = {
             val queueTimeRemaining = Formatter.formatRemainingTime(successState.queueTimeRemaining)
             TopAppBar(
