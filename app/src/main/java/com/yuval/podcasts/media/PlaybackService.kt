@@ -174,13 +174,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun seekForward(ms: Long = Constants.SEEK_FORWARD_MS) {
-        val newPosition = (currentPlayer.currentPosition + ms).coerceAtMost(currentPlayer.duration.coerceAtLeast(0L))
-        currentPlayer.seekTo(newPosition)
+        currentPlayer.seekForwardBounded(ms)
     }
 
     private fun seekBackward(ms: Long = Constants.SEEK_BACKWARD_MS) {
-        val newPosition = (currentPlayer.currentPosition - ms).coerceAtLeast(0L)
-        currentPlayer.seekTo(newPosition)
+        currentPlayer.seekBackwardBounded(ms)
     }
 
     override fun onCreate() {

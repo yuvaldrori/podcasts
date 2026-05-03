@@ -240,17 +240,15 @@ class PlayerManager @Inject constructor(
 
     fun seekForward(ms: Long = Constants.SEEK_FORWARD_MS) {
         controller?.let {
-            val newPosition = (it.currentPosition + ms).coerceAtMost(it.duration.coerceAtLeast(0L))
-            it.seekTo(newPosition)
-            _currentPosition.value = newPosition
+            it.seekForwardBounded(ms)
+            _currentPosition.value = it.currentPosition
         }
     }
 
     fun seekBackward(ms: Long = Constants.SEEK_BACKWARD_MS) {
         controller?.let {
-            val newPosition = (it.currentPosition - ms).coerceAtLeast(0L)
-            it.seekTo(newPosition)
-            _currentPosition.value = newPosition
+            it.seekBackwardBounded(ms)
+            _currentPosition.value = it.currentPosition
         }
     }
 
