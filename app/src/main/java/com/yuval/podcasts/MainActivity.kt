@@ -30,27 +30,25 @@ class MainActivity : AppCompatActivity() {
         
         window.isNavigationBarContrastEnforced = false
         
-        trace("MainActivity.onCreate") {
-            val workManager = WorkManager.getInstance(this)
-            val cleanupRequest = OneTimeWorkRequestBuilder<CleanupWorker>().build()
-            workManager.enqueueUniqueWork(
-                com.yuval.podcasts.data.Constants.WORK_NAME_CLEANUP,
-                ExistingWorkPolicy.KEEP,
-                cleanupRequest
-            )
+        val workManager = WorkManager.getInstance(this)
+        val cleanupRequest = OneTimeWorkRequestBuilder<CleanupWorker>().build()
+        workManager.enqueueUniqueWork(
+            com.yuval.podcasts.data.Constants.WORK_NAME_CLEANUP,
+            ExistingWorkPolicy.KEEP,
+            cleanupRequest
+        )
 
-            setContent {
-                val themeViewModel: ThemeViewModel = hiltViewModel()
-                val dynamicColorScheme by themeViewModel.dynamicColorScheme.collectAsStateWithLifecycle()
-                val darkTheme = isSystemInDarkTheme()
+        setContent {
+            val themeViewModel: ThemeViewModel = hiltViewModel()
+            val dynamicColorScheme by themeViewModel.dynamicColorScheme.collectAsStateWithLifecycle()
+            val darkTheme = isSystemInDarkTheme()
 
-                LaunchedEffect(darkTheme) {
-                    themeViewModel.updateThemeMode(darkTheme)
-                }
+            LaunchedEffect(darkTheme) {
+                themeViewModel.updateThemeMode(darkTheme)
+            }
 
-                PodcastsTheme(colorSchemeOverride = dynamicColorScheme) {
-                    MainScreen()
-                }
+            PodcastsTheme(colorSchemeOverride = dynamicColorScheme) {
+                MainScreen()
             }
         }
     }
