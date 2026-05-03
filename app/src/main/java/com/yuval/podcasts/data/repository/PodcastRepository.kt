@@ -1,6 +1,7 @@
 package com.yuval.podcasts.data.repository
 
 import android.util.Log
+import com.yuval.podcasts.utils.LogManager
 import com.yuval.podcasts.data.Constants
 import android.content.Context
 import androidx.work.*
@@ -64,7 +65,8 @@ class DefaultPodcastRepository @Inject constructor(
     private val chapterDao: com.yuval.podcasts.data.db.dao.ChapterDao,
     private val workManager: WorkManager,
     private val localMediaDataSource: LocalMediaDataSource,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val logManager: LogManager
 ) : PodcastRepository {
 
     override val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()

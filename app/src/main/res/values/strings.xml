@@ -52,4 +52,9 @@
     <string name="error_add_podcast">Failed to add podcast: %1$s</string>
     <string name="error_import_local">Failed to import local file: %1$s</string>
     <string name="error_export_opml">Failed to export OPML: %1$s</string>
+    <string name="debugging_title">Debugging &amp; Logs</string>
+    <string name="debugging_explain_label">Explain what happened</string>
+    <string name="log_event_btn">Log Event</string>
+    <string name="download_logs_btn">Download Logs</string>
+    <string name="logs_downloaded_success">Logs saved to Downloads: %1$s</string>
 </resources>

@@ -12,7 +12,7 @@ help:
 	@echo "  make lint	    - Run Android Lint (strict mode)"
 	@echo "  make clean	    - Clean build artifacts"
 	@echo "  make verify	    - Run clean, lint, test, and debug build"
-	@echo "  make emulator      - Start the Pixel 8 Pro emulator"
+	@echo "  make emulator      - Start the Android emulator"
 	@echo "  make stop-emulator - Stop the running emulator"
 	@echo "  make run	    - Build, install and launch the app"
 	@echo "  make describe      - Show project structure and build targets"
@@ -23,7 +23,7 @@ init:
 	@echo "Initializing Android environment..."
 	chmod +x gradlew
 	android init
-	android sdk install platforms/android-36 build-tools/36.1.0 emulator platform-tools system-images/android-36/google_apis/x86_64
+	android sdk install platforms/android-36 build-tools/36.1.0 emulator platform-tools system-images/android-36/google_apis_playstore/x86_64
 
 build:
 	./gradlew :app:assembleDebug
@@ -45,12 +45,12 @@ verify: clean lint test build
 	@make layout || echo "Layout check skipped (no device connected)"
 
 emulator:
-	@echo "Starting Pixel 8 Pro emulator..."
-	android emulator start pixel_8_pro || (android emulator create --name=pixel_8_pro --device="pixel_8_pro" && android emulator start pixel_8_pro)
+	@echo "Starting emulator..."
+	android emulator start medium_phone || (android emulator create --profile=medium_phone && android emulator start medium_phone)
 
 stop-emulator:
 	@echo "Stopping emulator..."
-	android emulator stop pixel_8_pro
+	android emulator stop medium_phone
 
 run:
 	@echo "Deploying and running application..."

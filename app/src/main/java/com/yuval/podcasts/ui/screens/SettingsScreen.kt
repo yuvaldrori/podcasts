@@ -27,15 +27,22 @@ fun SettingsScreen(
     onExportOpml: (android.content.Context, Uri) -> Unit,
     onToggleSkipSilence: (Boolean) -> Unit,
     onImportLocalAudio: (Uri) -> Unit,
+    onLogNoteChanged: (String) -> Unit,
+    onSaveLogNote: () -> Unit,
+    onDownloadLogs: () -> Unit,
     onClearError: () -> Unit
 ) {
     var rssUrl by remember { mutableStateOf("") }
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(uiState.errorMessage) {
+    LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         if (uiState.errorMessage != null) {
             snackbarHostState.showSnackbar(uiState.errorMessage)
+            onClearError()
+        }
+        if (uiState.successMessage != null) {
+            snackbarHostState.showSnackbar(uiState.successMessage)
             onClearError()
         }
     }
@@ -169,6 +176,35 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.import_local_audio_btn))
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+
+            Text(text = stringResource(R.string.debugging_title), style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = uiState.logNote,
+                onValueChange = onLogNoteChanged,
+                label = { Text(stringResource(R.string.debugging_explain_label)) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = onSaveLogNote,
+                    modifier = Modifier.weight(1f),
+                    enabled = uiState.logNote.isNotBlank()
+                ) {
+                    Text(stringResource(R.string.log_event_btn))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = onDownloadLogs,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.download_logs_btn))
+                }
             }
 
             Spacer(modifier = Modifier.height(32.dp))

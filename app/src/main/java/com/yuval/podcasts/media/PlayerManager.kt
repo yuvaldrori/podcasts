@@ -32,11 +32,14 @@ import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import com.yuval.podcasts.utils.LogManager
+
 @Singleton
 class PlayerManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
-    @param:MainDispatcher private val mainDispatcher: CoroutineDispatcher
+    @param:MainDispatcher private val mainDispatcher: CoroutineDispatcher,
+    private val logManager: LogManager
 ) {
     private val scope = CoroutineScope(mainDispatcher + SupervisorJob())
 
@@ -79,6 +82,7 @@ class PlayerManager @Inject constructor(
 
     fun initialize() {
         if (controllerFuture != null) return
+        logManager.i("PlayerManager", "Initializing MediaBrowser")
 
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val future = MediaBrowser.Builder(context, sessionToken).buildAsync()
@@ -87,6 +91,7 @@ class PlayerManager @Inject constructor(
             controller = future.get()
             setupControllerListener()
             _isInitialized.value = true
+            logManager.i("PlayerManager", "MediaBrowser initialized")
         }, context.mainExecutor)
         
         controllerFuture = future
@@ -98,13 +103,16 @@ class PlayerManager @Inject constructor(
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
+                logManager.i("PlayerManager", "isPlaying changed to $isPlaying")
             }
 
             override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
                 _playbackSpeed.value = playbackParameters.speed
+                logManager.i("PlayerManager", "Playback speed changed to ${playbackParameters.speed}")
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
+                logManager.i("PlayerManager", "Playback state changed to $playbackState")
                 if (playbackState == Player.STATE_ENDED) {
                     stopAndClear()
                 } else {
@@ -118,6 +126,7 @@ class PlayerManager @Inject constructor(
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 _currentMediaId.value = mediaItem?.mediaId
                 _duration.value = player.duration.coerceAtLeast(0L)
+                logManager.i("PlayerManager", "Media item transition to ${mediaItem?.mediaId}, reason $reason")
             }
 
             override fun onPositionDiscontinuity(

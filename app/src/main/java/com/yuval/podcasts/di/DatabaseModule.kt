@@ -10,6 +10,7 @@ import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.QueueDao
 import com.yuval.podcasts.data.Constants
+import com.yuval.podcasts.utils.LogManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -40,13 +41,19 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
+    fun provideDatabase(
+        @ApplicationContext context: Context,
+        logManager: LogManager
+    ): AppDatabase {
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             Constants.DATABASE_NAME
         )
         .addMigrations(MIGRATION_5_6)
+        .setQueryCallback({ sqlQuery, bindArgs ->
+            logManager.i("DATABASE", "Query: $sqlQuery Args: $bindArgs")
+        }, { it.run() })
         .build()
     }
 

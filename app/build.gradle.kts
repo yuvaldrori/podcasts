@@ -143,6 +143,7 @@ dependencies {
     // Coil
     implementation(libs.coil.compose)
     implementation(libs.androidx.palette.ktx)
+    implementation(libs.material.color.utilities)
 
     // Room
     implementation(libs.androidx.room.runtime)

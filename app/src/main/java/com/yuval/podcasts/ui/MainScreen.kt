@@ -154,6 +154,9 @@ fun MainScreen(
                     onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) },
                     onToggleSkipSilence = { enabled -> settingsViewModel.toggleSkipSilence(enabled) },
                     onImportLocalAudio = { uri -> settingsViewModel.importLocalAudio(uri) },
+                    onLogNoteChanged = { note -> settingsViewModel.onLogNoteChanged(note) },
+                    onSaveLogNote = { settingsViewModel.saveLogNote() },
+                    onDownloadLogs = { settingsViewModel.downloadLogs() },
                     onClearError = { settingsViewModel.clearError() }
                 )
             }

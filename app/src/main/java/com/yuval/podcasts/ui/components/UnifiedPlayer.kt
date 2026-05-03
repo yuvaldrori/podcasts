@@ -64,7 +64,8 @@ fun UnifiedPlayer(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
-                    CastButton()
+                    val themeColor = MaterialTheme.colorScheme.primary
+                    CastButton(tint = themeColor)
                     
                     val speedLabel = stringResource(R.string.playback_speed)
                     TextButton(
@@ -73,7 +74,8 @@ fun UnifiedPlayer(
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier
                             .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
-                            .semantics { contentDescription = speedLabel }
+                            .semantics { contentDescription = speedLabel },
+                        colors = ButtonDefaults.textButtonColors(contentColor = themeColor)
                     ) {
                         val speedText = if (playbackSpeed % 1f == 0f) playbackSpeed.toInt().toString() else playbackSpeed.toString()
                         Text(text = stringResource(R.string.playback_speed_format, speedText), style = MaterialTheme.typography.labelLarge)
@@ -86,7 +88,8 @@ fun UnifiedPlayer(
                         Icon(
                             imageVector = Icons.Default.FastRewind, 
                             contentDescription = stringResource(R.string.fast_rewind), 
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(28.dp),
+                            tint = themeColor
                         )
                     }
                     IconButton(
@@ -97,7 +100,8 @@ fun UnifiedPlayer(
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(40.dp),
+                            tint = themeColor
                         )
                     }
                     IconButton(
@@ -108,7 +112,8 @@ fun UnifiedPlayer(
                         Icon(
                             imageVector = Icons.Default.FastForward, 
                             contentDescription = stringResource(R.string.fast_forward), 
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(28.dp),
+                            tint = themeColor
                         )
                     }
                 }
