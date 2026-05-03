@@ -33,7 +33,7 @@ class PlaybackResumptionTest {
 
     @Before
     fun setup() {
-        every { settingsRepository.getPlaybackSpeed() } returns 1.0f
+        coEvery { settingsRepository.getPlaybackSpeed() } returns 1.0f
         every { settingsRepository.skipSilenceFlow } returns flowOf(false)
     }
 

@@ -30,20 +30,27 @@ class ThemeViewModel @Inject constructor(
     private val _dynamicColorScheme = MutableStateFlow<ColorScheme?>(null)
     val dynamicColorScheme: StateFlow<ColorScheme?> = _dynamicColorScheme.asStateFlow()
 
-    fun updateColorScheme(isDarkTheme: Boolean) {
-        viewModelScope.launch {
-            playerManager.currentMediaId.collectLatest { id ->
-                val imageUrl = if (id != null) {
-                    repository.getEpisodeByIdFlow(id).first()?.imageUrl
-                } else null
+    private val isDarkThemeFlow = MutableStateFlow(false)
 
-                if (imageUrl != null && imageUrl.startsWith("http")) {
-                    generateColorScheme(imageUrl, isDarkTheme)
-                } else {
-                    _dynamicColorScheme.value = null
+    init {
+        viewModelScope.launch {
+            combine(playerManager.currentMediaId, isDarkThemeFlow) { id, isDark -> id to isDark }
+                .collectLatest { (id, isDark) ->
+                    val imageUrl = if (id != null) {
+                        repository.getEpisodeByIdFlow(id).first()?.imageUrl
+                    } else null
+
+                    if (imageUrl != null && imageUrl.startsWith("http")) {
+                        generateColorScheme(imageUrl, isDark)
+                    } else {
+                        _dynamicColorScheme.value = null
+                    }
                 }
-            }
         }
+    }
+
+    fun updateThemeMode(isDarkTheme: Boolean) {
+        isDarkThemeFlow.value = isDarkTheme
     }
 
     private suspend fun generateColorScheme(imageUrl: String, isDarkTheme: Boolean) {

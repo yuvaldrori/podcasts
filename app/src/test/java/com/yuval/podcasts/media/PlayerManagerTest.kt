@@ -7,6 +7,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaBrowser
 import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.data.db.entity.Episode
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -36,7 +37,8 @@ class PlayerManagerTest {
         mediaController = mockk(relaxed = true)
         logManager = mockk(relaxed = true)
 
-        every { settingsRepository.getPlaybackSpeed() } returns 1.5f
+        coEvery { settingsRepository.getPlaybackSpeed() } returns 1.5f
+        every { settingsRepository.playbackSpeedFlow } returns kotlinx.coroutines.flow.flowOf(1.5f)
         
         playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
 

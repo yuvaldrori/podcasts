@@ -43,7 +43,7 @@ class SettingsRepositoryTest {
     @Test
     fun getPlaybackSpeed_returnsDefault() = runTest {
         val speed = settingsRepository.getPlaybackSpeed()
-        assertEquals(2f, speed)
+        assertEquals(1.0f, speed)
     }
 
     @Test

@@ -7,7 +7,6 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 
 @Singleton
 class SettingsRepository @Inject constructor(
@@ -18,10 +17,11 @@ class SettingsRepository @Inject constructor(
         val SKIP_SILENCE = booleanPreferencesKey("skip_silence")
     }
 
-    // Synchronous access for players that need immediate initialization values
-    fun getPlaybackSpeed(): Float = runBlocking {
-        dataStore.data.first()[PreferencesKeys.PLAYBACK_SPEED] ?: 2.0f
-    }
+    // Default values
+    private val DEFAULT_PLAYBACK_SPEED = 1.0f
+    private val DEFAULT_SKIP_SILENCE = false
+
+    suspend fun getPlaybackSpeed(): Float = dataStore.data.first()[PreferencesKeys.PLAYBACK_SPEED] ?: DEFAULT_PLAYBACK_SPEED
 
     suspend fun savePlaybackSpeed(speed: Float) {
         dataStore.edit { preferences ->
@@ -29,9 +29,7 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    fun isSkipSilenceEnabled(): Boolean = runBlocking {
-        dataStore.data.first()[PreferencesKeys.SKIP_SILENCE] ?: false
-    }
+    suspend fun isSkipSilenceEnabled(): Boolean = dataStore.data.first()[PreferencesKeys.SKIP_SILENCE] ?: DEFAULT_SKIP_SILENCE
 
     suspend fun saveSkipSilenceEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
@@ -41,11 +39,11 @@ class SettingsRepository @Inject constructor(
 
     val skipSilenceFlow: Flow<Boolean> = dataStore.data
         .map { preferences ->
-            preferences[PreferencesKeys.SKIP_SILENCE] ?: false
+            preferences[PreferencesKeys.SKIP_SILENCE] ?: DEFAULT_SKIP_SILENCE
         }
 
     val playbackSpeedFlow: Flow<Float> = dataStore.data
         .map { preferences ->
-            preferences[PreferencesKeys.PLAYBACK_SPEED] ?: 2.0f
+            preferences[PreferencesKeys.PLAYBACK_SPEED] ?: DEFAULT_PLAYBACK_SPEED
         }
 }

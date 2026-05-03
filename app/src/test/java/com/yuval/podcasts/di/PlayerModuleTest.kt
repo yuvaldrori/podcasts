@@ -15,11 +15,9 @@ class PlayerModuleTest {
     @Test
     fun testProvideExoPlayer_returnsNewInstances() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val settingsRepository = mockk<SettingsRepository>()
-        every { settingsRepository.isSkipSilenceEnabled() } returns false
         
-        val player1 = PlayerModule.provideExoPlayer(context, settingsRepository)
-        val player2 = PlayerModule.provideExoPlayer(context, settingsRepository)
+        val player1 = PlayerModule.provideExoPlayer(context)
+        val player2 = PlayerModule.provideExoPlayer(context)
         
         // This test will prove that ExoPlayer is NOT a singleton anymore!
         assertNotSame(player1, player2)

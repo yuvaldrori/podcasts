@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
                 val darkTheme = isSystemInDarkTheme()
 
                 LaunchedEffect(darkTheme) {
-                    themeViewModel.updateColorScheme(darkTheme)
+                    themeViewModel.updateThemeMode(darkTheme)
                 }
 
                 PodcastsTheme(colorSchemeOverride = dynamicColorScheme) {

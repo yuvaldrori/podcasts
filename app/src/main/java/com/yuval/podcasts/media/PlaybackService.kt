@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.media3.common.MediaMetadata
 import com.yuval.podcasts.data.Constants
 import kotlinx.coroutines.guava.asListenableFuture
+import com.yuval.podcasts.utils.LogManager
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @AndroidEntryPoint
@@ -55,6 +56,7 @@ class PlaybackService : MediaSessionService() {
     @Inject lateinit var queueDao: QueueDao
     @Inject lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var logManager: LogManager
     
     @Inject @IoDispatcher lateinit var ioDispatcher: CoroutineDispatcher
     @Inject @MainDispatcher lateinit var mainDispatcher: CoroutineDispatcher
@@ -195,8 +197,14 @@ class PlaybackService : MediaSessionService() {
         exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
         castPlayer.repeatMode = Player.REPEAT_MODE_OFF
         
-        val defaultSpeed = settingsRepository.getPlaybackSpeed()
-        exoPlayer.setPlaybackParameters(androidx.media3.common.PlaybackParameters(defaultSpeed))
+        serviceScope.launch {
+            val speed = settingsRepository.getPlaybackSpeed()
+            val skipSilence = settingsRepository.isSkipSilenceEnabled()
+            withContext(mainDispatcher) {
+                exoPlayer.setPlaybackParameters(androidx.media3.common.PlaybackParameters(speed))
+                exoPlayer.skipSilenceEnabled = skipSilence
+            }
+        }
         
         currentPlayer = exoPlayer
             
@@ -235,7 +243,7 @@ class PlaybackService : MediaSessionService() {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     val lastId = currentlyPlayingId
-                    android.util.Log.d("PlaybackService", "Playback ended. lastId=$lastId")
+                    logManager.i("PlaybackService", "Playback ended. lastId=$lastId")
                     if (lastId != null) {
                         serviceScope.launch(ioDispatcher) {
                             removeEpisodeUseCase(lastId, markAsPlayed = true)
@@ -247,7 +255,7 @@ class PlaybackService : MediaSessionService() {
             
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val lastId = currentlyPlayingId
-                android.util.Log.d("PlaybackService", "Media item transition. lastId=$lastId, newMediaId=${mediaItem?.mediaId}, reason=$reason")
+                logManager.i("PlaybackService", "Media item transition. lastId=$lastId, newMediaId=${mediaItem?.mediaId}, reason=$reason")
                 
                 if (lastId != null && mediaItem != null && lastId != mediaItem.mediaId && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                     serviceScope.launch(ioDispatcher) {
@@ -350,7 +358,7 @@ class PlaybackService : MediaSessionService() {
 
                     val currentInNewIndex = episodes.indexOfFirst { it.id == currentMediaId }
                     if (currentInNewIndex == -1) {
-                        android.util.Log.d("PlaybackService", "Current item removed from queue, stopping")
+                        logManager.i("PlaybackService", "Current item $currentMediaId removed from queue, stopping player")
                         currentPlayer.stop()
                         currentPlayer.clearMediaItems()
                         return@withContext

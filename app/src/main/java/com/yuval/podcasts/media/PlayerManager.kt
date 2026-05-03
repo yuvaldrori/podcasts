@@ -67,7 +67,7 @@ class PlayerManager @Inject constructor(
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
 
-    private val _playbackSpeed = MutableStateFlow(settingsRepository.getPlaybackSpeed())
+    private val _playbackSpeed = MutableStateFlow(1.0f)
     val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
     private val _currentMediaId = MutableStateFlow<String?>(null)
@@ -79,6 +79,15 @@ class PlayerManager @Inject constructor(
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
     val isConnected: StateFlow<Boolean> = _isInitialized.asStateFlow()
+
+    init {
+        scope.launch {
+            settingsRepository.playbackSpeedFlow.collect { speed ->
+                _playbackSpeed.value = speed
+                controller?.setPlaybackParameters(PlaybackParameters(speed))
+            }
+        }
+    }
 
     fun initialize() {
         if (controllerFuture != null) return
@@ -141,9 +150,8 @@ class PlayerManager @Inject constructor(
 
         // Initial states
         _isPlaying.value = player.isPlaying
-        val defaultSpeed = settingsRepository.getPlaybackSpeed()
-        player.setPlaybackParameters(PlaybackParameters(defaultSpeed))
-        _playbackSpeed.value = defaultSpeed
+        val currentSpeed = _playbackSpeed.value
+        player.setPlaybackParameters(PlaybackParameters(currentSpeed))
         _duration.value = player.duration.coerceAtLeast(0L)
         _currentMediaId.value = player.currentMediaItem?.mediaId
         _currentPosition.value = player.currentPosition
@@ -162,7 +170,8 @@ class PlayerManager @Inject constructor(
                 it.seekTo(startPositionMs)
             }
             it.prepare()
-            android.util.Log.d("PlayerManager", "Playing!"); it.play()
+            logManager.i("PlayerManager", "Starting playback for $mediaId")
+            it.play()
         }
     }
 
@@ -207,16 +216,19 @@ class PlayerManager @Inject constructor(
             }
             it.setMediaItems(mediaItems, startIndex, startPositionMs)
             it.prepare()
-            android.util.Log.d("PlayerManager", "Playing!"); it.play()
+            logManager.i("PlayerManager", "Starting queue playback at $startIndex")
+            it.play()
         }
     }
 
     fun togglePlayPause() {
         controller?.let {
             if (it.playWhenReady) {
-                android.util.Log.d("PlayerManager", "Pausing!"); it.pause()
+                logManager.i("PlayerManager", "Pausing playback")
+                it.pause()
             } else {
-                android.util.Log.d("PlayerManager", "Playing!"); it.play()
+                logManager.i("PlayerManager", "Resuming playback")
+                it.play()
             }
         }
     }

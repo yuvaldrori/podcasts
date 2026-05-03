@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaBrowser
 import com.yuval.podcasts.data.repository.SettingsRepository
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
@@ -19,7 +20,7 @@ class PlayerManagerInitializationTest {
         val context = mockk<Context>(relaxed = true)
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
         val logManager = mockk<com.yuval.podcasts.utils.LogManager>(relaxed = true)
-        every { settingsRepository.getPlaybackSpeed() } returns 1.0f
+        coEvery { settingsRepository.getPlaybackSpeed() } returns 1.0f
 
         val playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
 
