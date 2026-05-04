@@ -37,8 +37,6 @@ android {
         versionCode = verCode
         versionName = "$verMajor.$verMinor.$verPatch"
 
-        buildConfigField("String", "BUILD_DATE", "\"${SimpleDateFormat("yyyy.MM.dd-HH:mm").format(Date())}\"")
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -64,10 +62,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             // isProfileable is configured via manifest in modern AGP usually, but let us try property
             isProfileable = true
+            buildConfigField("String", "BUILD_DATE", "\"BENCHMARK\"")
         }
         debug {
             // Optimize debug build speed by disabling PNG crunching
             isCrunchPngs = false
+            buildConfigField("String", "BUILD_DATE", "\"DEBUG\"")
         }
         release {
             isMinifyEnabled = true
@@ -77,6 +77,7 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "BUILD_DATE", "\"${SimpleDateFormat("yyyy.MM.dd-HH:mm").format(Date())}\"")
         }
     }
     compileOptions {
