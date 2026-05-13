@@ -54,7 +54,7 @@ class RssParser @Inject constructor() {
                     val stdUrl = readPodcastImage(parser)
                     if (podcastImageUrl.isEmpty()) podcastImageUrl = stdUrl
                 }
-                name == Constants.Rss.IMAGE && ns.contains("itunes") -> {
+                name == Constants.Rss.IMAGE && ns?.contains("itunes") == true -> {
                     // <itunes:image href="..." />
                     val itunesUrl = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF) ?: ""
                     podcastImageUrl = itunesUrl // itunes:image usually preferred if present
@@ -126,7 +126,7 @@ class RssParser @Inject constructor() {
                 name == Constants.Rss.DURATION -> {
                     duration = parseDuration(readText(parser))
                 }
-                name == Constants.Rss.IMAGE && ns.contains("itunes") -> {
+                name == Constants.Rss.IMAGE && ns?.contains("itunes") == true -> {
                     imageUrl = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF)
                     skip(parser)
                 }

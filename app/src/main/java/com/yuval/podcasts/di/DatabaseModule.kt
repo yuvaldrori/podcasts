@@ -56,7 +56,6 @@ object DatabaseModule {
         .addCallback(object : RoomDatabase.Callback() {
             override fun onOpen(db: SupportSQLiteDatabase) {
                 super.onOpen(db)
-                db.execSQL("PRAGMA busy_timeout = 3000;")
             }
         })
         .addMigrations(MIGRATION_5_6)

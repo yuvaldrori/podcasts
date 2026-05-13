@@ -57,7 +57,7 @@ class DownloadWorker @AssistedInject constructor(
                 return@withContext Result.failure()
             }
 
-            val body = response.body ?: return@withContext Result.failure()
+            val body = response.body
             val totalBytes = body.contentLength()
             val outputFile = StorageUtils.getFileForEpisode(appContext, episodeId)
 

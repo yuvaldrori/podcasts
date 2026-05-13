@@ -34,7 +34,7 @@ class LogManager @Inject constructor(
     private val logDir = File(context.filesDir, "logs").apply { if (!exists()) mkdirs() }
     private val activeLogFile = File(logDir, "app_log_active.jsonl")
     private val previousLogFile = File(logDir, "app_log_previous.jsonl")
-    private val maxFileSize = Constants.MAX_LOG_FILE_SIZE.toLong()
+    private val maxFileSize = Constants.MAX_LOG_FILE_SIZE
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
     private val logBuffer = mutableListOf<String>()

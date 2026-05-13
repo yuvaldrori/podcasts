@@ -114,7 +114,9 @@ class DefaultPodcastRepository @Inject constructor(
             episodeDao.syncNetworkEpisodes(networkEpisodes)
             
             // Update chapters for all episodes in bulk
-            val allChapters = parsed.episodes.flatMap { it.chapters }
+            val allChapters = parsed.episodes.flatMap { item ->
+                item.chapters.map { it.copy(episodeId = item.episode.id) }
+            }
             if (allChapters.isNotEmpty()) {
                 val episodeIds = parsed.episodes.map { it.episode.id }
                 chapterDao.updateChaptersBulk(episodeIds, allChapters)
