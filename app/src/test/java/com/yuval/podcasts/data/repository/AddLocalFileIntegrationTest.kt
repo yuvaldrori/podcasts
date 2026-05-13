@@ -44,7 +44,7 @@ class AddLocalFileIntegrationTest {
         filesDir.mkdirs()
         every { context.filesDir } returns filesDir
 
-        localMediaDataSource = LocalMediaDataSource(context, Dispatchers.Unconfined)
+        localMediaDataSource = LocalMediaDataSource(context, Dispatchers.Unconfined, mockk(relaxed = true))
     }
 
     @Test

@@ -16,7 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.viewmodel.SettingsUiState
+import com.yuval.podcasts.ui.LocalMainPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +31,7 @@ fun SettingsScreen(
     onImportLocalAudio: (Uri) -> Unit,
     onLogNoteChanged: (String) -> Unit,
     onSaveLogNote: () -> Unit,
-    onDownloadLogs: () -> Unit,
+    onDownloadLogs: (android.content.Context, Uri) -> Unit,
     onClearError: () -> Unit
 ) {
     var rssUrl by remember { mutableStateOf("") }
@@ -37,12 +39,12 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
-        if (uiState.errorMessage != null) {
-            snackbarHostState.showSnackbar(uiState.errorMessage)
+        uiState.errorMessage?.let { error ->
+            snackbarHostState.showSnackbar(error.asString(context))
             onClearError()
         }
-        if (uiState.successMessage != null) {
-            snackbarHostState.showSnackbar(uiState.successMessage)
+        uiState.successMessage?.let { success ->
+            snackbarHostState.showSnackbar(success.asString(context))
             onClearError()
         }
     }
@@ -53,13 +55,18 @@ fun SettingsScreen(
     )
 
     val opmlExportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/x-opml"),
+        contract = ActivityResultContracts.CreateDocument(Constants.MIME_TYPE_OPML),
         onResult = { uri -> uri?.let { onExportOpml(context, it) } }
     )
 
     val localAudioLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri -> uri?.let { onImportLocalAudio(it) } }
+    )
+
+    val logExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument(Constants.MIME_TYPE_JSONL),
+        onResult = { uri -> uri?.let { onDownloadLogs(context, it) } }
     )
 
     Scaffold(
@@ -70,10 +77,15 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
+        val mainPadding = LocalMainPadding.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(
+                    top = padding.calculateTopPadding(),
+                    bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding()
+                )
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
@@ -100,8 +112,8 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
             val isImporting = uiState.importWorkInfo?.state == androidx.work.WorkInfo.State.RUNNING
-            val progress = uiState.importWorkInfo?.progress?.getInt("PROGRESS", 0) ?: 0
-            val total = uiState.importWorkInfo?.progress?.getInt("TOTAL", 0) ?: 0
+            val progress = uiState.importWorkInfo?.progress?.getInt(Constants.WORK_KEY_PROGRESS, 0) ?: 0
+            val total = uiState.importWorkInfo?.progress?.getInt(Constants.WORK_KEY_TOTAL, 0) ?: 0
 
             Text(text = stringResource(R.string.opml_import_export), style = MaterialTheme.typography.titleLarge)
             
@@ -131,15 +143,16 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
-                    onClick = { opmlImportLauncher.launch(arrayOf("*/*")) },
+                    onClick = { opmlImportLauncher.launch(arrayOf(Constants.MIME_TYPE_ALL)) },
                     modifier = Modifier.weight(1f),
                     enabled = !isImporting
                 ) {
                     Text(stringResource(R.string.import_btn))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
+                val opmlFilename = stringResource(R.string.default_opml_filename)
                 Button(
-                    onClick = { opmlExportLauncher.launch("podcasts.opml") },
+                    onClick = { opmlExportLauncher.launch(opmlFilename) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(stringResource(R.string.export_btn))
@@ -172,7 +185,7 @@ fun SettingsScreen(
             Text(text = stringResource(R.string.import_local_audio_title), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
             Button(
-                onClick = { localAudioLauncher.launch("audio/*") },
+                onClick = { localAudioLauncher.launch(Constants.MIME_TYPE_AUDIO_ALL) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.import_local_audio_btn))
@@ -199,8 +212,9 @@ fun SettingsScreen(
                     Text(stringResource(R.string.log_event_btn))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
+                val logsFilename = stringResource(R.string.default_logs_filename)
                 Button(
-                    onClick = onDownloadLogs,
+                    onClick = { logExportLauncher.launch(logsFilename) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(stringResource(R.string.download_logs_btn))

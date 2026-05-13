@@ -29,6 +29,7 @@
     <string name="import_local_audio_title">Import Local Audio</string>
     <string name="import_local_audio_btn">Import MP3</string>
     <string name="listening_to">Listening to %1$s via Podcasts App</string>
+    <string name="share_episode_format">%1$s\n\n%2$s</string>
     <string name="played_marker">[Played] </string>
     <string name="not_playing">Not Playing</string>
     <string name="app_version">Version %1$s (%2$s)</string>
@@ -57,4 +58,12 @@
     <string name="log_event_btn">Log Event</string>
     <string name="download_logs_btn">Download Logs</string>
     <string name="logs_downloaded_success">Logs saved to Downloads: %1$s</string>
+    <string name="default_opml_filename">podcasts.opml</string>
+    <string name="default_logs_filename">podcasts_logs.jsonl</string>
+    <string name="error_export_failed">Export failed</string>
+    <string name="notification_channel_downloads">Downloads</string>
+    <string name="notification_channel_imports">Imports</string>
+    <string name="notification_downloading_title">Downloading Podcast</string>
+    <string name="notification_importing_title">Importing Podcasts</string>
+    <string name="notification_importing_progress">Processed %1$d of %2$d</string>
 </resources>

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.FeedsUiState
+import com.yuval.podcasts.ui.LocalMainPadding
 
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
@@ -49,9 +50,18 @@ fun NewEpisodesScreen(
 
     val pullToRefreshState = rememberPullToRefreshState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // State hoisting for swipe-to-dismiss
-    val episodes = (uiState as? FeedsUiState.Success)?.unplayedEpisodes ?: emptyList()
+    val episodesData = (uiState as? FeedsUiState.Success)?.unplayedEpisodes ?: emptyList()
+    val errorMessage = (uiState as? FeedsUiState.Success)?.errorMessage
+
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let { error ->
+            snackbarHostState.showSnackbar(error.asString(context))
+            onClearError()
+        }
+    }
     
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -70,7 +80,7 @@ fun NewEpisodesScreen(
         }
     ) { padding ->
         val isRefreshing = (uiState as? FeedsUiState.Success)?.isRefreshing ?: false
-        val episodes = (uiState as? FeedsUiState.Success)?.unplayedEpisodes ?: emptyList()
+        val mainPadding = LocalMainPadding.current
 
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -78,16 +88,20 @@ fun NewEpisodesScreen(
             state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
         ) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .testTag("episode_list"),
-                contentPadding = PaddingValues(16.dp)
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 16.dp,
+                    bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding() + 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                )
             ) {
                 items(
-                    items = episodes,
+                    items = episodesData,
                     key = { it.episode.id }
                 ) { episodeWithPodcast ->
                     val episode = episodeWithPodcast.episode

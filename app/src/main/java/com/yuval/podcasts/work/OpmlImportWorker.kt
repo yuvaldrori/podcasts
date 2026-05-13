@@ -12,6 +12,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.yuval.podcasts.R
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.di.IoDispatcher
@@ -45,7 +47,7 @@ class OpmlImportWorker @AssistedInject constructor(
 
             for ((index, url) in urls.withIndex()) {
                 // Update Progress explicitly before processing each
-                setProgress(workDataOf("PROGRESS" to index, "TOTAL" to total))
+                setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to index, Constants.WORK_KEY_TOTAL to total))
                 setForeground(createForegroundInfo(index, total))
 
                 try {
@@ -57,7 +59,7 @@ class OpmlImportWorker @AssistedInject constructor(
                 }
             }
 
-            setProgress(workDataOf("PROGRESS" to total, "TOTAL" to total))
+            setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to total, Constants.WORK_KEY_TOTAL to total))
             Result.success()
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
@@ -67,20 +69,20 @@ class OpmlImportWorker @AssistedInject constructor(
     }
 
     private fun createForegroundInfo(progress: Int, total: Int): ForegroundInfo {
-        val notificationId = 2
+        val notificationId = Constants.NOTIFICATION_ID_IMPORT
         val channelId = "import_channel"
         
         val channel = NotificationChannel(
             channelId,
-            "Imports",
+            appContext.getString(R.string.notification_channel_imports),
             NotificationManager.IMPORTANCE_LOW
         )
         val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
         val notification = Notification.Builder(appContext, channelId)
-            .setContentTitle("Importing Podcasts")
-            .setContentText("Processed $progress of $total")
+            .setContentTitle(appContext.getString(R.string.notification_importing_title))
+            .setContentText(appContext.getString(R.string.notification_importing_progress, progress, total))
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setProgress(total, progress, total == 0)
             .setOngoing(true)

@@ -2,8 +2,10 @@ package com.yuval.podcasts.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.yuval.podcasts.BuildConfig
 import com.yuval.podcasts.data.db.AppDatabase
 import com.yuval.podcasts.data.db.dao.ChapterDao
 import com.yuval.podcasts.data.db.dao.EpisodeDao
@@ -45,16 +47,34 @@ object DatabaseModule {
         @ApplicationContext context: Context,
         logManager: LogManager
     ): AppDatabase {
-        return Room.databaseBuilder(
+        val builder = Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             Constants.DATABASE_NAME
         )
+        .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+        .addCallback(object : RoomDatabase.Callback() {
+            override fun onOpen(db: SupportSQLiteDatabase) {
+                super.onOpen(db)
+                db.execSQL("PRAGMA busy_timeout = 3000;")
+            }
+        })
         .addMigrations(MIGRATION_5_6)
-        .setQueryCallback({ sqlQuery, bindArgs ->
-            logManager.i("DATABASE", "Query: $sqlQuery Args: $bindArgs")
+        
+        builder.setQueryCallback({ sqlQuery, bindArgs ->
+            val sql = sqlQuery.uppercase()
+            val isSignificant = sql.startsWith("INSERT") || sql.startsWith("UPDATE") || 
+                               sql.startsWith("DELETE") || sql.startsWith("BEGIN") || 
+                               sql.startsWith("COMMIT") || sql.startsWith("ROLLBACK")
+            
+            if (isSignificant) {
+                logManager.i("DATABASE", "Query: $sqlQuery Args: $bindArgs")
+            } else {
+                logManager.v("DATABASE", "Query: $sqlQuery Args: $bindArgs")
+            }
         }, { it.run() })
-        .build()
+        
+        return builder.build()
     }
 
     @Provides

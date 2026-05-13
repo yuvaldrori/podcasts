@@ -32,10 +32,8 @@ class PodcastDetailViewModel @Inject constructor(
     private val feedUrl = savedStateHandle.toRoute<PodcastDetailScreenRoute>().feedUrl
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val episodes: StateFlow<ImmutableList<Episode>> = flowOf(feedUrl)
-        .flatMapLatest { url ->
-            repository.getEpisodes(url).map { it.toImmutableList() }
-        }
+    val episodes: StateFlow<ImmutableList<Episode>> = repository.getEpisodes(feedUrl)
+        .map { it.toImmutableList() }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS),

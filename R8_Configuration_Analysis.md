@@ -1,25 +1,47 @@
 # R8 Configuration Analysis
 
 ## Configuration Audit
-- **AGP Version**: 9.2.0 (Meets the "AGP 9.0+" recommendation for improved optimizations).
-- **MinifyEnabled**: `true` for release builds (Verified in `app/build.gradle.kts`).
+- **AGP Version**: 9.2.1 (Upgraded from 9.2.0. Meets the "AGP 9.0+" recommendation for improved optimizations).
+- **MinifyEnabled**: `true` for release builds.
 - **ShrinkResources**: `true` for release builds.
 
 ## Proguard Rules Analysis
 
-### Redundant Library Rules
-The following rules target libraries that already bundle their own consumer Proguard/R8 rules. These should be removed to allow R8 to perform better optimization:
-1.  **Kotlin Serialization**: Rules for `kotlinx.serialization.json.**` are generally provided by the library.
-2.  **Room**: Internal library rules for Room are not needed in the project file.
-3.  **Media3 / Cast**: `androidx.media3.**` and `com.google.android.gms.cast.**` rules are typically provided by the respective libraries.
-4.  **OkHttp**: Rules for `okhttp3.**` and associated `dontwarn` statements are bundled with OkHttp.
-5.  **WorkManager**: The base `ListenableWorker` keep rule is provided by `androidx.work:work-runtime`.
+### Redundant Rules
+The following rules are redundant because they are already covered by library consumer rules or AAPT2:
 
-### Rules for Project Code
-1.  **Navigation Routes**: The rules keeping `com.yuval.podcasts.ui.navigation.**` are likely necessary because Navigation 2.8+ uses reflection to instantiate routes from `@Serializable` classes. However, these can be refined to only target classes with the `@Serializable` annotation.
-2.  **DAOs and Entities**: The rules keeping all classes in `entity` and `dao` packages are too broad. Room usually handles the necessary keeps. If issues arise, we should only keep classes annotated with `@Entity` or `@Dao`.
+1.  **Hilt / Android Components**:
+    ```proguard
+    -keep @dagger.hilt.android.AndroidEntryPoint class * extends android.app.Activity
+    -keep @dagger.hilt.android.AndroidEntryPoint class * extends android.app.Service
+    -keep @dagger.hilt.android.AndroidEntryPoint class * extends android.content.BroadcastReceiver
+    ```
+    **Action**: Remove. AAPT2 automatically keeps components declared in `AndroidManifest.xml`. Hilt's own rules handle entry points.
+
+2.  **Room DAOs and Entities**:
+    ```proguard
+    -keep @androidx.room.Entity class com.yuval.podcasts.data.db.entity.** { *; }
+    -keep @androidx.room.Dao interface com.yuval.podcasts.data.db.dao.** { *; }
+    ```
+    **Action**: Remove. Room bundles its own consumer keep rules.
+
+### Impact Analysis & Subsuming Rules
+
+1.  **Navigation Routes (Package-Wide Wildcard)**:
+    ```proguard
+    -keep @kotlinx.serialization.Serializable class com.yuval.podcasts.ui.navigation.** { *; }
+    ```
+    **Action**: Refine. This rule prevents optimization for all members in the navigation package. Since Navigation uses reflection on the `@Serializable` class, it should be narrowed.
+    **Recommendation**: Refine to only keep necessary members or use `-keep,allowobfuscation` if only serialization is needed. However, Navigation 2.8+ often requires the full class for type-safe routing.
+
+2.  **Cast Options Provider**:
+    ```proguard
+    -keep class com.yuval.podcasts.media.cast.CastOptionsProvider { *; }
+    ```
+    **Action**: Keep but refine. This is Hierarchy #3 (Keep both class and members). 
+    **Recommendation**: Refine to only keep the class name or specific methods if only the constructor is needed by the Cast SDK via reflection.
 
 ## Recommendations
-1.  **Remove** redundant library rules for OkHttp, Media3, Cast, and WorkManager.
-2.  **Refine** Navigation rules to specifically target `@Serializable` classes if not already handled by the library.
-3.  **Validate** removal by running a release build and performing smoke tests on Navigation and Database operations.
+1.  **Remove** redundant rules for Hilt and Room.
+2.  **Refine** Navigation rules to avoid package-wide wildcards.
+3.  **Validate** by running a release build and testing Navigation and Database operations.

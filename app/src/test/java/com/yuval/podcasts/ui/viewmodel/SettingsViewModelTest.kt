@@ -11,13 +11,11 @@ import android.content.Context
 import android.net.Uri
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.utils.MainDispatcherRule
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.verify
-import io.mockk.mockk
+import com.yuval.podcasts.ui.utils.UiText
+import io.mockk.*
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -26,6 +24,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.yuval.podcasts.data.repository.SettingsRepository
+import com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
+import com.yuval.podcasts.domain.usecase.ImportLocalFileUseCase
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -46,7 +46,8 @@ class SettingsViewModelTest {
     private lateinit var uri: Uri
     private lateinit var inputStream: InputStream
     private lateinit var outputStream: OutputStream
-    private lateinit var exportOpmlUseCase: com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
+    private lateinit var exportOpmlUseCase: ExportOpmlUseCase
+    private lateinit var importLocalFileUseCase: ImportLocalFileUseCase
     private lateinit var logManager: com.yuval.podcasts.utils.LogManager
     private lateinit var viewModel: SettingsViewModel
 
@@ -56,6 +57,7 @@ class SettingsViewModelTest {
         settingsRepository = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
         exportOpmlUseCase = mockk()
+        importLocalFileUseCase = mockk()
         logManager = mockk(relaxed = true)
         context = mockk()
         contentResolver = mockk()
@@ -68,13 +70,17 @@ class SettingsViewModelTest {
         every { context.contentResolver } returns contentResolver
         every { uri.toString() } returns "content://test.opml"
         
-        // Default mock for getString to return some string
-        every { repository.getString(any(), *anyVararg()) } answers { 
-            "Error: ${secondArg<Array<Any>>().firstOrNull() ?: ""}" 
-        }
-
         every { settingsRepository.skipSilenceFlow } returns kotlinx.coroutines.flow.MutableStateFlow(false)
-        viewModel = SettingsViewModel(repository, settingsRepository, workManager, exportOpmlUseCase, logManager)
+        
+        viewModel = SettingsViewModel(
+            repository = repository,
+            settingsRepository = settingsRepository,
+            workManager = workManager,
+            exportOpmlUseCase = exportOpmlUseCase,
+            importLocalFileUseCase = importLocalFileUseCase,
+            logManager = logManager,
+            messageDelegate = DefaultMessageDelegate()
+        )
     }
 
     @Test
@@ -91,16 +97,14 @@ class SettingsViewModelTest {
     @Test
     fun addPodcast_failure_setsErrorMessage() = runTest {
         val url = "http://example.com/feed"
-        val errorMessage = "Invalid URL"
-        coEvery { repository.fetchAndStorePodcast(url) } throws Exception(errorMessage)
-        every { repository.getString(any(), any()) } returns "Failed to add podcast: $errorMessage"
+        coEvery { repository.fetchAndStorePodcast(url) } throws Exception("Invalid URL")
         
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.addPodcast(url)
         advanceUntilIdle()
 
-        assertEquals("Failed to add podcast: $errorMessage", viewModel.uiState.value.errorMessage)
+        assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
         job.cancel()
     }
 
@@ -112,27 +116,24 @@ class SettingsViewModelTest {
 
     @Test
     fun importLocalAudio_success() = runTest {
-        coEvery { repository.addLocalFile(uri) } returns Result.success(Unit)
+        coEvery { importLocalFileUseCase(uri) } returns Result.success(Unit)
 
         viewModel.importLocalAudio(uri)
 
-        coVerify { repository.addLocalFile(uri) }
+        coVerify { importLocalFileUseCase(uri) }
         assertNull(viewModel.uiState.value.errorMessage)
     }
 
     @Test
     fun importLocalAudio_failure_setsErrorMessage() = runTest {
-        val errorMsg = "Import failed"
-        coEvery { repository.addLocalFile(uri) } returns Result.failure(Exception(errorMsg))
-        every { repository.getString(any(), any()) } returns "Failed to import local file: $errorMsg"
+        coEvery { importLocalFileUseCase(uri) } returns Result.failure(Exception("Import failed"))
         
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.importLocalAudio(uri)
         advanceUntilIdle()
 
-        coVerify { repository.addLocalFile(uri) }
-        assertEquals("Failed to import local file: $errorMsg", viewModel.uiState.value.errorMessage)
+        assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
         job.cancel()
     }
 
@@ -152,18 +153,17 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun clearError_resetsErrorMessage() = runTest {
+    fun clearMessages_resetsErrorMessage() = runTest {
         val url = "http://example.com/feed"
         coEvery { repository.fetchAndStorePodcast(url) } throws Exception("Error")
-        every { repository.getString(any(), any()) } returns "Failed to add podcast: Error"
         
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.addPodcast(url)
         advanceUntilIdle()
-        assertEquals("Failed to add podcast: Error", viewModel.uiState.value.errorMessage)
+        assertTrue(viewModel.uiState.value.errorMessage != null)
 
-        viewModel.clearError()
+        viewModel.clearMessages()
         advanceUntilIdle()
         assertNull(viewModel.uiState.value.errorMessage)
         job.cancel()

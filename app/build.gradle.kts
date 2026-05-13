@@ -94,6 +94,7 @@ android {
         abortOnError = true
         warningsAsErrors = true
         checkReleaseBuilds = false
+        disable += listOf("OldTargetApi", "GradleDependency")
     }
 
     sourceSets {

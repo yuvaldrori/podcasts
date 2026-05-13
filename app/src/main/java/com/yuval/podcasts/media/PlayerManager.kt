@@ -1,9 +1,11 @@
-
 package com.yuval.podcasts.media
 
 import android.content.ComponentName
 import android.content.Context
+import android.net.Uri
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -29,8 +32,10 @@ import com.yuval.podcasts.di.MainDispatcher
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.guava.await
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.seconds
 
 import com.yuval.podcasts.utils.LogManager
 
@@ -58,7 +63,7 @@ class PlayerManager @Inject constructor(
             flow {
                 emit(controller?.currentPosition ?: _currentPosition.value)
                 while (isPlaying) {
-                    delay(1000)
+                    delay(1.seconds)
                     emit(controller?.currentPosition ?: _currentPosition.value)
                 }
             }
@@ -78,7 +83,9 @@ class PlayerManager @Inject constructor(
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
-    val isConnected: StateFlow<Boolean> = _isInitialized.asStateFlow()
+    private suspend fun awaitController(): MediaBrowser? {
+        return controller ?: controllerFuture?.await()
+    }
 
     init {
         scope.launch {
@@ -95,15 +102,18 @@ class PlayerManager @Inject constructor(
 
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val future = MediaBrowser.Builder(context, sessionToken).buildAsync()
-        
-        future.addListener({
-            controller = future.get()
-            setupControllerListener()
-            _isInitialized.value = true
-            logManager.i("PlayerManager", "MediaBrowser initialized")
-        }, context.mainExecutor)
-        
         controllerFuture = future
+
+        scope.launch {
+            try {
+                controller = future.await()
+                setupControllerListener()
+                _isInitialized.value = true
+                logManager.i("PlayerManager", "MediaBrowser initialized")
+            } catch (e: Exception) {
+                logManager.e("PlayerManager", "Failed to initialize MediaBrowser", mapOf("error" to e.message.toString()))
+            }
+        }
     }
 
     private fun setupControllerListener() {
@@ -111,12 +121,12 @@ class PlayerManager @Inject constructor(
 
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _isPlaying.value = isPlaying
+                _isPlaying.update { isPlaying }
                 logManager.i("PlayerManager", "isPlaying changed to $isPlaying")
             }
 
             override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
-                _playbackSpeed.value = playbackParameters.speed
+                _playbackSpeed.update { playbackParameters.speed }
                 logManager.i("PlayerManager", "Playback speed changed to ${playbackParameters.speed}")
             }
 
@@ -127,14 +137,14 @@ class PlayerManager @Inject constructor(
                 } else {
                     val d = player.duration
                     if (d != androidx.media3.common.C.TIME_UNSET) {
-                        _duration.value = d
+                        _duration.update { d }
                     }
                 }
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                _currentMediaId.value = mediaItem?.mediaId
-                _duration.value = player.duration.coerceAtLeast(0L)
+                _currentMediaId.update { mediaItem?.mediaId }
+                _duration.update { player.duration.coerceAtLeast(0L) }
                 logManager.i("PlayerManager", "Media item transition to ${mediaItem?.mediaId}, reason $reason")
             }
 
@@ -143,148 +153,190 @@ class PlayerManager @Inject constructor(
                 newPosition: Player.PositionInfo,
                 reason: Int
             ) {
-                _currentPosition.value = newPosition.positionMs
-                positionTrigger.value = newPosition.positionMs
+                _currentPosition.update { newPosition.positionMs }
+                positionTrigger.update { newPosition.positionMs }
             }
         })
 
         // Initial states
-        _isPlaying.value = player.isPlaying
+        _isPlaying.update { player.isPlaying }
         val currentSpeed = _playbackSpeed.value
         player.setPlaybackParameters(PlaybackParameters(currentSpeed))
-        _duration.value = player.duration.coerceAtLeast(0L)
-        _currentMediaId.value = player.currentMediaItem?.mediaId
-        _currentPosition.value = player.currentPosition
+        _duration.update { player.duration.coerceAtLeast(0L) }
+        _currentMediaId.update { player.currentMediaItem?.mediaId }
+        _currentPosition.update { player.currentPosition }
     }
 
-    fun play(mediaId: String, uri: String, startPositionMs: Long = 0L) {
-        _currentMediaId.value = mediaId
-        _currentPosition.value = startPositionMs
-        controller?.let {
-            val mediaItem = MediaItem.Builder()
-                .setMediaId(mediaId)
-                .setUri(uri)
-                .build()
-            it.setMediaItem(mediaItem)
-            if (startPositionMs > 0) {
-                it.seekTo(startPositionMs)
+    fun play(mediaId: String, uri: String, title: String? = null, imageUrl: String? = null, startPositionMs: Long = 0L) {
+        _currentMediaId.update { mediaId }
+        _currentPosition.update { startPositionMs }
+        scope.launch {
+            val browser = awaitController()
+            browser?.let {
+                val metadata = MediaMetadata.Builder()
+                    .setTitle(title)
+                    .setArtworkUri(imageUrl?.toUri())
+                    .build()
+
+                val mediaItem = MediaItem.Builder()
+                    .setMediaId(mediaId)
+                    .setUri(uri)
+                    .setMediaMetadata(metadata)
+                    .build()
+                it.setMediaItem(mediaItem)
+                if (startPositionMs > 0) {
+                    it.seekTo(startPositionMs)
+                }
+                it.prepare()
+                logManager.i("PlayerManager", "Starting playback for $mediaId")
+                it.play()
             }
-            it.prepare()
-            logManager.i("PlayerManager", "Starting playback for $mediaId")
-            it.play()
         }
     }
 
     fun prepareQueue(episodes: List<com.yuval.podcasts.data.db.entity.Episode>, startIndex: Int, startPositionMs: Long = 0L) {
         if (episodes.isEmpty() || startIndex !in episodes.indices) return
         val currentEp = episodes[startIndex]
-        _currentMediaId.value = currentEp.id
-        _currentPosition.value = startPositionMs
-        
-        controller?.let {
-            val mediaItems = episodes.map { ep ->
-                val uri = ep.localFilePath ?: ep.audioUrl
-                MediaItem.Builder()
-                    .setMediaId(ep.id)
-                    .setUri(uri)
-                    .build()
+        _currentMediaId.update { currentEp.id }
+        _currentPosition.update { startPositionMs }
+
+        scope.launch {
+            val browser = awaitController()
+            browser?.let {
+                val mediaItems = episodes.map { ep ->
+                    val uri = ep.localFilePath ?: ep.audioUrl
+                    val metadata = MediaMetadata.Builder()
+                        .setTitle(ep.title)
+                        .setArtworkUri(ep.imageUrl?.toUri())
+                        .build()
+
+                    MediaItem.Builder()
+                        .setMediaId(ep.id)
+                        .setUri(uri)
+                        .setMediaMetadata(metadata)
+                        .build()
+                }
+                it.setMediaItems(mediaItems, startIndex, startPositionMs)
+                it.prepare()
             }
-            it.setMediaItems(mediaItems, startIndex, startPositionMs)
-            it.prepare()
         }
     }
 
     fun playQueue(episodes: List<com.yuval.podcasts.data.db.entity.Episode>, startIndex: Int, startPositionMs: Long = 0L) {
         if (episodes.isEmpty() || startIndex !in episodes.indices) return
         val currentEp = episodes[startIndex]
-        
-        if (_currentMediaId.value == currentEp.id) {
-            togglePlayPause()
-            return
-        }
 
-        _currentMediaId.value = currentEp.id
-        _currentPosition.value = startPositionMs
-        
-        controller?.let {
-            val mediaItems = episodes.map { ep ->
-                val uri = ep.localFilePath ?: ep.audioUrl
-                MediaItem.Builder()
-                    .setMediaId(ep.id)
-                    .setUri(uri)
-                    .build()
-            }
-            it.setMediaItems(mediaItems, startIndex, startPositionMs)
-            it.prepare()
-            logManager.i("PlayerManager", "Starting queue playback at $startIndex")
-            it.play()
-        }
-    }
+        _currentMediaId.update { currentEp.id }
+        _currentPosition.update { startPositionMs }
 
-    fun togglePlayPause() {
-        controller?.let {
-            if (it.playWhenReady) {
-                logManager.i("PlayerManager", "Pausing playback")
-                it.pause()
-            } else {
-                logManager.i("PlayerManager", "Resuming playback")
+        scope.launch {
+            val browser = awaitController()
+            browser?.let {
+                val mediaItems = episodes.map { ep ->
+                    val uri = ep.localFilePath ?: ep.audioUrl
+                    val metadata = MediaMetadata.Builder()
+                        .setTitle(ep.title)
+                        .setArtworkUri(ep.imageUrl?.toUri())
+                        .build()
+
+                    MediaItem.Builder()
+                        .setMediaId(ep.id)
+                        .setUri(uri)
+                        .setMediaMetadata(metadata)
+                        .build()
+                }
+                it.setMediaItems(mediaItems, startIndex, startPositionMs)
+                it.prepare()
+                logManager.i("PlayerManager", "Starting queue playback at $startIndex")
                 it.play()
             }
         }
     }
 
+    fun togglePlayPause() {
+        scope.launch {
+            val browser = awaitController()
+            browser?.let {
+                if (it.playWhenReady) {
+                    logManager.i("PlayerManager", "Pausing playback")
+                    it.pause()
+                } else {
+                    logManager.i("PlayerManager", "Resuming playback")
+                    it.play()
+                }
+            }
+        }
+    }
+
     fun seekTo(positionMs: Long) {
-        controller?.seekTo(positionMs)
-        _currentPosition.value = positionMs
+        _currentPosition.update { positionMs }
+        scope.launch {
+            val browser = awaitController()
+            browser?.seekTo(positionMs)
+        }
     }
 
     fun seekForward(ms: Long = Constants.SEEK_FORWARD_MS) {
-        controller?.let {
-            it.seekForwardBounded(ms)
-            _currentPosition.value = it.currentPosition
+        scope.launch {
+            val browser = awaitController()
+            browser?.let { b ->
+                b.seekForwardBounded(ms)
+                _currentPosition.update { b.currentPosition }
+            }
         }
     }
 
     fun seekBackward(ms: Long = Constants.SEEK_BACKWARD_MS) {
-        controller?.let {
-            it.seekBackwardBounded(ms)
-            _currentPosition.value = it.currentPosition
+        scope.launch {
+            val browser = awaitController()
+            browser?.let { b ->
+                b.seekBackwardBounded(ms)
+                _currentPosition.update { b.currentPosition }
+            }
         }
     }
 
     fun setPlaybackSpeed(speed: Float) {
+        _playbackSpeed.update { speed }
         scope.launch {
             settingsRepository.savePlaybackSpeed(speed)
+            val browser = awaitController()
+            browser?.setPlaybackParameters(PlaybackParameters(speed))
         }
-        controller?.setPlaybackParameters(PlaybackParameters(speed))
-        _playbackSpeed.value = speed
     }
 
     fun seekToNextMediaItem() {
-        controller?.let {
-            if (it.hasNextMediaItem()) {
-                it.seekToNextMediaItem()
-            } else {
-                stopAndClear()
+        scope.launch {
+            val browser = awaitController()
+            browser?.let {
+                if (it.hasNextMediaItem()) {
+                    it.seekToNextMediaItem()
+                } else {
+                    stopAndClear()
+                }
             }
         }
     }
 
     fun stopAndClear() {
-        controller?.let {
-            it.stop()
-            it.clearMediaItems()
+        _currentMediaId.update { null }
+        _isPlaying.update { false }
+        _currentPosition.update { 0L }
+        _duration.update { 0L }
+
+        scope.launch {
+            val browser = awaitController()
+            browser?.let {
+                it.stop()
+                it.clearMediaItems()
+            }
         }
-        _currentMediaId.value = null
-        _isPlaying.value = false
-        _currentPosition.value = 0L
-        _duration.value = 0L
     }
 
     fun release() {
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
         controller = null
-        _isInitialized.value = false
+        _isInitialized.update { false }
     }
 }

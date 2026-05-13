@@ -11,12 +11,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.yuval.podcasts.R
+import com.yuval.podcasts.data.Constants
 
 @Composable
 fun PodcastCover(
     model: Any?,
     modifier: Modifier = Modifier,
-    size: Dp = 48.dp,
+    size: Dp = Constants.COVER_SIZE_LIST_DP.dp,
     shape: RoundedCornerShape = RoundedCornerShape(8.dp),
     contentDescription: String? = stringResource(R.string.podcast_cover)
 ) {

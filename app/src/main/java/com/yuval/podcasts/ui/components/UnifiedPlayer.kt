@@ -16,22 +16,22 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
-import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.utils.Formatter
+import com.yuval.podcasts.ui.viewmodel.PlayerUiState
+
+data class PlayerActions(
+    val onToggleSpeed: () -> Unit,
+    val onSeekBackward: () -> Unit,
+    val onPlayPause: () -> Unit,
+    val onSeekForward: () -> Unit,
+    val onSeekTo: (Long) -> Unit
+)
 
 @Composable
 fun UnifiedPlayer(
-    currentEpisode: Episode?,
-    isPlaying: Boolean,
-    playbackSpeed: Float,
-    isConnected: Boolean,
-    currentPosition: Long,
-    duration: Long,
-    onToggleSpeed: () -> Unit,
-    onSeekBackward: () -> Unit,
-    onPlayPause: () -> Unit,
-    onSeekForward: () -> Unit,
-    onSeekTo: (Long) -> Unit,
+    uiState: PlayerUiState,
+    actions: PlayerActions,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -52,7 +52,7 @@ fun UnifiedPlayer(
             ) {
                 // Episode Title
                 Text(
-                    text = currentEpisode?.title ?: stringResource(R.string.not_playing),
+                    text = uiState.currentEpisode?.title ?: stringResource(R.string.not_playing),
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -69,20 +69,20 @@ fun UnifiedPlayer(
                     
                     val speedLabel = stringResource(R.string.playback_speed)
                     TextButton(
-                        onClick = onToggleSpeed,
-                        enabled = isConnected,
+                        onClick = actions.onToggleSpeed,
+                        enabled = uiState.isConnected,
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier
-                            .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
+                            .defaultMinSize(minWidth = Constants.PLAYER_BUTTON_MIN_SIZE_DP.dp, minHeight = Constants.PLAYER_BUTTON_MIN_SIZE_DP.dp)
                             .semantics { contentDescription = speedLabel },
                         colors = ButtonDefaults.textButtonColors(contentColor = themeColor)
                     ) {
-                        val speedText = if (playbackSpeed % 1f == 0f) playbackSpeed.toInt().toString() else playbackSpeed.toString()
+                        val speedText = if (uiState.playbackSpeed % 1f == 0f) uiState.playbackSpeed.toInt().toString() else uiState.playbackSpeed.toString()
                         Text(text = stringResource(R.string.playback_speed_format, speedText), style = MaterialTheme.typography.labelLarge)
                     }
                     IconButton(
-                        onClick = onSeekBackward,
-                        enabled = isConnected,
+                        onClick = actions.onSeekBackward,
+                        enabled = uiState.isConnected,
                         modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
@@ -93,20 +93,20 @@ fun UnifiedPlayer(
                         )
                     }
                     IconButton(
-                        onClick = onPlayPause,
-                        enabled = isConnected,
-                        modifier = Modifier.size(56.dp)
+                        onClick = actions.onPlayPause,
+                        enabled = uiState.isConnected,
+                        modifier = Modifier.size(Constants.MINI_PLAYER_HEIGHT_DP.dp)
                     ) {
                         Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
-                            modifier = Modifier.size(40.dp),
+                            imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (uiState.isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
+                            modifier = Modifier.size(Constants.PLAYER_ART_SIZE_DP.dp),
                             tint = themeColor
                         )
                     }
                     IconButton(
-                        onClick = onSeekForward,
-                        enabled = isConnected,
+                        onClick = actions.onSeekForward,
+                        enabled = uiState.isConnected,
                         modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
@@ -121,10 +121,10 @@ fun UnifiedPlayer(
 
             // Bottom Row: Progress Slider and Times
             Column(modifier = Modifier.fillMaxWidth()) {
-                val currentProgress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
+                val currentProgress = if (uiState.duration > 0) uiState.currentPosition.toFloat() / uiState.duration.toFloat() else 0f
                 Slider(
                     value = currentProgress,
-                    onValueChange = { onSeekTo((it * duration).toLong()) },
+                    onValueChange = { actions.onSeekTo((it * uiState.duration).toLong()) },
                     modifier = Modifier.fillMaxWidth().height(32.dp)
                 )
                 Row(
@@ -132,11 +132,11 @@ fun UnifiedPlayer(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = Formatter.formatTime(currentPosition),
+                        text = Formatter.formatTime(uiState.currentPosition),
                         style = MaterialTheme.typography.labelSmall
                     )
                     Text(
-                        text = Formatter.formatTime(duration),
+                        text = Formatter.formatTime(uiState.duration),
                         style = MaterialTheme.typography.labelSmall
                     )
                 }

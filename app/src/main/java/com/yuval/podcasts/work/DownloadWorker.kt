@@ -9,6 +9,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.di.IoDispatcher
@@ -56,12 +57,31 @@ class DownloadWorker @AssistedInject constructor(
                 return@withContext Result.failure()
             }
 
-            val body = response.body ?: throw IOException("Empty response body")
+            val body = response.body ?: return@withContext Result.failure()
+            val totalBytes = body.contentLength()
             val outputFile = StorageUtils.getFileForEpisode(appContext, episodeId)
 
             FileOutputStream(outputFile).use { outputStream ->
                 body.byteStream().use { inputStream ->
-                    inputStream.copyTo(outputStream, 64 * 1024) // 64KB buffer for large audio files
+                    val buffer = ByteArray(Constants.DOWNLOAD_BUFFER_SIZE_BYTES)
+                    var bytesRead: Int
+                    var totalRead = 0L
+                    
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        if (isStopped) {
+                            outputFile.delete()
+                            return@withContext Result.failure()
+                        }
+                        outputStream.write(buffer, 0, bytesRead)
+                        totalRead += bytesRead
+                        
+                        // Update progress if total size is known
+                        if (totalBytes > 0) {
+                            val progress = (totalRead * 100 / totalBytes).toInt()
+                            // We could update progress here, but frequent setForeground is expensive.
+                            // Maybe every 5%?
+                        }
+                    }
                 }
             }
 
@@ -84,21 +104,21 @@ class DownloadWorker @AssistedInject constructor(
 
     private fun createForegroundInfo(title: String): ForegroundInfo {
         val channelId = "download_channel"
-        
         val channel = NotificationChannel(
             channelId,
-            "Downloads",
+            appContext.getString(R.string.notification_channel_downloads),
             NotificationManager.IMPORTANCE_LOW
         )
         val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
         val notification = Notification.Builder(appContext, channelId)
-            .setContentTitle("Downloading Podcast")
+            .setContentTitle(appContext.getString(R.string.notification_downloading_title))
             .setContentText(title)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
             .build()
+
 
         return ForegroundInfo(Constants.NOTIFICATION_ID_DOWNLOAD, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     }

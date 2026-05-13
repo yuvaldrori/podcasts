@@ -94,4 +94,25 @@ class QueueDaoTest {
         assertEquals("ep1", joinedQueue[1].episode.id)
         assertEquals("P1", joinedQueue[1].podcast.title)
     }
+
+    @Test
+    fun shiftQueuePositionsDownFrom_shiftsCorrectItems() = runBlocking {
+        // Setup initial queue
+        queueDao.updateQueue(listOf(
+            QueueState("ep0", 0),
+            QueueState("ep1", 1),
+            QueueState("ep2", 2),
+            QueueState("ep3", 3)
+        ))
+
+        // Shift down from position 1
+        queueDao.shiftQueuePositionsDownFrom(1)
+
+        val queue = queueDao.getQueue().first().associateBy { it.episodeId }
+        
+        assertEquals(0, queue["ep0"]?.position) // Unchanged
+        assertEquals(2, queue["ep1"]?.position) // Shifted: 1 -> 2
+        assertEquals(3, queue["ep2"]?.position) // Shifted: 2 -> 3
+        assertEquals(4, queue["ep3"]?.position) // Shifted: 3 -> 4
+    }
 }

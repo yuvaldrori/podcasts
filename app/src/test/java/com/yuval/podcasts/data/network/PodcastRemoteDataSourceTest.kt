@@ -2,6 +2,7 @@ package com.yuval.podcasts.data.network
 
 import com.yuval.podcasts.data.db.entity.NetworkEpisodeWithChapters
 import com.yuval.podcasts.data.db.entity.Podcast
+import com.yuval.podcasts.data.db.entity.ParsedPodcast
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -22,15 +23,16 @@ class PodcastRemoteDataSourceTest {
         val url = "http://test.com/feed"
         val expectedPodcast = Podcast(url, "Title", "Desc", "Img", "Web")
         val expectedEpisodes = listOf<NetworkEpisodeWithChapters>(mockk())
+        val expectedParsed = ParsedPodcast(expectedPodcast, expectedEpisodes)
         
         coEvery { podcastApi.fetchRss(url) } returns mockInputStream
-        every { rssParser.parse(mockInputStream, url) } returns Pair(expectedPodcast, expectedEpisodes)
+        every { rssParser.parse(mockInputStream, url) } returns expectedParsed
         
         val dataSource = PodcastRemoteDataSource(podcastApi, rssParser, UnconfinedTestDispatcher(testScheduler))
 
         val result = dataSource.fetchPodcastData(url)
 
-        assertEquals(expectedPodcast, result.first)
-        assertEquals(expectedEpisodes, result.second)
+        assertEquals(expectedPodcast, result.podcast)
+        assertEquals(expectedEpisodes, result.episodes)
     }
 }

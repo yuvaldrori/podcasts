@@ -19,6 +19,9 @@ interface ChapterDao {
     @Query("DELETE FROM chapters WHERE episodeId = :episodeId")
     suspend fun deleteChaptersForEpisode(episodeId: String)
 
+    @Query("DELETE FROM chapters WHERE episodeId IN (:episodeIds)")
+    suspend fun deleteChaptersBulk(episodeIds: List<String>)
+
     @Transaction
     suspend fun updateChapters(episodeId: String, chapters: List<Chapter>) {
         deleteChaptersForEpisode(episodeId)
@@ -27,7 +30,7 @@ interface ChapterDao {
 
     @Transaction
     suspend fun updateChaptersBulk(episodeIds: List<String>, chapters: List<Chapter>) {
-        episodeIds.forEach { deleteChaptersForEpisode(it) }
+        deleteChaptersBulk(episodeIds)
         insertChapters(chapters)
     }
 }

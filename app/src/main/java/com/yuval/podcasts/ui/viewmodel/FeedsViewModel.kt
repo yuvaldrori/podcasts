@@ -1,6 +1,8 @@
 package com.yuval.podcasts.ui.viewmodel
 
-import android.content.Context
+import androidx.lifecycle.asFlow
+import com.yuval.podcasts.ui.utils.UiText
+import kotlinx.coroutines.flow.update
 import com.yuval.podcasts.R
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
@@ -15,11 +17,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -30,7 +31,7 @@ sealed interface FeedsUiState {
         val podcasts: ImmutableList<Podcast> = persistentListOf(),
         val unplayedEpisodes: ImmutableList<EpisodeWithPodcast> = persistentListOf(),
         val isRefreshing: Boolean = false,
-        val errorMessage: String? = null
+        val errorMessage: UiText? = null
     ) : FeedsUiState
 }
 
@@ -38,18 +39,18 @@ sealed interface FeedsUiState {
 class FeedsViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val enqueueEpisodeUseCase: EnqueueEpisodeUseCase,
-    private val refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase
-) : ViewModel() {
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    private val _isRefreshing = MutableStateFlow(false)
+    private val refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase,
+    private val workManager: androidx.work.WorkManager,
+    messageDelegate: MessageDelegate
+) : ViewModel(), MessageDelegate by messageDelegate {
 
     val uiState: StateFlow<FeedsUiState> = combine(
         repository.allPodcasts,
         repository.unplayedEpisodes,
-        _isRefreshing,
-        _errorMessage
-    ) { podcasts, episodes, isRefreshing, error ->
+        workManager.getWorkInfosForUniqueWorkLiveData("sync_all_podcasts").asFlow(),
+        errorMessage
+    ) { podcasts, episodes, workInfos, error ->
+        val isRefreshing = workInfos.any { it.state == androidx.work.WorkInfo.State.RUNNING || it.state == androidx.work.WorkInfo.State.ENQUEUED } == true
         FeedsUiState.Success(
             podcasts = podcasts.toImmutableList(),
             unplayedEpisodes = episodes.toImmutableList(),
@@ -68,20 +69,13 @@ class FeedsViewModel @Inject constructor(
                 repository.fetchAndStorePodcast(feedUrl)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                _errorMessage.value = repository.getString(R.string.error_refresh_podcast, e.message ?: "")
+                showError(UiText.StringResource(R.string.error_refresh_podcast, e.message ?: ""))
             }
         }
     }
 
     fun refreshAll() {
-        // Enqueue the worker. The UI will update when the DB updates via flows.
-        _isRefreshing.value = true
         refreshAllPodcastsUseCase()
-        // We'll reset the refreshing state quickly here, a real app might observe WorkInfo
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(1000)
-            _isRefreshing.value = false
-        }
     }
 
     fun addToQueue(episode: Episode) {
@@ -102,10 +96,6 @@ class FeedsViewModel @Inject constructor(
         viewModelScope.launch {
             repository.markAllAsPlayed()
         }
-    }
-
-    fun clearError() {
-        _errorMessage.value = null
     }
 
     fun unsubscribePodcast(feedUrl: String) {

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
+import kotlin.time.Duration.Companion.seconds
 
 data class PlayerUiState(
     val isPlaying: Boolean = false,
@@ -37,28 +38,26 @@ class PlayerViewModel @Inject constructor(
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<PlayerUiState> = combine(
         playerManager.isPlaying,
-        playerManager.isConnected,
+        playerManager.isInitialized,
         playerManager.currentPosition,
         playerManager.duration,
         playerManager.playbackSpeed,
         playerManager.currentMediaId.flatMapLatest { id ->
             if (id == null) flowOf(null) else repository.getEpisodeByIdFlow(id)
-        },
-        networkMonitor.isOnline
+        }
     ) { values ->
         val isPlaying = values[0] as Boolean
-        val isPlayerConnected = values[1] as Boolean
+        val isInitialized = values[1] as Boolean
         val currentPosition = values[2] as Long
         val playerDuration = values[3] as Long
         val playbackSpeed = values[4] as Float
         val currentEpisode = values[5] as Episode?
-        val isOnline = values[6] as Boolean
 
-        val finalDuration = if (playerDuration > 0) playerDuration else (currentEpisode?.duration ?: 0L) * 1000L
+        val finalDuration = if (playerDuration > 0) playerDuration else (currentEpisode?.duration?.seconds?.inWholeMilliseconds ?: 0L)
         
         PlayerUiState(
             isPlaying = isPlaying,
-            isConnected = isPlayerConnected && isOnline,
+            isConnected = isInitialized,
             currentPosition = currentPosition,
             duration = finalDuration,
             playbackSpeed = playbackSpeed,
@@ -72,20 +71,6 @@ class PlayerViewModel @Inject constructor(
 
     init {
         playerManager.initialize()
-
-        // Auto-load the queue on fresh startup if nothing is playing
-        viewModelScope.launch {
-            // Wait until the MediaBrowser is fully connected and initialized
-            playerManager.isInitialized.first { it }
-            
-            if (playerManager.currentMediaId.value == null) {
-                val queue = repository.listeningQueue.first()
-                if (queue.isNotEmpty()) {
-                    val firstEp = queue.first().episode
-                    playerManager.prepareQueue(queue.map { it.episode }, 0, firstEp.lastPlayedPosition)
-                }
-            }
-        }
     }
 
     fun playPause() {
@@ -94,7 +79,13 @@ class PlayerViewModel @Inject constructor(
 
     fun play(episode: Episode) {
         val uri = episode.localFilePath ?: episode.audioUrl
-        playerManager.play(episode.id, uri, episode.lastPlayedPosition)
+        playerManager.play(
+            mediaId = episode.id,
+            uri = uri,
+            title = episode.title,
+            imageUrl = episode.imageUrl,
+            startPositionMs = episode.lastPlayedPosition
+        )
     }
 
     fun playQueue(episodes: List<Episode>, startIndex: Int, startPositionMs: Long = 0L) {

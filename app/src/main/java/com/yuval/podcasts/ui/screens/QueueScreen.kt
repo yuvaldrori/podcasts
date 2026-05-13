@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.ui.LocalMainPadding
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.QueueUiState
 import com.yuval.podcasts.ui.components.LoadingBox
@@ -88,11 +89,11 @@ fun QueueScreen(
             )
         }
     ) { padding ->
+        val mainPadding = LocalMainPadding.current
         if (queue.isEmpty()) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                    .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -106,9 +107,13 @@ fun QueueScreen(
                 state = lazyListState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
                     .testTag("queue_list"),
-                contentPadding = PaddingValues(16.dp)
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 16.dp,
+                    bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding() + 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                )
             ) {
                 itemsIndexed(queue, key = { _, item -> item.episode.id }) { index, episodeWithPodcast ->
                     val episode = episodeWithPodcast.episode

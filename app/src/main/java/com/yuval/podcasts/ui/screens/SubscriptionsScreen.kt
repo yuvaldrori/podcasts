@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.ui.components.PodcastItem
+import com.yuval.podcasts.ui.LocalMainPadding
 
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
@@ -24,9 +25,15 @@ fun SubscriptionsScreen(
     onPodcastClick: (String) -> Unit,
     onUnsubscribe: (String) -> Unit
 ) {
+    val mainPadding = LocalMainPadding.current
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
+        contentPadding = PaddingValues(
+            top = WindowInsets.systemBars.asPaddingValues().calculateTopPadding() + 16.dp,
+            bottom = mainPadding.calculateBottomPadding() + 16.dp,
+            start = 16.dp,
+            end = 16.dp
+        )
     ) {
         items(
             items = podcasts,

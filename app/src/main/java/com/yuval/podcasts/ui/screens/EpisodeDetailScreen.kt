@@ -28,9 +28,11 @@ import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.ui.viewmodel.EpisodeDetailUiState
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.components.LoadingBox
 import com.yuval.podcasts.ui.components.PodcastCover
 import com.yuval.podcasts.ui.utils.Formatter
+import com.yuval.podcasts.ui.LocalMainPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,10 +56,22 @@ fun EpisodeDetailScreen(
             )
         }
     ) { padding ->
+        val mainPadding = LocalMainPadding.current
         when (uiState) {
-            is EpisodeDetailUiState.Loading -> LoadingBox(Modifier.padding(padding))
+            is EpisodeDetailUiState.Loading -> LoadingBox(
+                Modifier.padding(
+                    top = padding.calculateTopPadding(),
+                    bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding()
+                )
+            )
             is EpisodeDetailUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(
+                        top = padding.calculateTopPadding(),
+                        bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding()
+                    ), 
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(stringResource(R.string.episode_not_found))
                 }
             }
@@ -66,8 +80,12 @@ fun EpisodeDetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding)
-                        .padding(16.dp)
+                        .padding(
+                            top = padding.calculateTopPadding() + 16.dp,
+                            bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding() + 16.dp,
+                            start = 16.dp,
+                            end = 16.dp
+                        )
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -76,7 +94,7 @@ fun EpisodeDetailScreen(
                         val imageUrl = data.episode.imageUrl ?: data.podcast.imageUrl
                         PodcastCover(
                             model = imageUrl,
-                            size = 120.dp
+                            size = Constants.COVER_SIZE_DETAIL_DP.dp
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
@@ -113,18 +131,19 @@ fun EpisodeDetailScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    val shareEpisodeFormat = stringResource(R.string.share_episode_format, data.episode.title, data.episode.episodeWebLink ?: "")
                     val listeningToString = stringResource(R.string.listening_to, data.episode.title)
                     OutlinedButton(
                         onClick = {
                             val sendIntent: Intent = Intent().apply {
                                 action = Intent.ACTION_SEND
                                 val shareText = if (!data.episode.isLocal && data.episode.episodeWebLink != null) {
-                                    "${data.episode.title}\n\n${data.episode.episodeWebLink}"
+                                    shareEpisodeFormat
                                 } else {
                                     listeningToString
                                 }
                                 putExtra(Intent.EXTRA_TEXT, shareText)
-                                type = "text/plain"
+                                type = Constants.MIME_TYPE_TEXT_PLAIN
                             }
                             val shareIntent = Intent.createChooser(sendIntent, null)
                             context.startActivity(shareIntent)

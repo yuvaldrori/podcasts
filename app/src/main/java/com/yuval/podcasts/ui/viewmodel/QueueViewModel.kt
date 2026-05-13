@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.seconds
 
 @Immutable
 sealed interface QueueUiState {
@@ -45,7 +46,7 @@ class QueueViewModel @Inject constructor(
             if (item.episode.id == currentId && currentDur > 0) {
                 (currentDur - currentPos).coerceAtLeast(0L)
             } else {
-                val durationMs = item.episode.duration * 1000L
+                val durationMs = item.episode.duration.seconds.inWholeMilliseconds
                 (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
             }
         }

@@ -6,6 +6,7 @@ import com.yuval.podcasts.data.db.entity.NetworkEpisode
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.db.entity.NetworkEpisodeWithChapters
+import com.yuval.podcasts.data.db.entity.ParsedPodcast
 import com.yuval.podcasts.data.Constants
 import java.io.InputStream
 import java.text.SimpleDateFormat
@@ -13,16 +14,14 @@ import java.util.Locale
 import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 @Singleton
 class RssParser @Inject constructor() {
-    private val dateFormat = object : ThreadLocal<SimpleDateFormat>() {
-        override fun initialValue() = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }
-    }
+    private val dateFormatter = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
 
-    fun parse(inputStream: InputStream, feedUrl: String): Pair<Podcast, List<NetworkEpisodeWithChapters>> {
+    fun parse(inputStream: InputStream, feedUrl: String): ParsedPodcast {
         val factory = XmlPullParserFactory.newInstance()
         factory.isNamespaceAware = true
         val parser = factory.newPullParser()
@@ -34,39 +33,37 @@ class RssParser @Inject constructor() {
         var podcastWebsite = ""
         val episodes = mutableListOf<NetworkEpisodeWithChapters>()
 
-        var eventType = parser.eventType
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            if (eventType == XmlPullParser.START_TAG) {
-                val ns = parser.namespace
-                val name = parser.name
+        while (parser.next() != XmlPullParser.END_DOCUMENT) {
+            if (parser.eventType != XmlPullParser.START_TAG) continue
+            
+            val ns = parser.namespace
+            val name = parser.name
 
-                when {
-                    name == Constants.Rss.TITLE && ns.isEmpty() -> {
-                        if (podcastTitle.isEmpty()) podcastTitle = readText(parser)
-                    }
-                    name == Constants.Rss.DESCRIPTION && ns.isEmpty() -> {
-                        if (podcastDescription.isEmpty()) podcastDescription = readText(parser)
-                    }
-                    name == Constants.Rss.LINK && ns.isEmpty() -> {
-                        if (podcastWebsite.isEmpty()) podcastWebsite = readText(parser)
-                    }
-                    name == Constants.Rss.IMAGE && ns.isEmpty() -> {
-                        // Standard RSS <image><url>...</url></image>
-                        val stdUrl = readPodcastImage(parser)
-                        if (podcastImageUrl.isEmpty()) podcastImageUrl = stdUrl
-                    }
-                    name == Constants.Rss.IMAGE && ns.contains("itunes") -> {
-                        // <itunes:image href="..." />
-                        val itunesUrl = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF) ?: ""
-                        podcastImageUrl = itunesUrl // itunes:image usually preferred if present
-                        skip(parser)
-                    }
-                    name == Constants.Rss.ITEM -> {
-                        episodes.add(readItem(parser, feedUrl))
-                    }
+            when {
+                name == Constants.Rss.TITLE && ns.isEmpty() -> {
+                    if (podcastTitle.isEmpty()) podcastTitle = readText(parser)
+                }
+                name == Constants.Rss.DESCRIPTION && ns.isEmpty() -> {
+                    if (podcastDescription.isEmpty()) podcastDescription = readText(parser)
+                }
+                name == Constants.Rss.LINK && ns.isEmpty() -> {
+                    if (podcastWebsite.isEmpty()) podcastWebsite = readText(parser)
+                }
+                name == Constants.Rss.IMAGE && ns.isEmpty() -> {
+                    // Standard RSS <image><url>...</url></image>
+                    val stdUrl = readPodcastImage(parser)
+                    if (podcastImageUrl.isEmpty()) podcastImageUrl = stdUrl
+                }
+                name == Constants.Rss.IMAGE && ns.contains("itunes") -> {
+                    // <itunes:image href="..." />
+                    val itunesUrl = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF) ?: ""
+                    podcastImageUrl = itunesUrl // itunes:image usually preferred if present
+                    // No skip() needed here as it's an empty element or handled by next()
+                }
+                name == Constants.Rss.ITEM -> {
+                    episodes.add(readItem(parser, feedUrl))
                 }
             }
-            eventType = parser.next()
         }
 
         val podcast = Podcast(
@@ -76,7 +73,7 @@ class RssParser @Inject constructor() {
             imageUrl = podcastImageUrl,
             website = podcastWebsite
         )
-        return Pair(podcast, episodes)
+        return ParsedPodcast(podcast, episodes)
     }
 
     private fun readPodcastImage(parser: XmlPullParser): String {
@@ -117,7 +114,7 @@ class RssParser @Inject constructor() {
                 name == Constants.Rss.PUB_DATE -> {
                     val dateStr = readText(parser)
                     pubDate = try {
-                        dateFormat.get()?.parse(dateStr)?.time ?: 0L
+                        java.time.ZonedDateTime.parse(dateStr, dateFormatter).toInstant().toEpochMilli()
                     } catch (e: Exception) {
                         0L
                     }
@@ -167,7 +164,7 @@ class RssParser @Inject constructor() {
                 chapters.add(Chapter(
                     episodeId = "", // Filled by caller/Dao
                     title = title,
-                    startTimeMs = parseDuration(start) * 1000L,
+                    startTimeMs = parseDuration(start).seconds.inWholeMilliseconds,
                     imageUrl = parser.getAttributeValue(null, Constants.Rss.CHAPTER_IMAGE),
                     url = parser.getAttributeValue(null, Constants.Rss.CHAPTER_HREF)
                 ))
@@ -183,7 +180,7 @@ class RssParser @Inject constructor() {
         var result = ""
         if (parser.next() == XmlPullParser.TEXT) {
             result = parser.text
-            parser.nextTag()
+            parser.next() // consume END_TAG
         }
         return result
     }
@@ -202,15 +199,15 @@ class RssParser @Inject constructor() {
     }
 
     private fun parseDuration(durationStr: String?): Long {
-        if (durationStr == null) return 0L
+        if (durationStr.isNullOrBlank()) return 0L
         return try {
             val parts = durationStr.split(":")
-            when (parts.size) {
-                1 -> parts[0].toDouble().toLong()
-                2 -> parts[0].toLong() * 60 + parts[1].toDouble().toLong()
-                3 -> parts[0].toLong() * 3600 + parts[1].toLong() * 60 + parts[2].toDouble().toLong()
-                else -> 0L
+            var totalDuration = Duration.ZERO
+            for (part in parts) {
+                val value = part.toDoubleOrNull()?.toLong() ?: 0L
+                totalDuration = (totalDuration * 60) + value.seconds
             }
+            totalDuration.inWholeSeconds
         } catch (e: Exception) {
             0L
         }

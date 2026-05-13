@@ -32,12 +32,8 @@ class PlayerViewModelTest {
         networkMonitor = mockk(relaxed = true)
         
         every { playerManager.isPlaying } returns MutableStateFlow(false)
-        every { playerManager.isConnected } returns MutableStateFlow(false)
-        every { playerManager.currentPosition } returns MutableStateFlow(0L)
-        every { playerManager.duration } returns MutableStateFlow(0L)
-        every { playerManager.playbackSpeed } returns MutableStateFlow(1f)
-        every { playerManager.currentMediaId } returns MutableStateFlow(null)
         every { playerManager.isInitialized } returns MutableStateFlow(true)
+        every { playerManager.currentPosition } returns MutableStateFlow(0L)
         every { networkMonitor.isOnline } returns MutableStateFlow(true)
         
         every { repository.listeningQueue } returns flowOf(emptyList())

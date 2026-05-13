@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.db.entity.Episode
+import kotlin.time.Duration.Companion.seconds
 import com.yuval.podcasts.ui.utils.Formatter
 
 @Composable
@@ -109,7 +110,7 @@ fun EpisodeItem(
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
                         progress = { 
-                            if (episode.duration > 0) episode.lastPlayedPosition.toFloat() / (episode.duration * 1000f) else 0f 
+                            if (episode.duration > 0) episode.lastPlayedPosition.toFloat() / (episode.duration.seconds.inWholeMilliseconds.toFloat()) else 0f 
                         },
                         modifier = Modifier.fillMaxWidth().height(2.dp)
                     )

@@ -10,7 +10,8 @@ These tests ensure the local Room database saves, retrieves, and migrates inform
 
 *   **`EpisodeDaoTest`**: Verifies that we can insert, update, and delete podcast episodes. It also checks that we can correctly fetch a list of unplayed episodes.
 *   **`PodcastDaoTest`**: Checks that adding and removing Podcast subscriptions works, and ensures that fetching "all podcasts" returns the correct list ordered alphabetically.
-*   **`QueueDaoTest`**: Confirms that adding episodes to the play queue, reordering the queue, and removing items from the queue behaves as expected in the database.
+*   **`QueueDaoTest`**: Confirms that adding episodes to the play queue, reordering the queue, and removing items from the queue behaves as expected in the database. Specifically verifies the position-shifting logic for efficient insertions.
+*   **`ChapterDaoTest`**: Verifies that we can bulk delete and update chapters for multiple episodes in a single operation to maintain performance during synchronization.
 *   **`AppDatabaseMigrationTest`**: Ensures that user data (like episodes and playback positions) is preserved during database updates. It specifically verifies the complex migration from version 5 to 6 where the primary key structure changed.
 
 ## 🌐 Network Tests

@@ -11,7 +11,7 @@ import org.junit.Assert.assertEquals
 @RunWith(RobolectricTestRunner::class)
 class PlayerReplaceTest {
     @Test
-    fun testObserveQueueLogic() {
+    fun testSurgicalObserveQueueLogic() {
         val player = ExoPlayer.Builder(ApplicationProvider.getApplicationContext()).build()
         
         val itemA = MediaItem.Builder().setMediaId("A").setUri("http://a.com").build()
@@ -22,36 +22,51 @@ class PlayerReplaceTest {
         player.setMediaItems(listOf(itemA, itemB, itemC), 0, 0L)
         player.prepare()
         
-        // User adds D, E and reorders: [A, D, E, B, C]
-        // Currently playing: A (index 0)
+        // Simulation: User adds D, E and reorders: [D, E, A, B, C]
+        // Currently playing: A (initially index 0)
         
         val itemD = MediaItem.Builder().setMediaId("D").setUri("http://d.com").build()
         val itemE = MediaItem.Builder().setMediaId("E").setUri("http://e.com").build()
         
-        val newMediaItems = listOf(itemA, itemD, itemE, itemB, itemC)
-        
+        val newList = listOf(itemD, itemE, itemA, itemB, itemC)
+        val newIds = newList.map { it.mediaId }
         val currentMediaId = player.currentMediaItem?.mediaId!!
-        val currentInNewIndex = newMediaItems.indexOfFirst { it.mediaId == currentMediaId }
-        val currentInPlayerIndex = player.currentMediaItemIndex
-        
-        if (currentInPlayerIndex < player.mediaItemCount - 1) {
-            player.removeMediaItems(currentInPlayerIndex + 1, player.mediaItemCount)
+
+        // 1. Remove items that are no longer in the new list, EXCEPT the currently playing one
+        for (i in player.mediaItemCount - 1 downTo 0) {
+            val id = player.getMediaItemAt(i).mediaId
+            if (id != currentMediaId && !newIds.contains(id)) {
+                player.removeMediaItem(i)
+            }
         }
-        if (currentInPlayerIndex > 0) {
-            player.removeMediaItems(0, currentInPlayerIndex)
+
+        // 2. Add new items
+        val existingIdsInPlayer = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+        newList.forEachIndexed { index, item ->
+            if (!existingIdsInPlayer.contains(item.mediaId)) {
+                player.addMediaItem(index, item)
+            }
         }
-        
-        val beforeItems = newMediaItems.take(currentInNewIndex)
-        if (beforeItems.isNotEmpty()) player.addMediaItems(0, beforeItems)
-        
-        val afterItems = newMediaItems.drop(currentInNewIndex + 1)
-        if (afterItems.isNotEmpty()) player.addMediaItems(currentInNewIndex + 1, afterItems)
+
+        // 3. Move items to correct positions
+        for (index in newList.indices) {
+            val expectedId = newList[index].mediaId
+            val actualId = player.getMediaItemAt(index).mediaId
+            if (expectedId != actualId) {
+                for (searchIndex in index + 1 until player.mediaItemCount) {
+                    if (player.getMediaItemAt(searchIndex).mediaId == expectedId) {
+                        player.moveMediaItem(searchIndex, index)
+                        break
+                    }
+                }
+            }
+        }
         
         assertEquals("A", player.currentMediaItem?.mediaId)
         assertEquals(5, player.mediaItemCount)
-        assertEquals("A", player.getMediaItemAt(0).mediaId)
-        assertEquals("D", player.getMediaItemAt(1).mediaId)
-        assertEquals("E", player.getMediaItemAt(2).mediaId)
+        assertEquals("D", player.getMediaItemAt(0).mediaId)
+        assertEquals("E", player.getMediaItemAt(1).mediaId)
+        assertEquals("A", player.getMediaItemAt(2).mediaId)
         assertEquals("B", player.getMediaItemAt(3).mediaId)
         assertEquals("C", player.getMediaItemAt(4).mediaId)
     }

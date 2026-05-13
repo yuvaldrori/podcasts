@@ -125,7 +125,7 @@ class PlayerManagerTest {
 
     @Test
     fun play_setsMediaItemAndPrepares() {
-        playerManager.play("ep1", "http://example.com/audio.mp3", 5000L)
+        playerManager.play(mediaId = "ep1", uri = "http://example.com/audio.mp3", startPositionMs = 5000L)
         
         verify { 
             mediaController.setMediaItem(any<MediaItem>())
@@ -137,7 +137,7 @@ class PlayerManagerTest {
     }
 
     @Test
-    fun playQueue_whenCurrentItemMatchesAndPlaying_pauses() {
+    fun playQueue_alwaysSetsMediaItemsAndPlays() {
         val episode = Episode("ep1", "feed", "T1", "D1", "http://audio1.mp3", null, null, 0L, 0L, 0, null, false, 5000L)
         val episodes = listOf(episode)
         
@@ -153,30 +153,8 @@ class PlayerManagerTest {
 
         playerManager.playQueue(episodes, 0, 5000L)
         
-        // Should pause instead of setMediaItems
-        verify(exactly = 0) { mediaController.setMediaItems(any(), any(), any()) }
-        verify { mediaController.pause() }
-    }
-
-    @Test
-    fun playQueue_whenCurrentItemMatchesAndPaused_plays() {
-        val episode = Episode("ep1", "feed", "T1", "D1", "http://audio1.mp3", null, null, 0L, 0L, 0, null, false, 5000L)
-        val episodes = listOf(episode)
-        
-        // Mock current state: ep1 is paused
-        every { mediaController.currentMediaItem?.mediaId } returns "ep1"
-        every { mediaController.isPlaying } returns false
-        
-        // Use reflection to set _currentMediaId internal state to "ep1"
-        val currentMediaIdField = PlayerManager::class.java.getDeclaredField("_currentMediaId")
-        currentMediaIdField.isAccessible = true
-        @Suppress("UNCHECKED_CAST")
-        (currentMediaIdField.get(playerManager) as MutableStateFlow<String?>).value = "ep1"
-
-        playerManager.playQueue(episodes, 0, 5000L)
-        
-        // Should play instead of setMediaItems
-        verify(exactly = 0) { mediaController.setMediaItems(any(), any(), any()) }
+        // Should NOT shortcut to pause anymore
+        verify { mediaController.setMediaItems(any(), 0, 5000L) }
         verify { mediaController.play() }
     }
 
@@ -192,7 +170,7 @@ class PlayerManagerTest {
         verify { mediaController.addListener(capture(listenerSlot)) }
         
         // Set up initial state with an item playing
-        playerManager.play("ep1", "http://example.com/audio.mp3", 0L)
+        playerManager.play(mediaId = "ep1", uri = "http://example.com/audio.mp3", startPositionMs = 0L)
         assertEquals("ep1", playerManager.currentMediaId.value)
 
         // Trigger the STATE_ENDED event

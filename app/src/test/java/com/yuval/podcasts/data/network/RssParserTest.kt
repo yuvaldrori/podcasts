@@ -25,12 +25,12 @@ class RssParserTest {
         """.trimIndent()
         
         val inputStream = ByteArrayInputStream(validXml.toByteArray())
-        val (podcast, episodes) = parser.parse(inputStream, "http://test.com")
+        val parsed = parser.parse(inputStream, "http://test.com")
         
-        assertEquals("Test Podcast", podcast.title)
-        assertEquals(1, episodes.size)
-        assertEquals("ep1", episodes[0].episode.id)
-        assertEquals(3900L, episodes[0].episode.duration)
+        assertEquals("Test Podcast", parsed.podcast.title)
+        assertEquals(1, parsed.episodes.size)
+        assertEquals("ep1", parsed.episodes[0].episode.id)
+        assertEquals(3900L, parsed.episodes[0].episode.duration)
     }
 
     @Test
@@ -50,11 +50,11 @@ class RssParserTest {
         """.trimIndent()
         
         val inputStream = ByteArrayInputStream(xml.toByteArray())
-        val (podcast, episodes) = parser.parse(inputStream, "http://test.com")
+        val parsed = parser.parse(inputStream, "http://test.com")
         
-        assertEquals("http://test.com/podcast.jpg", podcast.imageUrl)
-        assertEquals(1, episodes.size)
-        assertEquals("http://test.com/episode1.jpg", episodes[0].episode.imageUrl)
+        assertEquals("http://test.com/podcast.jpg", parsed.podcast.imageUrl)
+        assertEquals(1, parsed.episodes.size)
+        assertEquals("http://test.com/episode1.jpg", parsed.episodes[0].episode.imageUrl)
     }
 
     @Test
@@ -77,9 +77,9 @@ class RssParserTest {
         """.trimIndent()
         
         val inputStream = ByteArrayInputStream(xml.toByteArray())
-        val (podcast, _) = parser.parse(inputStream, "http://test.com")
+        val parsed = parser.parse(inputStream, "http://test.com")
         
-        assertEquals("http://test.com/podcast_std.jpg", podcast.imageUrl)
+        assertEquals("http://test.com/podcast_std.jpg", parsed.podcast.imageUrl)
     }
 
     @Test
@@ -102,11 +102,10 @@ class RssParserTest {
         """.trimIndent()
         
         val inputStream = ByteArrayInputStream(xml.toByteArray())
-        val (podcast, _) = parser.parse(inputStream, "http://test.com")
+        val parsed = parser.parse(inputStream, "http://test.com")
         
-        // Since itunes:image comes after in this XML, and both are named "image" in namespace mode,
-        // the last one found might win, or the one with href wins.
-        assertEquals("http://test.com/itunes.jpg", podcast.imageUrl)
+        // Since itunes:image usually preferred if present
+        assertEquals("http://test.com/itunes.jpg", parsed.podcast.imageUrl)
     }
 
     @Test
@@ -131,10 +130,10 @@ class RssParserTest {
         """.trimIndent()
         
         val inputStream = ByteArrayInputStream(invalidDurationXml.toByteArray())
-        val (_, episodes) = parser.parse(inputStream, "http://test.com")
+        val parsed = parser.parse(inputStream, "http://test.com")
         
-        assertEquals(2, episodes.size)
-        assertEquals(0L, episodes[0].episode.duration)
-        assertEquals(754L, episodes[1].episode.duration)
+        assertEquals(2, parsed.episodes.size)
+        assertEquals(0L, parsed.episodes[0].episode.duration)
+        assertEquals(754L, parsed.episodes[1].episode.duration)
     }
 }

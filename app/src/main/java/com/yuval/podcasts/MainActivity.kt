@@ -12,14 +12,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.palette.graphics.Palette
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import com.yuval.podcasts.ui.theme.PodcastsTheme
 import com.yuval.podcasts.ui.MainScreen
 import com.yuval.podcasts.ui.viewmodel.PlayerViewModel
 import com.yuval.podcasts.ui.viewmodel.ThemeViewModel
-import com.yuval.podcasts.work.CleanupWorker
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -30,14 +26,6 @@ class MainActivity : AppCompatActivity() {
         
         window.isNavigationBarContrastEnforced = false
         
-        val workManager = WorkManager.getInstance(this)
-        val cleanupRequest = OneTimeWorkRequestBuilder<CleanupWorker>().build()
-        workManager.enqueueUniqueWork(
-            com.yuval.podcasts.data.Constants.WORK_NAME_CLEANUP,
-            ExistingWorkPolicy.KEEP,
-            cleanupRequest
-        )
-
         setContent {
             val themeViewModel: ThemeViewModel = hiltViewModel()
             val dynamicColorScheme by themeViewModel.dynamicColorScheme.collectAsStateWithLifecycle()

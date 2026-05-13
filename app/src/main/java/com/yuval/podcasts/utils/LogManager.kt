@@ -1,9 +1,8 @@
 package com.yuval.podcasts.utils
 
 import android.content.Context
-import android.os.Environment
 import android.util.Log
-import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +12,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
@@ -36,12 +34,25 @@ class LogManager @Inject constructor(
     private val logDir = File(context.filesDir, "logs").apply { if (!exists()) mkdirs() }
     private val activeLogFile = File(logDir, "app_log_active.jsonl")
     private val previousLogFile = File(logDir, "app_log_previous.jsonl")
-    private val maxFileSize = 5 * 1024 * 1024 // 5MB
+    private val maxFileSize = Constants.MAX_LOG_FILE_SIZE.toLong()
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+    private val logBuffer = mutableListOf<String>()
+    private val bufferLimit = Constants.LOG_BUFFER_LIMIT
+    private val flushIntervalMs = Constants.LOG_FLUSH_INTERVAL_MS
 
     init {
         setupCrashHandler()
+        startBufferTimeout()
+    }
+
+    private fun startBufferTimeout() {
+        scope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(flushIntervalMs)
+                flushBuffer()
+            }
+        }
     }
 
     private fun setupCrashHandler() {
@@ -49,31 +60,100 @@ class LogManager @Inject constructor(
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             logSync("CRASH", "Uncaught exception on thread ${thread.name}", "ERROR", 
                 mapOf("stacktrace" to Log.getStackTraceString(throwable)))
+            flushBufferSync()
             defaultHandler?.uncaughtException(thread, throwable)
         }
     }
 
+    fun v(tag: String, message: String, metadata: Map<String, String>? = null) = log(tag, message, "VERBOSE", metadata)
+    fun d(tag: String, message: String, metadata: Map<String, String>? = null) = log(tag, message, "DEBUG", metadata)
     fun i(tag: String, message: String, metadata: Map<String, String>? = null) = log(tag, message, "INFO", metadata)
     fun w(tag: String, message: String, metadata: Map<String, String>? = null) = log(tag, message, "WARN", metadata)
     fun e(tag: String, message: String, metadata: Map<String, String>? = null) = log(tag, message, "ERROR", metadata)
 
     private fun log(tag: String, message: String, level: String, metadata: Map<String, String>? = null) {
-        // Also log to logcat for development
+        val levelInt = when (level) {
+            "VERBOSE" -> Log.VERBOSE
+            "DEBUG" -> Log.DEBUG
+            "INFO" -> Log.INFO
+            "WARN" -> Log.WARN
+            "ERROR" -> Log.ERROR
+            else -> Log.INFO
+        }
+
+        if (levelInt < Constants.MIN_LOG_LEVEL) return
+
         when (level) {
             "ERROR" -> Log.e(tag, message)
             "WARN" -> Log.w(tag, message)
+            "INFO" -> Log.i(tag, message)
+            "DEBUG" -> Log.d(tag, message)
+            "VERBOSE" -> Log.v(tag, message)
             else -> Log.i(tag, message)
         }
         
         scope.launch {
-            logSync(tag, message, level, metadata)
+            val entry = LogEntry(
+                timestamp = dateFormat.format(Date()),
+                level = level,
+                tag = tag,
+                message = message,
+                metadata = metadata
+            )
+            val jsonLine = Json.encodeToString(entry)
+            
+            synchronized(logBuffer) {
+                logBuffer.add(jsonLine)
+                if (logBuffer.size >= bufferLimit) {
+                    flushBuffer()
+                }
+            }
+        }
+    }
+
+    private fun flushBuffer() {
+        val toWrite = synchronized(logBuffer) {
+            if (logBuffer.isEmpty()) return
+            val copy = logBuffer.toList()
+            logBuffer.clear()
+            copy
+        }
+        
+        try {
+            checkRotation()
+            activeLogFile.appendText(toWrite.joinToString("\n", postfix = "\n"))
+        } catch (e: Exception) {
+            Log.e("LogManager", "Failed to flush log buffer", e)
+        }
+    }
+
+    private fun flushBufferSync() {
+        val toWrite = synchronized(logBuffer) {
+            if (logBuffer.isEmpty()) return
+            val copy = logBuffer.toList()
+            logBuffer.clear()
+            copy
+        }
+        try {
+            activeLogFile.appendText(toWrite.joinToString("\n", postfix = "\n"))
+        } catch (e: Exception) {
+             Log.e("LogManager", "Failed to flush log buffer sync", e)
         }
     }
 
     @Synchronized
     private fun logSync(tag: String, message: String, level: String, metadata: Map<String, String>?) {
+        val levelInt = when (level) {
+            "VERBOSE" -> Log.VERBOSE
+            "DEBUG" -> Log.DEBUG
+            "INFO" -> Log.INFO
+            "WARN" -> Log.WARN
+            "ERROR" -> Log.ERROR
+            else -> Log.INFO
+        }
+        if (levelInt < Constants.MIN_LOG_LEVEL) return
+
         try {
-            checkRotation()
             val entry = LogEntry(
                 timestamp = dateFormat.format(Date()),
                 level = level,
@@ -95,24 +175,12 @@ class LogManager @Inject constructor(
         }
     }
 
-    fun exportLogs(): Result<File> {
-        return try {
-            val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-            val exportFile = File(downloadDir, "podcasts_logs_$timestamp.jsonl")
-            
-            FileOutputStream(exportFile).use { output ->
-                if (previousLogFile.exists()) {
-                    previousLogFile.inputStream().use { it.copyTo(output) }
-                }
-                if (activeLogFile.exists()) {
-                    activeLogFile.inputStream().use { it.copyTo(output) }
-                }
-            }
-            Result.success(exportFile)
-        } catch (e: Exception) {
-            Log.e("LogManager", "Export failed", e)
-            Result.failure(e)
+    fun exportLogsToStream(output: java.io.OutputStream) {
+        if (previousLogFile.exists()) {
+            previousLogFile.inputStream().use { it.copyTo(output) }
+        }
+        if (activeLogFile.exists()) {
+            activeLogFile.inputStream().use { it.copyTo(output) }
         }
     }
 }

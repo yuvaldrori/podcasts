@@ -15,6 +15,8 @@ import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
+import com.yuval.podcasts.domain.usecase.ImportLocalFileUseCase
+import com.yuval.podcasts.ui.utils.UiText
 import com.yuval.podcasts.utils.LogManager
 import com.yuval.podcasts.work.OpmlImportWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,10 +26,10 @@ import javax.inject.Inject
 
 data class SettingsUiState(
     val importWorkInfo: WorkInfo? = null,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val skipSilenceEnabled: Boolean = false,
     val logNote: String = "",
-    val successMessage: String? = null
+    val successMessage: UiText? = null
 )
 
 @HiltViewModel
@@ -36,16 +38,17 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val workManager: WorkManager,
     private val exportOpmlUseCase: ExportOpmlUseCase,
-    private val logManager: LogManager
-) : ViewModel() {
+    private val importLocalFileUseCase: ImportLocalFileUseCase,
+    private val logManager: LogManager,
+    private val messageDelegate: MessageDelegate
+) : ViewModel(), MessageDelegate by messageDelegate {
 
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    private val _successMessage = MutableStateFlow<String?>(null)
+    private val _successMessage = MutableStateFlow<UiText?>(null)
     private val _logNote = MutableStateFlow("")
 
     val uiState: StateFlow<SettingsUiState> = combine(
         workManager.getWorkInfosForUniqueWorkLiveData("opml_import").asFlow().map { it.firstOrNull() },
-        _errorMessage,
+        errorMessage,
         _successMessage,
         _logNote,
         settingsRepository.skipSilenceFlow
@@ -64,23 +67,29 @@ class SettingsViewModel @Inject constructor(
     )
 
     fun onLogNoteChanged(note: String) {
-        _logNote.value = note
+        _logNote.update { note }
     }
 
     fun saveLogNote() {
         val note = _logNote.value
         if (note.isNotBlank()) {
             logManager.i("USER_NOTE", note)
-            _logNote.value = ""
+            _logNote.update { "" }
         }
     }
 
-    fun downloadLogs() {
-        val result = logManager.exportLogs()
-        if (result.isSuccess) {
-            _successMessage.value = repository.getString(R.string.logs_downloaded_success, result.getOrThrow().name)
-        } else {
-            _errorMessage.value = result.exceptionOrNull()?.message ?: "Export failed"
+    fun exportLogs(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    logManager.exportLogsToStream(stream)
+                }
+                _successMessage.update { UiText.StringResource(R.string.logs_downloaded_success, context.getString(R.string.default_logs_filename)) }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                android.util.Log.e("SettingsViewModel", "Failed to export logs", e)
+                showError(UiText.StringResource(R.string.error_export_failed))
+            }
         }
     }
 
@@ -90,7 +99,7 @@ class SettingsViewModel @Inject constructor(
                 repository.fetchAndStorePodcast(url)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                _errorMessage.value = repository.getString(R.string.error_add_podcast, e.message ?: "")
+                showError(UiText.StringResource(R.string.error_add_podcast, e.message ?: ""))
             }
         }
     }
@@ -109,9 +118,9 @@ class SettingsViewModel @Inject constructor(
 
     fun importLocalAudio(uri: Uri) {
         viewModelScope.launch {
-            val result = repository.addLocalFile(uri)
+            val result = importLocalFileUseCase(uri)
             if (result.isFailure) {
-                _errorMessage.value = repository.getString(R.string.error_import_local, result.exceptionOrNull()?.message ?: "")
+                showError(UiText.StringResource(R.string.error_import_local, result.exceptionOrNull()?.message ?: ""))
             }
         }
     }
@@ -125,7 +134,7 @@ class SettingsViewModel @Inject constructor(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 android.util.Log.e("SettingsViewModel", "Failed to export OPML", e)
-                _errorMessage.value = repository.getString(R.string.error_export_opml, e.message ?: "")
+                showError(UiText.StringResource(R.string.error_export_opml, e.message ?: ""))
             }
         }
     }
@@ -136,8 +145,8 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun clearError() {
-        _errorMessage.value = null
-        _successMessage.value = null
+    fun clearMessages() {
+        messageDelegate.clearError()
+        _successMessage.update { null }
     }
 }

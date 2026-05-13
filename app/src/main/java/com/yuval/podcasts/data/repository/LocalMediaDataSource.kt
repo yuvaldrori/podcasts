@@ -10,6 +10,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
+import com.yuval.podcasts.data.Constants
 
 data class LocalMediaMetadata(
     val title: String,
@@ -22,7 +24,8 @@ data class LocalMediaMetadata(
 @Singleton
 class LocalMediaDataSource @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val logManager: com.yuval.podcasts.utils.LogManager
 ) {
     suspend fun copyAndExtract(uri: Uri): Result<LocalMediaMetadata> = withContext(ioDispatcher) {
         try {
@@ -48,7 +51,7 @@ class LocalMediaDataSource @Inject constructor(
                 ?: "Unknown Artist"
             val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
             val durationMs = durationStr?.toLongOrNull() ?: 0L
-            val durationSecs = durationMs / 1000L
+            val durationSecs = durationMs.milliseconds.inWholeSeconds
             
             retriever.release()
 
@@ -63,7 +66,7 @@ class LocalMediaDataSource @Inject constructor(
 
             Result.success(LocalMediaMetadata(cleanTitle, artist, durationSecs, description, destFile))
         } catch (e: Exception) {
-            e.printStackTrace()
+            logManager.e("LocalMediaDataSource", "Failed to copy or extract metadata from URI: $uri", mapOf("error" to e.message.toString()))
             Result.failure(e)
         }
     }
@@ -87,7 +90,7 @@ class LocalMediaDataSource @Inject constructor(
     }
 
     private fun formatFileSize(sizeBytes: Long): String {
-        val mb = sizeBytes / (1024.0 * 1024.0)
+        val mb = sizeBytes.toDouble() / Constants.BYTES_PER_MB.toDouble()
         return String.format(java.util.Locale.US, "%.1f MB", mb)
     }
 }

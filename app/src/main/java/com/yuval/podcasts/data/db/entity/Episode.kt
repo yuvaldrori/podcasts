@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.ColumnInfo
+import kotlin.time.Duration.Companion.seconds
 
 @Entity(
     tableName = "episodes",
@@ -42,6 +43,6 @@ data class Episode(
 
     val progress: Float
         get() = if (duration > 0) {
-            lastPlayedPosition.toFloat() / (duration.toFloat() * 1000f).coerceAtLeast(1f)
+            lastPlayedPosition.toFloat() / duration.seconds.inWholeMilliseconds.toFloat().coerceAtLeast(1f)
         } else 0f
-    }
+}

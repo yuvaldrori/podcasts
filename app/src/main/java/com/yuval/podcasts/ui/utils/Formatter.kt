@@ -3,6 +3,8 @@ package com.yuval.podcasts.ui.utils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 object Formatter {
     private val dateFormat = ThreadLocal.withInitial { 
@@ -19,8 +21,9 @@ object Formatter {
      */
     fun formatDurationShort(seconds: Long): String {
         if (seconds <= 0) return ""
-        val hours = seconds / 3600
-        val minutes = (seconds % 3600) / 60
+        val duration = seconds.seconds
+        val hours = duration.inWholeHours
+        val minutes = duration.inWholeMinutes % 60
         return if (hours > 0) {
             "${hours}h ${minutes}m"
         } else {
@@ -32,10 +35,10 @@ object Formatter {
      * Formats duration in milliseconds to "HH:mm:ss" or "mm:ss" format.
      */
     fun formatTime(ms: Long): String {
-        val totalSeconds = ms / 1000
-        val seconds = totalSeconds % 60
-        val minutes = (totalSeconds / 60) % 60
-        val hours = totalSeconds / 3600
+        val duration = ms.milliseconds
+        val hours = duration.inWholeHours
+        val minutes = duration.inWholeMinutes % 60
+        val seconds = duration.inWholeSeconds % 60
         return if (hours > 0) {
             String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
         } else {
@@ -47,9 +50,9 @@ object Formatter {
      * Formats remaining queue time in milliseconds.
      */
     fun formatRemainingTime(ms: Long): String {
-        val totalSeconds = ms / 1000
-        val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
+        val duration = ms.milliseconds
+        val hours = duration.inWholeHours
+        val minutes = duration.inWholeMinutes % 60
         return if (hours > 0) {
             "${hours}h ${minutes}m"
         } else {
