@@ -22,6 +22,14 @@ import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
+import androidx.work.workDataOf
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import java.util.concurrent.atomic.AtomicInteger
+
 @HiltWorker
 class OpmlImportWorker @AssistedInject constructor(
     @Assisted private val appContext: Context,
@@ -36,8 +44,6 @@ class OpmlImportWorker @AssistedInject constructor(
         val uri = uriString.toUri()
 
         try {
-            setForeground(createForegroundInfo(0, 100))
-            
             val urls = appContext.contentResolver.openInputStream(uri)?.use { stream ->
                 opmlManager.parse(stream)
             } ?: return@withContext Result.failure()
@@ -45,21 +51,31 @@ class OpmlImportWorker @AssistedInject constructor(
             val total = urls.size
             if (total == 0) return@withContext Result.success()
 
-            for ((index, url) in urls.withIndex()) {
-                // Update Progress explicitly before processing each
-                setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to index, Constants.WORK_KEY_TOTAL to total))
-                setForeground(createForegroundInfo(index, total))
+            val completedCount = AtomicInteger(0)
+            val semaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
 
-                try {
-                    repository.fetchAndStorePodcast(url)
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                    android.util.Log.e("OpmlImportWorker", "Failed to import podcast: $url", e)
-                    // If one fails, log it but continue processing the rest of the OPML
-                }
+            setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
+            setForeground(createForegroundInfo(0, total))
+            
+            coroutineScope {
+                urls.map { url ->
+                    async {
+                        semaphore.withPermit {
+                            try {
+                                repository.fetchAndStorePodcast(url)
+                            } catch (e: Exception) {
+                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                android.util.Log.e("OpmlImportWorker", "Failed to import podcast: $url", e)
+                            } finally {
+                                val current = completedCount.incrementAndGet()
+                                setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
+                                setForeground(createForegroundInfo(current, total))
+                            }
+                        }
+                    }
+                }.awaitAll()
             }
 
-            setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to total, Constants.WORK_KEY_TOTAL to total))
             Result.success()
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e

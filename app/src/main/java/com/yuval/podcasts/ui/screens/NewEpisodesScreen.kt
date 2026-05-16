@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 
+import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
@@ -79,55 +80,74 @@ fun NewEpisodesScreen(
             )
         }
     ) { padding ->
-        val isRefreshing = (uiState as? FeedsUiState.Success)?.isRefreshing ?: false
+        val successState = uiState as? FeedsUiState.Success
+        val isRefreshing = successState?.isRefreshing ?: false
+        val refreshProgress = successState?.refreshProgress
         val mainPadding = LocalMainPadding.current
 
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = onRefreshAll,
-            state = pullToRefreshState,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-        ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag("episode_list"),
-                contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding() + 16.dp,
-                    bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding() + 16.dp,
-                    start = 16.dp,
-                    end = 16.dp
+                .padding(padding)
+                .pullToRefresh(
+                    isRefreshing = isRefreshing,
+                    state = pullToRefreshState,
+                    onRefresh = onRefreshAll
                 )
-            ) {
-                items(
-                    items = episodesData,
-                    key = { it.episode.id }
-                ) { episodeWithPodcast ->
-                    val episode = episodeWithPodcast.episode
-                    val podcast = episodeWithPodcast.podcast
-
-                    Box(
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (refreshProgress != null) {
+                    val (current, total) = refreshProgress
+                    LinearProgressIndicator(
+                        progress = { if (total > 0) current.toFloat() / total.toFloat() else 0f },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .animateItem()
-                    ) {
-                        val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
-                        EpisodeItem(
-                            episode = episode,
-                            modifier = Modifier.clickable(onClick = clickHandler),
-                            imageUrl = podcast.imageUrl,
-                            trailingContent = {
-                                Row {
-                                    IconButton(onClick = { onDismissEpisode(episode) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.dismiss))
-                                    }
-                                    IconButton(onClick = { onAddToQueue(episode) }) {
-                                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    )
+                }
+                
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("episode_list"),
+                    contentPadding = PaddingValues(
+                        top = 8.dp,
+                        bottom = mainPadding.calculateBottomPadding() + 16.dp,
+                        start = 16.dp,
+                        end = 16.dp
+                    )
+                ) {
+                    items(
+                        items = episodesData,
+                        key = { it.episode.id }
+                    ) { episodeWithPodcast ->
+                        val episode = episodeWithPodcast.episode
+                        val podcast = episodeWithPodcast.podcast
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem()
+                        ) {
+                            val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
+                            EpisodeItem(
+                                episode = episode,
+                                modifier = Modifier.clickable(onClick = clickHandler),
+                                imageUrl = podcast.imageUrl,
+                                trailingContent = {
+                                    Row {
+                                        IconButton(onClick = { onDismissEpisode(episode) }) {
+                                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.dismiss))
+                                        }
+                                        IconButton(onClick = { onAddToQueue(episode) }) {
+                                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }

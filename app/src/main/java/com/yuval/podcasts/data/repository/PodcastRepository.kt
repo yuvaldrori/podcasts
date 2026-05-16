@@ -16,8 +16,6 @@ import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.network.PodcastRemoteDataSource
 import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.work.DownloadWorker
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineDispatcher
@@ -25,8 +23,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import androidx.room.withTransaction
 import java.io.File
 import javax.inject.Inject
@@ -47,7 +43,6 @@ interface PodcastRepository {
     suspend fun insertPodcast(podcast: Podcast)
     suspend fun insertEpisodes(episodes: List<Episode>)
     suspend fun fetchAndStorePodcast(feedUrl: String)
-    suspend fun refreshAll()
     suspend fun unsubscribePodcast(feedUrl: String)
     suspend fun markAllAsPlayed()
     suspend fun markAsPlayed(id: String)
@@ -78,7 +73,6 @@ class DefaultPodcastRepository @Inject constructor(
     override val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
     override val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast()
 
-    private val networkSemaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
     override val unplayedEpisodes: Flow<List<EpisodeWithPodcast>> = episodeDao.getUnplayedEpisodesWithPodcast().distinctUntilChanged()
 
     override fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl).distinctUntilChanged()
@@ -121,24 +115,6 @@ class DefaultPodcastRepository @Inject constructor(
                 val episodeIds = parsed.episodes.map { it.episode.id }
                 chapterDao.updateChaptersBulk(episodeIds, allChapters)
             }
-        }
-    }
-
-    override suspend fun refreshAll(): Unit = withContext(ioDispatcher) {
-        coroutineScope {
-            val podcasts = allPodcasts.first()
-            podcasts.map { podcast ->
-                async {
-                    networkSemaphore.withPermit {
-                        try {
-                            fetchAndStorePodcast(podcast.feedUrl)
-                        } catch (e: Exception) {
-                            if (e is kotlinx.coroutines.CancellationException) throw e
-                            Log.e("PodcastRepository", "Failed to refresh podcast: ${podcast.feedUrl}", e)
-                        }
-                    }
-                }
-            }.awaitAll()
         }
     }
 

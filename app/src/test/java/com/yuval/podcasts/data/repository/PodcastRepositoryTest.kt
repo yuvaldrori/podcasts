@@ -120,22 +120,6 @@ class PodcastRepositoryTest {
     }
 
     @Test
-    fun refreshAll_callsFetchForEveryPodcast() = runTest {
-        val podcasts = listOf(
-            Podcast("url1", "T1", "D1", "I1", "W1"),
-            Podcast("url2", "T2", "D2", "I2", "W2")
-        )
-        every { podcastDao.getAllPodcasts() } returns flowOf(podcasts)
-        
-        coEvery { remoteDataSource.fetchPodcastData(any()) } returns ParsedPodcast(podcasts[0], emptyList())
-
-        repository.refreshAll()
-
-        coVerify { remoteDataSource.fetchPodcastData("url1") }
-        coVerify { remoteDataSource.fetchPodcastData("url2") }
-    }
-
-    @Test
     fun unsubscribePodcast_deletesAllData() = runTest {
         val feedUrl = "http://test.com/feed"
         val ep1 = Episode("ep1", feedUrl, "E1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L)

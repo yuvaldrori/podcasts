@@ -22,7 +22,7 @@ class RefreshAllPodcastsUseCase @Inject constructor(
 
         workManager.enqueueUniqueWork(
             "sync_all_podcasts",
-            ExistingWorkPolicy.REPLACE,
+            ExistingWorkPolicy.KEEP,
             syncWorkRequest
         )
     }

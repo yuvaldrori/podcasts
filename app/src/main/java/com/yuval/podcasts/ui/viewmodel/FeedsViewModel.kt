@@ -24,6 +24,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.delay
+import com.yuval.podcasts.utils.LogManager
+import androidx.work.WorkInfo
+
 @Immutable
 sealed interface FeedsUiState {
     object Loading : FeedsUiState
@@ -31,6 +36,7 @@ sealed interface FeedsUiState {
         val podcasts: ImmutableList<Podcast> = persistentListOf(),
         val unplayedEpisodes: ImmutableList<EpisodeWithPodcast> = persistentListOf(),
         val isRefreshing: Boolean = false,
+        val refreshProgress: Pair<Int, Int>? = null,
         val errorMessage: UiText? = null
     ) : FeedsUiState
 }
@@ -41,6 +47,7 @@ class FeedsViewModel @Inject constructor(
     private val enqueueEpisodeUseCase: EnqueueEpisodeUseCase,
     private val refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase,
     private val workManager: androidx.work.WorkManager,
+    private val logManager: LogManager,
     messageDelegate: MessageDelegate
 ) : ViewModel(), MessageDelegate by messageDelegate {
 
@@ -50,11 +57,23 @@ class FeedsViewModel @Inject constructor(
         workManager.getWorkInfosForUniqueWorkLiveData("sync_all_podcasts").asFlow(),
         errorMessage
     ) { podcasts, episodes, workInfos, error ->
-        val isRefreshing = workInfos.any { it.state == androidx.work.WorkInfo.State.RUNNING || it.state == androidx.work.WorkInfo.State.ENQUEUED } == true
+        val activeWorkInfo = workInfos.find { 
+            it.state == androidx.work.WorkInfo.State.RUNNING || 
+            it.state == androidx.work.WorkInfo.State.ENQUEUED 
+        }
+        val isRefreshing = activeWorkInfo != null
+        
+        val progress = if (activeWorkInfo != null) {
+            val current = activeWorkInfo.progress.getInt(Constants.WORK_KEY_PROGRESS, 0)
+            val total = activeWorkInfo.progress.getInt(Constants.WORK_KEY_TOTAL, 0)
+            if (total > 0) current to total else null
+        } else null
+
         FeedsUiState.Success(
             podcasts = podcasts.toImmutableList(),
             unplayedEpisodes = episodes.toImmutableList(),
             isRefreshing = isRefreshing,
+            refreshProgress = progress,
             errorMessage = error
         )
     }.stateIn(
@@ -62,17 +81,6 @@ class FeedsViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS),
         initialValue = FeedsUiState.Loading
     )
-
-    fun refreshPodcast(feedUrl: String) {
-        viewModelScope.launch {
-            try {
-                repository.fetchAndStorePodcast(feedUrl)
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                showError(UiText.StringResource(R.string.error_refresh_podcast, e.message ?: ""))
-            }
-        }
-    }
 
     fun refreshAll() {
         refreshAllPodcastsUseCase()
@@ -83,8 +91,6 @@ class FeedsViewModel @Inject constructor(
             enqueueEpisodeUseCase(episode)
         }
     }
-
-    fun getEpisodesForPodcast(feedUrl: String) = repository.getEpisodes(feedUrl)
 
     fun dismissEpisode(episode: Episode) {
         viewModelScope.launch {
