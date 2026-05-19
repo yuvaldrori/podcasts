@@ -24,6 +24,12 @@ class RssParser @Inject constructor() {
     fun parse(inputStream: InputStream, feedUrl: String): ParsedPodcast {
         val factory = XmlPullParserFactory.newInstance()
         factory.isNamespaceAware = true
+        // Harden against XXE vulnerabilities
+        try {
+            factory.setFeature("http://xmlpull.org/v1/doc/features.html#process-docdecl", false)
+        } catch (e: Exception) {
+            // Some parsers might not support this feature, but we try anyway for security
+        }
         val parser = factory.newPullParser()
         parser.setInput(inputStream, null)
 

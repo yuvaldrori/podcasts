@@ -18,6 +18,8 @@ import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.work.DownloadWorker
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
@@ -85,15 +87,15 @@ class DefaultPodcastRepository @Inject constructor(
 
     override fun getQueueEpisodes(): Flow<List<Episode>> = queueDao.getQueueEpisodes()
 
-    override suspend fun getPodcast(feedUrl: String): Podcast? = withContext(ioDispatcher) {
-        podcastDao.getPodcast(feedUrl)
+    override suspend fun getPodcast(feedUrl: String): Podcast? {
+        return podcastDao.getPodcast(feedUrl)
     }
 
-    override suspend fun insertPodcast(podcast: Podcast) = withContext(ioDispatcher) {
+    override suspend fun insertPodcast(podcast: Podcast) {
         podcastDao.insertPodcast(podcast)
     }
 
-    override suspend fun insertEpisodes(episodes: List<Episode>) = withContext(ioDispatcher) {
+    override suspend fun insertEpisodes(episodes: List<Episode>) {
         episodeDao.insertEpisodes(episodes)
     }
 
@@ -118,32 +120,46 @@ class DefaultPodcastRepository @Inject constructor(
         }
     }
 
-    override suspend fun markAllAsPlayed(): Unit = withContext(ioDispatcher) {
+    override suspend fun markAllAsPlayed(): Unit {
         episodeDao.markAllUnplayedAsPlayed()
     }
 
-    override suspend fun markAsPlayed(id: String): Unit = withContext(ioDispatcher) {
+    override suspend fun markAsPlayed(id: String): Unit {
         episodeDao.updatePlaybackStatus(id, true, System.currentTimeMillis())
         episodeDao.updateLastPlayedPosition(id, 0L)
     }
 
-    override suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long?) = withContext(ioDispatcher) {
+    override suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long?) {
         episodeDao.updatePlaybackStatus(id, isPlayed, completedAt)
     }
 
-    override suspend fun updateLastPlayedPosition(id: String, position: Long) = withContext(ioDispatcher) {
+    override suspend fun updateLastPlayedPosition(id: String, position: Long) {
         episodeDao.updateLastPlayedPosition(id, position)
     }
 
-    override suspend fun updateDownloadStatus(id: String, status: Int, path: String?) = withContext(ioDispatcher) {
+    override suspend fun updateDownloadStatus(id: String, status: Int, path: String?) {
         episodeDao.updateDownloadStatus(id, status, path)
     }
 
-    override suspend fun removeFromQueue(episodeId: String) = withContext(ioDispatcher) {
+    override suspend fun removeFromQueue(episodeId: String) {
         queueDao.removeFromQueue(episodeId)
+        
+        workManager.cancelUniqueWork("${Constants.WORK_TAG_DOWNLOAD_PREFIX}$episodeId")
+
+        val episode = episodeDao.getEpisodeById(episodeId)
+        episode?.localFilePath?.let { path ->
+            val file = File(path)
+            if (file.exists()) {
+                if (!file.delete()) {
+                    logManager.w("PodcastRepository", "Failed to delete file for episode $episodeId: $path")
+                }
+            }
+        }
+        
+        episodeDao.updateDownloadStatus(episodeId, 0, null)
     }
 
-    override suspend fun updateQueue(queue: List<QueueState>) = withContext(ioDispatcher) {
+    override suspend fun updateQueue(queue: List<QueueState>) {
         queueDao.updateQueue(queue)
     }
 
@@ -154,16 +170,17 @@ class DefaultPodcastRepository @Inject constructor(
         queueDao.updateQueue(newQueue)
     }
 
-    override suspend fun requeueEpisode(episode: Episode) = withContext(ioDispatcher) {
+    override suspend fun requeueEpisode(episode: Episode) {
         database.withTransaction {
-            val currentQueue = queueDao.getQueueEpisodesSync()
+            val currentQueue = queueDao.getQueueEpisodesSync().toMutableList()
             val insertionIndex = currentQueue.indexOfFirst { it.pubDate > episode.pubDate }.let {
                 if (it == -1) currentQueue.size else it
             }
-            
-            queueDao.shiftQueuePositionsDownFrom(insertionIndex)
-            queueDao.insertQueueItem(QueueState(episode.id, insertionIndex))
-            
+            if (!currentQueue.any { it.id == episode.id }) {
+                currentQueue.add(insertionIndex, episode)
+                val newQueue = currentQueue.mapIndexed { index, ep -> QueueState(ep.id, index) }
+                queueDao.updateQueue(newQueue)
+            }
             episodeDao.updatePlaybackStatus(episode.id, isPlayed = true)
         }
     }
@@ -177,14 +194,19 @@ class DefaultPodcastRepository @Inject constructor(
         
         // 2. Delete local files in parallel
         coroutineScope {
-            episodes.forEach { episode ->
-                episode.localFilePath?.let { path ->
-                    launch {
+            episodes.map { episode ->
+                async {
+                    episode.localFilePath?.let { path ->
                         val file = File(path)
-                        if (file.exists()) file.delete()
+                        if (file.exists()) {
+                            val deleted = file.delete()
+                            if (!deleted) {
+                                logManager.w("PodcastRepository", "Failed to delete file for episode ${episode.id}: $path")
+                            }
+                        }
                     }
                 }
-            }
+            }.awaitAll()
         }
         
         // 3. Delete episodes and podcast from DB

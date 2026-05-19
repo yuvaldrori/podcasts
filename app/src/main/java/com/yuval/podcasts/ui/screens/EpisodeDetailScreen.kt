@@ -32,7 +32,7 @@ import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.components.LoadingBox
 import com.yuval.podcasts.ui.components.PodcastCover
 import com.yuval.podcasts.ui.utils.Formatter
-import com.yuval.podcasts.ui.LocalMainPadding
+import com.yuval.podcasts.ui.utils.toAnnotatedString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +40,8 @@ fun EpisodeDetailScreen(
     uiState: EpisodeDetailUiState,
     onBack: () -> Unit,
     onAddToQueue: (Episode) -> Unit,
-    onChapterClick: (Chapter) -> Unit
+    onChapterClick: (Chapter) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     val context = LocalContext.current
 
@@ -56,19 +57,18 @@ fun EpisodeDetailScreen(
             )
         }
     ) { padding ->
-        val mainPadding = LocalMainPadding.current
         when (uiState) {
             is EpisodeDetailUiState.Loading -> LoadingBox(
                 Modifier.padding(
                     top = padding.calculateTopPadding(),
-                    bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding()
+                    bottom = padding.calculateBottomPadding() + contentPadding.calculateBottomPadding()
                 )
             )
             is EpisodeDetailUiState.Error -> {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(
                         top = padding.calculateTopPadding(),
-                        bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding()
+                        bottom = padding.calculateBottomPadding() + contentPadding.calculateBottomPadding()
                     ), 
                     contentAlignment = Alignment.Center
                 ) {
@@ -82,7 +82,7 @@ fun EpisodeDetailScreen(
                         .fillMaxSize()
                         .padding(
                             top = padding.calculateTopPadding() + 16.dp,
-                            bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding() + 16.dp,
+                            bottom = padding.calculateBottomPadding() + contentPadding.calculateBottomPadding() + 16.dp,
                             start = 16.dp,
                             end = 16.dp
                         )
@@ -124,7 +124,7 @@ fun EpisodeDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isInQueue
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(if (uiState.isInQueue) stringResource(R.string.in_queue) else stringResource(R.string.add_to_queue))
                     }
@@ -150,7 +150,7 @@ fun EpisodeDetailScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = null)
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(stringResource(R.string.share))
                     }
@@ -163,13 +163,13 @@ fun EpisodeDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    val spannedDescription = remember(data.episode.description) {
-                        Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT)
+                    val annotatedDescription = remember(data.episode.description) {
+                        Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toAnnotatedString()
                     }
                     
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = spannedDescription.toString(),
+                            text = annotatedDescription,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f, fill = false)
@@ -180,7 +180,7 @@ fun EpisodeDetailScreen(
                             Text(text = stringResource(R.string.chapters_label), style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(8.dp))
                             LazyColumn(modifier = Modifier.weight(1f)) {
-                                items(uiState.chapters) { chapter ->
+                                items(uiState.chapters, key = { it.id }) { chapter ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()

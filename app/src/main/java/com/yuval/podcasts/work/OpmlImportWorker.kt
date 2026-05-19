@@ -17,6 +17,7 @@ import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.di.IoDispatcher
+import com.yuval.podcasts.utils.LogManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CoroutineDispatcher
@@ -36,6 +37,7 @@ class OpmlImportWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val opmlManager: OpmlManager,
     private val repository: PodcastRepository,
+    private val logManager: LogManager,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(appContext, workerParams) {
 
@@ -43,16 +45,22 @@ class OpmlImportWorker @AssistedInject constructor(
         val uriString = inputData.getString(KEY_URI) ?: return@withContext Result.failure()
         val uri = uriString.toUri()
 
+        logManager.i("OpmlImportWorker", "Starting OPML import from $uri")
+
         try {
             val urls = appContext.contentResolver.openInputStream(uri)?.use { stream ->
                 opmlManager.parse(stream)
             } ?: return@withContext Result.failure()
 
             val total = urls.size
-            if (total == 0) return@withContext Result.success()
+            if (total == 0) {
+                logManager.w("OpmlImportWorker", "OPML file is empty or invalid")
+                return@withContext Result.success()
+            }
 
             val completedCount = AtomicInteger(0)
             val semaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
+            var lastForegroundUpdate = 0L
 
             setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
             setForeground(createForegroundInfo(0, total))
@@ -65,21 +73,27 @@ class OpmlImportWorker @AssistedInject constructor(
                                 repository.fetchAndStorePodcast(url)
                             } catch (e: Exception) {
                                 if (e is kotlinx.coroutines.CancellationException) throw e
-                                android.util.Log.e("OpmlImportWorker", "Failed to import podcast: $url", e)
+                                logManager.e("OpmlImportWorker", "Failed to import podcast: $url", mapOf("error" to e.message.toString()))
                             } finally {
                                 val current = completedCount.incrementAndGet()
                                 setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
-                                setForeground(createForegroundInfo(current, total))
+                                
+                                val currentTime = System.currentTimeMillis()
+                                if (current == total || currentTime - lastForegroundUpdate > 500) {
+                                    setForeground(createForegroundInfo(current, total))
+                                    lastForegroundUpdate = currentTime
+                                }
                             }
                         }
                     }
                 }.awaitAll()
             }
 
+            logManager.i("OpmlImportWorker", "OPML import completed: $total podcasts processed")
             Result.success()
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            android.util.Log.e("OpmlImportWorker", "Import failed: ${e.message}", e)
+            logManager.e("OpmlImportWorker", "Import failed", mapOf("error" to e.message.toString()))
             Result.failure()
         }
     }

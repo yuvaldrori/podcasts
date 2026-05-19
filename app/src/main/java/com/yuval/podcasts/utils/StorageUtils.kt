@@ -16,9 +16,17 @@ object StorageUtils {
 
     /**
      * Generates a consistent file name for a podcast episode.
+     * Uses SHA-1 hex to minimize collision risk.
      */
     fun getFileName(episodeId: String): String {
-        return "episode_${episodeId.hashCode()}.mp3"
+        return try {
+            val hash = java.security.MessageDigest.getInstance("SHA-1")
+                .digest(episodeId.toByteArray())
+                .joinToString("") { "%02x".format(it) }
+            "episode_${hash}.mp3"
+        } catch (e: Exception) {
+            "episode_${episodeId.hashCode()}.mp3"
+        }
     }
 
     /**

@@ -16,7 +16,7 @@ fun PodcastItem(
     podcast: Podcast, 
     onClick: () -> Unit, 
     modifier: Modifier = Modifier,
-    trailingContent: @Composable () -> Unit = {}
+    trailingContent: (@Composable () -> Unit)? = null
 ) {
     Card(
         modifier = modifier
@@ -42,7 +42,7 @@ fun PodcastItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            trailingContent()
+            trailingContent?.invoke()
         }
     }
 }

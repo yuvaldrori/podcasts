@@ -23,7 +23,7 @@ class ImportOpmlUseCaseTest {
         every { opmlManager.parse(inputStream) } returns urls
         coEvery { repository.fetchAndStorePodcast(any()) } returns Unit
         
-        val useCase = ImportOpmlUseCase(opmlManager, repository, UnconfinedTestDispatcher(testScheduler))
+        val useCase = ImportOpmlUseCase(opmlManager, repository, mockk(relaxed = true), UnconfinedTestDispatcher(testScheduler))
 
         useCase(inputStream)
 

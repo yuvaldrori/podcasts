@@ -4,7 +4,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -15,34 +14,28 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.components.UnifiedPlayer
 import com.yuval.podcasts.ui.navigation.*
-import com.yuval.podcasts.ui.screens.NewEpisodesScreen
-import com.yuval.podcasts.ui.screens.PodcastDetailScreen
-import com.yuval.podcasts.ui.screens.EpisodeDetailScreen
-import com.yuval.podcasts.ui.screens.QueueScreen
-import com.yuval.podcasts.ui.screens.SettingsScreen
-import com.yuval.podcasts.ui.screens.SubscriptionsScreen
+import com.yuval.podcasts.ui.screens.*
 import com.yuval.podcasts.ui.viewmodel.*
 import kotlinx.collections.immutable.persistentListOf
-
-val LocalMainPadding = compositionLocalOf { PaddingValues(0.dp) }
 
 @Composable
 fun MainScreen(
@@ -54,24 +47,29 @@ fun MainScreen(
     Scaffold(
         bottomBar = {
             Column {
-                UnifiedPlayer(
-                    uiState = uiState,
-                    actions = com.yuval.podcasts.ui.components.PlayerActions(
+                val actions = remember(playerViewModel) {
+                    com.yuval.podcasts.ui.components.PlayerActions(
                         onToggleSpeed = { playerViewModel.toggleSpeed() },
                         onSeekBackward = { playerViewModel.seekBackward() },
                         onPlayPause = { playerViewModel.playPause() },
                         onSeekForward = { playerViewModel.seekForward() },
                         onSeekTo = { playerViewModel.seekTo(it) }
                     )
+                }
+                UnifiedPlayer(
+                    uiState = uiState,
+                    actions = actions
                 )
                 
                 NavigationBar {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
                     bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { it.route?.contains(screen.route::class.qualifiedName ?: "") == true } == true
+                        val selected = currentDestination?.hierarchy?.any { 
+                            it.hasRoute(screen.route::class)
+                        } == true
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = null) },
+                            icon = { Icon(screen.icon, contentDescription = stringResource(screen.titleRes)) },
                             label = { Text(stringResource(screen.titleRes)) },
                             selected = selected,
                             colors = NavigationBarItemDefaults.colors(
@@ -97,101 +95,112 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        CompositionLocalProvider(LocalMainPadding provides innerPadding) {
-            NavHost(
-                navController = navController, 
-                startDestination = QueueScreenRoute,
-                modifier = Modifier.fillMaxSize(),
-                enterTransition = { fadeIn(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) },
-                exitTransition = { fadeOut(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) },
-                popEnterTransition = { fadeIn(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) },
-                popExitTransition = { fadeOut(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) }
-            ) {
-                composable<QueueScreenRoute> { 
-                    val queueViewModel: QueueViewModel = hiltViewModel()
-                    val queueUiState by queueViewModel.uiState.collectAsStateWithLifecycle()
-                    
-                    QueueScreen(
-                        uiState = queueUiState,
-                        isPlaying = uiState.isPlaying,
-                        currentMediaId = uiState.currentEpisode?.id,
-                        onEpisodeClick = { episodeId -> 
-                            navController.navigate(EpisodeDetailScreenRoute(episodeId))
-                        },
-                        onRemoveFromQueue = { episodeId -> queueViewModel.removeFromQueue(episodeId) },
-                        onReorderQueue = { newOrder -> queueViewModel.reorderQueue(newOrder) },
-                        onPlayQueue = { episodes, startIndex, position -> 
-                            playerViewModel.playQueue(episodes, startIndex, position)
-                        }
-                    ) 
-                }
-                composable<NewEpisodesScreenRoute> { 
-                    val feedsViewModel: FeedsViewModel = hiltViewModel()
-                    val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
-                    
-                    NewEpisodesScreen(
-                        uiState = feedsUiState,
-                        onEpisodeClick = { episodeId -> 
-                            navController.navigate(EpisodeDetailScreenRoute(episodeId))
-                        },
-                        onRefreshAll = { feedsViewModel.refreshAll() },
-                        onDismissAll = { feedsViewModel.dismissAll() },
-                        onDismissEpisode = { episode -> feedsViewModel.dismissEpisode(episode) },
-                        onAddToQueue = { episode -> feedsViewModel.addToQueue(episode) },
-                        onClearError = { feedsViewModel.clearError() }
-                    ) 
-                }
-                composable<SubscriptionsScreenRoute> {
-                    val feedsViewModel: FeedsViewModel = hiltViewModel()
-                    val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
-                    
-                    SubscriptionsScreen(
-                        podcasts = (feedsUiState as? FeedsUiState.Success)?.podcasts ?: persistentListOf(),
-                        onPodcastClick = { feedUrl ->
-                            navController.navigate(PodcastDetailScreenRoute(feedUrl))
-                        },
-                        onUnsubscribe = { feedUrl -> feedsViewModel.unsubscribePodcast(feedUrl) }
-                    )
-                }
-                composable<SettingsScreenRoute> {
-                    val settingsViewModel: SettingsViewModel = hiltViewModel()
-                    val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
-                    
-                    SettingsScreen(
-                        uiState = settingsUiState,
-                        onAddPodcast = { url -> settingsViewModel.addPodcast(url) },
-                        onImportOpml = { uri -> settingsViewModel.importOpml(uri) },
-                        onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) },
-                        onToggleSkipSilence = { enabled -> settingsViewModel.toggleSkipSilence(enabled) },
-                        onImportLocalAudio = { uri -> settingsViewModel.importLocalAudio(uri) },
-                        onLogNoteChanged = { note -> settingsViewModel.onLogNoteChanged(note) },
-                        onSaveLogNote = { settingsViewModel.saveLogNote() },
-                        onDownloadLogs = { ctx, uri -> settingsViewModel.exportLogs(ctx, uri) },
-                        onClearError = { settingsViewModel.clearMessages() }
-                    )
-                }
-                composable<PodcastDetailScreenRoute> {
-                    val podcastDetailViewModel: PodcastDetailViewModel = hiltViewModel()
-                    val episodes by podcastDetailViewModel.episodes.collectAsStateWithLifecycle()
-                    PodcastDetailScreen(
-                        episodes = episodes,
-                        onBack = { navController.popBackStack() },
-                        onEpisodeClick = { episodeId ->
-                            navController.navigate(EpisodeDetailScreenRoute(episodeId))
-                        },
-                        onAddToQueue = { episode -> podcastDetailViewModel.addToQueue(episode) }
-                    )
-                }
-                composable<EpisodeDetailScreenRoute> {
-                    val episodeDetailViewModel: EpisodeDetailViewModel = hiltViewModel()
-                    val episodeUiState by episodeDetailViewModel.uiState.collectAsStateWithLifecycle()
-                    EpisodeDetailScreen(
-                        uiState = episodeUiState,
-                        onBack = { navController.popBackStack() },
-                        onAddToQueue = { episode -> episodeDetailViewModel.addToQueue(episode) },
-                        onChapterClick = { chapter -> playerViewModel.seekToChapter(chapter) }
-                    )
-                }
+        NavHost(
+            navController = navController, 
+            startDestination = QueueScreenRoute,
+            modifier = Modifier.fillMaxSize(),
+            enterTransition = { fadeIn(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) },
+            exitTransition = { fadeOut(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) },
+            popEnterTransition = { fadeIn(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) },
+            popExitTransition = { fadeOut(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) }
+        ) {
+            composable<QueueScreenRoute> { 
+                val queueViewModel: QueueViewModel = hiltViewModel()
+                val queueUiState by queueViewModel.uiState.collectAsStateWithLifecycle()
+                
+                QueueScreen(
+                    uiState = queueUiState,
+                    isPlaying = uiState.isPlaying,
+                    currentMediaId = uiState.currentEpisode?.id,
+                    onEpisodeClick = { episodeId -> 
+                        navController.navigate(EpisodeDetailScreenRoute(episodeId))
+                    },
+                    onRemoveFromQueue = { episodeId -> queueViewModel.removeFromQueue(episodeId) },
+                    onMoveItem = { from, to -> queueViewModel.moveItem(from, to) },
+                    onCommitReorder = { queueViewModel.commitReorder() },
+                    onPlayQueue = { episodes, startIndex, position -> 
+                        playerViewModel.playQueue(episodes, startIndex, position)
+                    },
+                    contentPadding = innerPadding
+                ) 
+            }
+            composable<NewEpisodesScreenRoute> { 
+                val feedsViewModel: FeedsViewModel = hiltViewModel()
+                val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
+                
+                NewEpisodesScreen(
+                    uiState = feedsUiState,
+                    onEpisodeClick = { episodeId -> 
+                        navController.navigate(EpisodeDetailScreenRoute(episodeId))
+                    },
+                    onRefreshAll = { feedsViewModel.refreshAll() },
+                    onDismissAll = { feedsViewModel.dismissAll() },
+                    onDismissEpisode = { episode -> feedsViewModel.dismissEpisode(episode) },
+                    onAddToQueue = { episode -> feedsViewModel.addToQueue(episode) },
+                    onClearError = { feedsViewModel.clearError() },
+                    contentPadding = innerPadding
+                ) 
+            }
+            composable<SubscriptionsScreenRoute> {
+                val feedsViewModel: FeedsViewModel = hiltViewModel()
+                val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
+                
+                SubscriptionsScreen(
+                    podcasts = (feedsUiState as? FeedsUiState.Success)?.podcasts ?: persistentListOf(),
+                    onPodcastClick = { feedUrl ->
+                        navController.navigate(PodcastDetailScreenRoute(feedUrl))
+                    },
+                    onUnsubscribe = { feedUrl -> feedsViewModel.unsubscribePodcast(feedUrl) },
+                    contentPadding = innerPadding
+                )
+            }
+            composable<SettingsScreenRoute> {
+                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+                
+                SettingsScreen(
+                    uiState = settingsUiState,
+                    onAddPodcast = { url -> settingsViewModel.addPodcast(url) },
+                    onImportOpml = { uri -> settingsViewModel.importOpml(uri) },
+                    onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) },
+                    onToggleSkipSilence = { enabled -> settingsViewModel.toggleSkipSilence(enabled) },
+                    onImportLocalAudio = { uri -> settingsViewModel.importLocalAudio(uri) },
+                    onLogNoteChanged = { note -> settingsViewModel.onLogNoteChanged(note) },
+                    onSaveLogNote = { settingsViewModel.saveLogNote() },
+                    onDownloadLogs = { ctx, uri -> settingsViewModel.exportLogs(ctx, uri) },
+                    onClearError = { settingsViewModel.clearMessages() },
+                    contentPadding = innerPadding
+                )
+            }
+            composable<PodcastDetailScreenRoute> {
+                val podcastDetailViewModel: PodcastDetailViewModel = hiltViewModel()
+                val episodes by podcastDetailViewModel.episodes.collectAsStateWithLifecycle()
+                
+                PodcastDetailScreen(
+                    episodes = episodes,
+                    onBack = { navController.popBackStack() },
+                    onEpisodeClick = { episodeId ->
+                        navController.navigate(EpisodeDetailScreenRoute(episodeId))
+                    },
+                    onAddToQueue = { episode -> podcastDetailViewModel.addToQueue(episode) },
+                    contentPadding = innerPadding
+                )
+            }
+            composable<EpisodeDetailScreenRoute> {
+                val episodeViewModel: EpisodeDetailViewModel = hiltViewModel()
+                val episodeUiState by episodeViewModel.uiState.collectAsStateWithLifecycle()
+                
+                EpisodeDetailScreen(
+                    uiState = episodeUiState,
+                    onBack = { navController.popBackStack() },
+                    onAddToQueue = { episode ->
+                        episodeViewModel.addToQueue(episode)
+                    },
+                    onChapterClick = { chapter ->
+                        playerViewModel.seekTo(chapter.startTimeMs)
+                    },
+                    contentPadding = innerPadding
+                )
             }
         }
     }

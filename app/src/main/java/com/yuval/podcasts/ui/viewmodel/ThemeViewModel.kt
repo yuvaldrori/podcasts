@@ -35,7 +35,9 @@ class ThemeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            @OptIn(kotlinx.coroutines.FlowPreview::class)
             combine(playerManager.currentMediaId, isDarkThemeFlow) { id, isDark -> id to isDark }
+                .debounce(200)
                 .collectLatest { (id, isDark) ->
                     val imageUrl = if (id != null) {
                         repository.getEpisodeByIdFlow(id).first()?.imageUrl

@@ -19,7 +19,10 @@ class PodcastApiIntegrationTest {
         val job = launch {
             try {
                 // Using a known large/slow feed to ensure we catch it inflight
-                api.fetchRss("https://feeds.npr.org/510289/podcast.xml")
+                api.withRssStream("https://feeds.npr.org/510289/podcast.xml") { 
+                    // consume a bit to ensure it's open
+                    it.read()
+                }
             } catch (e: Exception) {
                 // When using okhttp, cancellation manifests as an IOException
                 if (e is CancellationException || e is java.io.IOException || e.cause is CancellationException) {

@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
-import com.yuval.podcasts.ui.LocalMainPadding
 
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
@@ -26,7 +25,8 @@ fun PodcastDetailScreen(
     episodes: ImmutableList<Episode>,
     onBack: () -> Unit,
     onEpisodeClick: (String) -> Unit,
-    onAddToQueue: (Episode) -> Unit
+    onAddToQueue: (Episode) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     Scaffold(
         topBar = {
@@ -40,12 +40,11 @@ fun PodcastDetailScreen(
             )
         }
     ) { padding ->
-        val mainPadding = LocalMainPadding.current
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = padding.calculateTopPadding() + 16.dp,
-                bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding() + 16.dp,
+                bottom = padding.calculateBottomPadding() + contentPadding.calculateBottomPadding() + 16.dp,
                 start = 16.dp,
                 end = 16.dp
             )

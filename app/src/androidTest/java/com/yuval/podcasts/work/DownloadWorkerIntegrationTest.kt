@@ -42,7 +42,8 @@ class DownloadWorkerIntegrationTest {
             workerParams,
             episodeDao,
             okHttpClient,
-            Dispatchers.IO as CoroutineDispatcher
+            mockk(relaxed = true), // logManager
+            Dispatchers.IO
         )
 
         val result = worker.doWork()

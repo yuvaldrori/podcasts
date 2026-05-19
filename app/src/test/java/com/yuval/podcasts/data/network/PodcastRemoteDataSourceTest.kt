@@ -25,7 +25,10 @@ class PodcastRemoteDataSourceTest {
         val expectedEpisodes = listOf<NetworkEpisodeWithChapters>(mockk())
         val expectedParsed = ParsedPodcast(expectedPodcast, expectedEpisodes)
         
-        coEvery { podcastApi.fetchRss(url) } returns mockInputStream
+        coEvery { podcastApi.withRssStream(url, any<(InputStream) -> ParsedPodcast>()) } answers {
+            val block = secondArg<(InputStream) -> ParsedPodcast>()
+            block(mockInputStream)
+        }
         every { rssParser.parse(mockInputStream, url) } returns expectedParsed
         
         val dataSource = PodcastRemoteDataSource(podcastApi, rssParser, UnconfinedTestDispatcher(testScheduler))

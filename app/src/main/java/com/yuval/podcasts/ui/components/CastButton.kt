@@ -32,14 +32,7 @@ fun CastButton(
             }
         },
         update = { button ->
-            // MediaRouteButton doesn't have a simple tint API, but it often uses the theme's 
-            // colorControlNormal or a specific tint attribute. For dynamic colors, we can
-            // attempt to tint the drawable if it's already set.
-            tint?.let {
-                // This is a common way to tint the MediaRouteButton programmatically
-                // but note that it might be overwritten by the internal state changes.
-                // A more robust way would be through a custom theme, but that's hard with dynamic colors.
-            }
+            // Proper tinting is handled via the theme R.style.Theme_Podcasts
         },
         modifier = modifier.size(48.dp)
     )

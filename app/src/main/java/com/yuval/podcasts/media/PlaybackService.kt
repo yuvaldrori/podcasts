@@ -233,6 +233,14 @@ class PlaybackService : MediaSessionService() {
         var currentlyPlayingId: String? = null
 
         val listener = object : Player.Listener {
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                saveCurrentPosition()
+            }
+
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (!isPlaying) {
                     saveCurrentPosition()
@@ -315,15 +323,6 @@ class PlaybackService : MediaSessionService() {
         }
 
         observeQueue()
-
-        serviceScope.launch(mainDispatcher) {
-            while (true) {
-                kotlinx.coroutines.delay(Constants.SAVE_POSITION_INTERVAL_MS)
-                if (currentPlayer.isPlaying) {
-                    saveCurrentPosition()
-                }
-            }
-        }
     }
     
     private fun setCurrentPlayer(newPlayer: Player) {
@@ -412,18 +411,19 @@ class PlaybackService : MediaSessionService() {
                         }
                     }
                     
-                    // 4. Update metadata of current item if needed, but safely
-                    val currentItemInPlayer = currentPlayer.getMediaItemAt(currentPlayer.currentMediaItemIndex)
-                    val currentEpisodeInNew = episodes.find { it.id == currentMediaId }
-                    if (currentEpisodeInNew != null) {
-                        val updatedItem = MediaItemMapper.fromEpisode(currentEpisodeInNew)
-                        if (updatedItem != null && updatedItem.mediaMetadata != currentItemInPlayer.mediaMetadata) {
-                            // Only update if it's NOT the playing item, OR if it's just minor metadata.
-                            // Media3's replaceMediaItem on the current index DOES causes a slight pause/restart.
-                            // For now, we only replace if it's NOT the playing one, or we skip to avoid the restart.
-                            // Actually, let's just avoid replacing the ACTIVE item for now to solve the user bug.
-                            if (currentPlayer.currentMediaItemIndex != currentPlayer.currentMediaItemIndex) {
-                                // unreachable but keeping logic for non-playing items
+                    // 4. Update metadata of items if needed, but safely
+                    episodes.forEachIndexed { index, episode ->
+                        if (index < currentPlayer.mediaItemCount) {
+                            val itemInPlayer = currentPlayer.getMediaItemAt(index)
+                            if (itemInPlayer.mediaId == episode.id) {
+                                val updatedItem = MediaItemMapper.fromEpisode(episode)
+                                if (updatedItem != null && updatedItem.mediaMetadata != itemInPlayer.mediaMetadata) {
+                                    // Media3's replaceMediaItem on the current index DOES causes a slight pause/restart.
+                                    // We only replace if it's NOT the playing one to avoid playback interruption.
+                                    if (currentPlayer.currentMediaItemIndex != index) {
+                                        currentPlayer.replaceMediaItem(index, updatedItem)
+                                    }
+                                }
                             }
                         }
                     }

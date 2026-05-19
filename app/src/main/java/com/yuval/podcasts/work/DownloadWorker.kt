@@ -13,6 +13,7 @@ import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.di.IoDispatcher
+import com.yuval.podcasts.utils.LogManager
 import com.yuval.podcasts.utils.StorageUtils
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -29,12 +30,13 @@ class DownloadWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val episodeDao: EpisodeDao,
     private val okHttpClient: OkHttpClient,
+    private val logManager: LogManager,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val title = inputData.getString(KEY_EPISODE_TITLE) ?: "Episode"
-        return createForegroundInfo(title)
+        return createForegroundInfo(title, 0)
     }
 
     override suspend fun doWork(): Result = withContext(ioDispatcher) {
@@ -42,8 +44,10 @@ class DownloadWorker @AssistedInject constructor(
         val audioUrl = inputData.getString(KEY_AUDIO_URL) ?: return@withContext Result.failure()
         val title = inputData.getString(KEY_EPISODE_TITLE) ?: "Episode"
 
+        logManager.i("DownloadWorker", "Starting download for $episodeId: $audioUrl")
+
         try {
-            setForeground(createForegroundInfo(title))
+            setForeground(createForegroundInfo(title, 0))
             // Update status to Downloading
             updateDownloadStatus(episodeId, 1, null)
 
@@ -53,6 +57,7 @@ class DownloadWorker @AssistedInject constructor(
 
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
+                logManager.e("DownloadWorker", "Failed to download $episodeId: ${response.code}")
                 updateDownloadStatus(episodeId, 0, null)
                 return@withContext Result.failure()
             }
@@ -60,6 +65,9 @@ class DownloadWorker @AssistedInject constructor(
             val body = response.body
             val totalBytes = body.contentLength()
             val outputFile = StorageUtils.getFileForEpisode(appContext, episodeId)
+
+            var lastProgressUpdate = 0L
+            var lastForegroundUpdate = 0L
 
             FileOutputStream(outputFile).use { outputStream ->
                 body.byteStream().use { inputStream ->
@@ -69,6 +77,7 @@ class DownloadWorker @AssistedInject constructor(
                     
                     while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                         if (isStopped) {
+                            logManager.w("DownloadWorker", "Download stopped for $episodeId")
                             outputFile.delete()
                             return@withContext Result.failure()
                         }
@@ -78,20 +87,32 @@ class DownloadWorker @AssistedInject constructor(
                         // Update progress if total size is known
                         if (totalBytes > 0) {
                             val progress = (totalRead * 100 / totalBytes).toInt()
-                            // We could update progress here, but frequent setForeground is expensive.
-                            // Maybe every 5%?
+                            val currentTime = System.currentTimeMillis()
+                            
+                            // Update WorkManager progress every 1% if it's been at least 100ms
+                            if (progress > lastProgressUpdate && currentTime - lastForegroundUpdate > 100) {
+                                setProgress(androidx.work.workDataOf("progress" to progress))
+                                lastProgressUpdate = progress.toLong()
+                            }
+                            
+                            // Update Notification every 5% to avoid IPC overhead
+                            if (progress >= lastForegroundUpdate + 5) {
+                                setForeground(createForegroundInfo(title, progress))
+                                lastForegroundUpdate = progress.toLong()
+                            }
                         }
                     }
                 }
             }
 
+            logManager.i("DownloadWorker", "Download completed for $episodeId. Saved to ${outputFile.absolutePath}")
             // Update status to Downloaded with the local path
             updateDownloadStatus(episodeId, 2, outputFile.absolutePath)
             
             Result.success()
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            android.util.Log.e("DownloadWorker", "Download failed: ${e.message}", e)
+            logManager.e("DownloadWorker", "Download failed for $episodeId", mapOf("error" to e.message.toString()))
             // Revert status on failure
             updateDownloadStatus(episodeId, 0, null)
             Result.retry() // Retry for transient network issues
@@ -102,7 +123,7 @@ class DownloadWorker @AssistedInject constructor(
         episodeDao.updateDownloadStatus(episodeId, status, path)
     }
 
-    private fun createForegroundInfo(title: String): ForegroundInfo {
+    private fun createForegroundInfo(title: String, progress: Int): ForegroundInfo {
         val channelId = "download_channel"
         val channel = NotificationChannel(
             channelId,
@@ -116,6 +137,7 @@ class DownloadWorker @AssistedInject constructor(
             .setContentTitle(appContext.getString(R.string.notification_downloading_title))
             .setContentText(title)
             .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setProgress(100, progress, progress == 0)
             .setOngoing(true)
             .build()
 

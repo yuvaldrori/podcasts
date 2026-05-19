@@ -12,15 +12,31 @@ import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
+import com.yuval.podcasts.data.repository.SettingsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
 @HiltAndroidApp
 class PodcastApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+    
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
         super.onCreate()
-        scheduleCleanup()
+        applicationScope.launch {
+            if (!settingsRepository.isCleanupScheduled()) {
+                scheduleCleanup()
+                settingsRepository.setCleanupScheduled(true)
+            }
+        }
     }
 
     private fun scheduleCleanup() {

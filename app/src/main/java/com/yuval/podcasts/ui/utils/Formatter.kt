@@ -1,19 +1,18 @@
 package com.yuval.podcasts.ui.utils
 
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 object Formatter {
-    private val dateFormat = ThreadLocal.withInitial { 
-        SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) 
-    }
-
     fun formatDate(timestamp: Long): String {
         if (timestamp == 0L) return ""
-        return dateFormat.get()?.format(Date(timestamp)) ?: ""
+        val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+        return dateFormatter.format(Instant.ofEpochMilli(timestamp))
     }
 
     /**

@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.viewmodel.SettingsUiState
-import com.yuval.podcasts.ui.LocalMainPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +31,8 @@ fun SettingsScreen(
     onLogNoteChanged: (String) -> Unit,
     onSaveLogNote: () -> Unit,
     onDownloadLogs: (android.content.Context, Uri) -> Unit,
-    onClearError: () -> Unit
+    onClearError: () -> Unit,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     var rssUrl by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -77,13 +77,12 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        val mainPadding = LocalMainPadding.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
                     top = padding.calculateTopPadding(),
-                    bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding()
+                    bottom = padding.calculateBottomPadding() + contentPadding.calculateBottomPadding()
                 )
                 .imePadding()
                 .verticalScroll(rememberScrollState())

@@ -57,7 +57,7 @@ class OpmlImportWorkerTest {
                     every { spyContext.getString(any()) } returns "test"
                     every { spyContext.getString(any(), any(), any()) } returns "test"
                     
-                    return OpmlImportWorker(spyContext, workerParameters, opmlManager, repository, Dispatchers.Unconfined)
+                    return OpmlImportWorker(spyContext, workerParameters, opmlManager, repository, mockk(relaxed = true), Dispatchers.Unconfined)
                 }
             })
             .build()

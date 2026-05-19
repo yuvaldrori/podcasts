@@ -109,9 +109,7 @@ fun EpisodeItem(
                 if (showProgress && episode.lastPlayedPosition > 0 && episode.duration > 0) {
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = { 
-                            if (episode.duration > 0) episode.lastPlayedPosition.toFloat() / (episode.duration.seconds.inWholeMilliseconds.toFloat()) else 0f 
-                        },
+                        progress = { episode.progress },
                         modifier = Modifier.fillMaxWidth().height(2.dp)
                     )
                 }

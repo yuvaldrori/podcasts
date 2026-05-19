@@ -63,12 +63,6 @@ interface QueueDao {
     @Query("DELETE FROM queue WHERE episodeId IN (:episodeIds)")
     suspend fun removeFromQueueBulk(episodeIds: List<String>)
 
-    @Query("UPDATE queue SET position = position + 1 WHERE position >= :fromPosition")
-    suspend fun shiftQueuePositionsDownFrom(fromPosition: Int)
-
-    @Query("UPDATE queue SET position = position + 1")
-    suspend fun shiftQueuePositionsUp()
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQueueItem(queueState: QueueState)
 

@@ -41,19 +41,19 @@ class LocalMediaDataSource @Inject constructor(
             } ?: return@withContext Result.failure(Exception("Could not open input stream for URI"))
 
             // 2. Extract Metadata
-            val retriever = android.media.MediaMetadataRetriever()
-            retriever.setDataSource(destFile.absolutePath)
-            
-            val title = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE) 
-                ?: fileName.substringBeforeLast(".")
-            val artist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST) 
-                ?: retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) 
-                ?: "Unknown Artist"
-            val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-            val durationMs = durationStr?.toLongOrNull() ?: 0L
-            val durationSecs = durationMs.milliseconds.inWholeSeconds
-            
-            retriever.release()
+            val (title, artist, durationSecs) = android.media.MediaMetadataRetriever().use { retriever ->
+                retriever.setDataSource(destFile.absolutePath)
+                
+                val t = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE) 
+                    ?: fileName.substringBeforeLast(".")
+                val a = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST) 
+                    ?: retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) 
+                    ?: "Unknown Artist"
+                val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                val durationMs = durationStr?.toLongOrNull() ?: 0L
+                val d = durationMs.milliseconds.inWholeSeconds
+                Triple(t, a, d)
+            }
 
             // 3. Clean up title using Regex if it's just the filename (basic AI fallback)
             val cleanTitle = if (title == fileName.substringBeforeLast(".")) {

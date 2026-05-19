@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.db.entity.Episode
-import com.yuval.podcasts.ui.LocalMainPadding
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.QueueUiState
 import com.yuval.podcasts.ui.components.LoadingBox
@@ -38,8 +37,10 @@ fun QueueScreen(
     currentMediaId: String?,
     onEpisodeClick: (String) -> Unit,
     onRemoveFromQueue: (String) -> Unit,
-    onReorderQueue: (List<String>) -> Unit,
-    onPlayQueue: (List<Episode>, Int, Long) -> Unit
+    onMoveItem: (Int, Int) -> Unit,
+    onCommitReorder: () -> Unit,
+    onPlayQueue: (List<Episode>, Int, Long) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     if (uiState is QueueUiState.Loading) {
         LoadingBox()
@@ -49,25 +50,13 @@ fun QueueScreen(
     val successState = uiState as QueueUiState.Success
     val lazyListState = rememberLazyListState()
     
-    var queue by remember { mutableStateOf(successState.queue.toList()) }
+    val queue = successState.queue
 
     val dragDropState = rememberDragDropState(
         lazyListState = lazyListState,
-        onMove = { fromIndex, toIndex ->
-            queue = queue.toMutableList().apply {
-                add(toIndex, removeAt(fromIndex))
-            }
-        },
-        onDragEnd = {
-            onReorderQueue(queue.map { it.episode.id })
-        }
+        onMove = onMoveItem,
+        onDragEnd = onCommitReorder
     )
-
-    LaunchedEffect(successState.queue, dragDropState.draggedItemIndex) {
-        if (dragDropState.draggedItemIndex == null) {
-            queue = successState.queue.toList()
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -89,7 +78,6 @@ fun QueueScreen(
             )
         }
     ) { padding ->
-        val mainPadding = LocalMainPadding.current
         if (queue.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -110,7 +98,7 @@ fun QueueScreen(
                     .testTag("queue_list"),
                 contentPadding = PaddingValues(
                     top = padding.calculateTopPadding() + 16.dp,
-                    bottom = padding.calculateBottomPadding() + mainPadding.calculateBottomPadding() + 16.dp,
+                    bottom = padding.calculateBottomPadding() + contentPadding.calculateBottomPadding() + 16.dp,
                     start = 16.dp,
                     end = 16.dp
                 )

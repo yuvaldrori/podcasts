@@ -14,7 +14,9 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/Theme.Podcasts">
         <meta-data
             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
@@ -30,6 +32,8 @@
             </intent-filter>
         </activity>
 
+        <!-- MediaSessionService must be exported to allow system-level bindings (Auto, Assistant, etc.) 
+             We ignore ExportedService lint because Media3 requirements mandate this be exported. -->
         <service
             android:name=".media.PlaybackService"
             android:exported="true"
@@ -40,14 +44,20 @@
             </intent-filter>
         </service>
 
+        <!-- MediaButtonReceiver handles hardware media keys and is required for background playback 
+             on some Android versions and for integration with the system media controls. 
+             We ignore ExportedReceiver lint because it's required for system media event routing. -->
         <receiver
             android:name="androidx.media3.session.MediaButtonReceiver"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
 
+        <!-- MediaTransferReceiver is required for seamless media transfer (e.g. between device and cast) 
+             We ignore ExportedReceiver lint as this is a library-defined component requiring export. -->
         <receiver android:name="androidx.mediarouter.media.MediaTransferReceiver"
             android:exported="true"
             tools:ignore="ExportedReceiver" />

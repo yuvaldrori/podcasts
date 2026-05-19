@@ -16,7 +16,7 @@ class RemoveEpisodeUseCaseTest {
     private val repository = mockk<PodcastRepository>(relaxed = true)
     private val workManager = mockk<WorkManager>(relaxed = true)
     
-    private val useCase = RemoveEpisodeUseCase(repository, workManager, UnconfinedTestDispatcher())
+    private val useCase = RemoveEpisodeUseCase(repository, UnconfinedTestDispatcher())
 
     @Test
     fun invoke_withMarkAsPlayedTrue_updatesPlaybackStatusWithTimestamp() = runTest {

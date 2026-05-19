@@ -23,7 +23,12 @@ class OpmlManager @Inject constructor() {
             if (eventType == XmlPullParser.START_TAG && parser.name == "outline") {
                 val xmlUrl = parser.getAttributeValue(null, "xmlUrl")
                 if (xmlUrl != null) {
-                    urls.add(xmlUrl)
+                    try {
+                        java.net.URL(xmlUrl).toURI()
+                        urls.add(xmlUrl)
+                    } catch (e: Exception) {
+                        // Ignore invalid URLs
+                    }
                 }
             }
             eventType = parser.next()

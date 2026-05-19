@@ -20,9 +20,8 @@ class PodcastRemoteDataSource @Inject constructor(
      * This execution is safely moved to the injected IO dispatcher.
      */
     suspend fun fetchPodcastData(feedUrl: String): ParsedPodcast = withContext(ioDispatcher) {
-        val inputStream = podcastApi.fetchRss(feedUrl)
-        inputStream.use {
-            rssParser.parse(it, feedUrl)
+        podcastApi.withRssStream(feedUrl) { inputStream ->
+            rssParser.parse(inputStream, feedUrl)
         }
     }
 }

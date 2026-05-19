@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.viewmodel.FeedsUiState
-import com.yuval.podcasts.ui.LocalMainPadding
 
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
@@ -42,7 +41,8 @@ fun NewEpisodesScreen(
     onDismissAll: () -> Unit,
     onDismissEpisode: (Episode) -> Unit,
     onAddToQueue: (Episode) -> Unit,
-    onClearError: () -> Unit = {}
+    onClearError: () -> Unit = {},
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     if (uiState is FeedsUiState.Loading) {
         LoadingBox()
@@ -83,7 +83,6 @@ fun NewEpisodesScreen(
         val successState = uiState as? FeedsUiState.Success
         val isRefreshing = successState?.isRefreshing ?: false
         val refreshProgress = successState?.refreshProgress
-        val mainPadding = LocalMainPadding.current
 
         Box(
             modifier = Modifier
@@ -114,7 +113,7 @@ fun NewEpisodesScreen(
                         .testTag("episode_list"),
                     contentPadding = PaddingValues(
                         top = 8.dp,
-                        bottom = mainPadding.calculateBottomPadding() + 16.dp,
+                        bottom = contentPadding.calculateBottomPadding() + 16.dp,
                         start = 16.dp,
                         end = 16.dp
                     )

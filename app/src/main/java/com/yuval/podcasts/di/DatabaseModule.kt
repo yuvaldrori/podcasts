@@ -60,31 +60,37 @@ object DatabaseModule {
         })
         .addMigrations(MIGRATION_5_6)
         
-        builder.setQueryCallback({ sqlQuery, bindArgs ->
-            val sql = sqlQuery.uppercase()
-            val isSignificant = sql.startsWith("INSERT") || sql.startsWith("UPDATE") || 
-                               sql.startsWith("DELETE") || sql.startsWith("BEGIN") || 
-                               sql.startsWith("COMMIT") || sql.startsWith("ROLLBACK")
-            
-            if (isSignificant) {
-                logManager.i("DATABASE", "Query: $sqlQuery Args: $bindArgs")
-            } else {
-                logManager.v("DATABASE", "Query: $sqlQuery Args: $bindArgs")
-            }
-        }, { it.run() })
+        if (com.yuval.podcasts.BuildConfig.DEBUG) {
+            builder.setQueryCallback({ sqlQuery, bindArgs ->
+                val sql = sqlQuery.uppercase()
+                val isSignificant = sql.startsWith("INSERT") || sql.startsWith("UPDATE") || 
+                                   sql.startsWith("DELETE") || sql.startsWith("BEGIN") || 
+                                   sql.startsWith("COMMIT") || sql.startsWith("ROLLBACK")
+                
+                if (isSignificant) {
+                    logManager.i("DATABASE", "Query: $sqlQuery Args: $bindArgs")
+                } else {
+                    logManager.v("DATABASE", "Query: $sqlQuery Args: $bindArgs")
+                }
+            }, { it.run() })
+        }
         
         return builder.build()
     }
 
     @Provides
+    @Singleton
     fun providePodcastDao(database: AppDatabase): PodcastDao = database.podcastDao()
 
     @Provides
+    @Singleton
     fun provideEpisodeDao(database: AppDatabase): EpisodeDao = database.episodeDao()
 
     @Provides
+    @Singleton
     fun provideQueueDao(database: AppDatabase): QueueDao = database.queueDao()
 
     @Provides
+    @Singleton
     fun provideChapterDao(database: AppDatabase): ChapterDao = database.chapterDao()
 }

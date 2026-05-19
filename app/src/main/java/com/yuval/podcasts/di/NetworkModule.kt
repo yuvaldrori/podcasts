@@ -25,6 +25,12 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .header("User-Agent", "PodcastsAndroidApp/1.0")
+                    .build()
+                chain.proceed(request)
+            }
             .connectTimeout(Constants.NETWORK_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
             .readTimeout(Constants.NETWORK_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
             .build()

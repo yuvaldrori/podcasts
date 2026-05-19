@@ -65,4 +65,7 @@
     <string name="notification_downloading_title">Downloading Podcast</string>
     <string name="notification_importing_title">Importing Podcasts</string>
     <string name="notification_importing_progress">Processed %1$d of %2$d</string>
+    <string name="notification_channel_sync">Library Sync</string>
+    <string name="notification_syncing_title">Syncing Podcasts</string>
+    <string name="notification_syncing_progress">Refreshing %1$d of %2$d</string>
 </resources>

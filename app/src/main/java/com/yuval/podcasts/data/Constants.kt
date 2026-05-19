@@ -61,6 +61,7 @@ object Constants {
     // Notification IDs
     const val NOTIFICATION_ID_DOWNLOAD = 1
     const val NOTIFICATION_ID_IMPORT = 2
+    const val NOTIFICATION_ID_SYNC = 3
 
     // Performance & Concurrency
     const val MAX_PARALLEL_REFRESHES = 3

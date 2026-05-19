@@ -174,8 +174,7 @@ class PodcastRepositoryTest {
         
         repository.requeueEpisode(newEp)
         
-        coVerify { queueDao.shiftQueuePositionsDownFrom(1) }
-        coVerify { queueDao.insertQueueItem(match { it.episodeId == "ep2" && it.position == 1 }) }
+        coVerify { queueDao.updateQueue(match { it.size == 3 && it[1].episodeId == "ep2" }) }
         coVerify { episodeDao.updatePlaybackStatus("ep2", true) }
     }
 }

@@ -18,11 +18,13 @@ class CleanupWorker @AssistedInject constructor(
     @Assisted private val appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val queueDao: QueueDao,
+    private val logManager: com.yuval.podcasts.utils.LogManager,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result = withContext(ioDispatcher) {
         try {
+            logManager.i("CleanupWorker", "Cleanup starting")
             val downloadsDir = StorageUtils.getDownloadsDir(appContext)
             
             // Get all files in the directory
@@ -40,11 +42,11 @@ class CleanupWorker @AssistedInject constructor(
                 }
             }
 
-            android.util.Log.d("CleanupWorker", "Cleaned up $deletedCount orphaned podcast files.")
+            logManager.i("CleanupWorker", "Cleaned up $deletedCount orphaned podcast files.")
             Result.success()
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            android.util.Log.e("CleanupWorker", "Cleanup failed: ${e.message}", e)
+            logManager.e("CleanupWorker", "Cleanup failed", mapOf("error" to (e.message ?: "unknown")))
             Result.failure()
         }
     }

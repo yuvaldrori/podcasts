@@ -15,17 +15,16 @@ class PodcastApi @Inject constructor(
     private val okHttpClient: OkHttpClient,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    suspend fun fetchRss(urlString: String): InputStream = withContext(ioDispatcher) {
+    suspend fun <T> withRssStream(urlString: String, block: (InputStream) -> T): T = withContext(ioDispatcher) {
         val request = Request.Builder()
             .url(urlString)
             .build()
 
-        val response = okHttpClient.newCall(request).execute()
-        if (!response.isSuccessful) {
-            response.close()
-            throw IOException("Unexpected code $response")
+        okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Unexpected code $response")
+            }
+            block(response.body.byteStream())
         }
-
-        response.body.byteStream()
     }
 }

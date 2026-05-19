@@ -43,9 +43,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file(System.getProperty("user.home") + "/android.jks")
-            storePassword = System.getenv("JKS_PASSWORD") ?: ""
-            keyAlias = System.getenv("JKS_ALIAS") ?: ""
-            keyPassword = System.getenv("JKS_PASSWORD") ?: ""
+            storePassword = System.getenv("JKS_PASSWORD") ?: error("JKS_PASSWORD environment variable not set")
+            keyAlias = System.getenv("JKS_ALIAS") ?: error("JKS_ALIAS environment variable not set")
+            keyPassword = System.getenv("JKS_PASSWORD") ?: error("JKS_PASSWORD environment variable not set")
         }
     }
 
@@ -93,7 +93,7 @@ android {
     lint {
         abortOnError = true
         warningsAsErrors = true
-        checkReleaseBuilds = false
+        checkReleaseBuilds = true
         disable += listOf("OldTargetApi", "GradleDependency")
     }
 
