@@ -136,4 +136,29 @@ class RssParserTest {
         assertEquals(0L, parsed.episodes[0].episode.duration)
         assertEquals(754L, parsed.episodes[1].episode.duration)
     }
+
+    @Test
+    fun parse_withSchemelessUrls_fixesThem() {
+        val xml = """
+            <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+                <channel>
+                    <title>Schemeless Test</title>
+                    <itunes:image href="pbcdn1.podbean.com/imglogo/cover.jpg" />
+                    <item>
+                        <title>Episode 1</title>
+                        <enclosure url="epgb.podbean.com/907ade4f.mp3" length="1234" type="audio/mpeg" />
+                        <itunes:image href="//epgb.podbean.com/img.jpg" />
+                        <guid>ep1</guid>
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+        
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val parsed = parser.parse(inputStream, "http://test.com")
+        
+        assertEquals("https://pbcdn1.podbean.com/imglogo/cover.jpg", parsed.podcast.imageUrl)
+        assertEquals("https://epgb.podbean.com/907ade4f.mp3", parsed.episodes[0].episode.audioUrl)
+        assertEquals("https://epgb.podbean.com/img.jpg", parsed.episodes[0].episode.imageUrl)
+    }
 }
