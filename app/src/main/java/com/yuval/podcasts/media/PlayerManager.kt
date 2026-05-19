@@ -156,6 +156,13 @@ class PlayerManager @Inject constructor(
                 _currentPosition.update { newPosition.positionMs }
                 positionTrigger.update { newPosition.positionMs }
             }
+
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                logManager.e("PlayerManager", "Playback error: ${error.message}", mapOf(
+                    "errorCode" to error.errorCodeName,
+                    "mediaId" to (player.currentMediaItem?.mediaId ?: "none")
+                ))
+            }
         })
 
         // Initial states

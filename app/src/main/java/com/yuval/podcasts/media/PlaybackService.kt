@@ -264,7 +264,8 @@ class PlaybackService : MediaSessionService() {
                 val lastId = currentlyPlayingId
                 logManager.i("PlaybackService", "Media item transition. lastId=$lastId, newMediaId=${mediaItem?.mediaId}, reason=$reason")
                 
-                if (lastId != null && mediaItem != null && lastId != mediaItem.mediaId && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                // If it's an automatic transition, remove the previous item from the queue
+                if (lastId != null && (mediaItem == null || lastId != mediaItem.mediaId) && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                     serviceScope.launch(ioDispatcher) {
                          removeEpisodeUseCase(lastId, markAsPlayed = true)
                     }
@@ -292,7 +293,16 @@ class PlaybackService : MediaSessionService() {
                             }
                         }
                     }
+                } else {
+                    currentlyPlayingId = null
                 }
+            }
+
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                logManager.e("PlaybackService", "Player error: ${error.message}", mapOf(
+                    "errorCode" to error.errorCodeName,
+                    "mediaId" to (currentPlayer.currentMediaItem?.mediaId ?: "none")
+                ))
             }
         }
         
@@ -373,10 +383,13 @@ class PlaybackService : MediaSessionService() {
                     val currentMediaIndexInPlayer = currentPlayer.currentMediaItemIndex
 
                     // 1. Remove items that are no longer in the new list, EXCEPT the currently playing one
-                    for (i in currentPlayer.mediaItemCount - 1 downTo 0) {
+                    var i = 0
+                    while (i < currentPlayer.mediaItemCount) {
                         val id = currentPlayer.getMediaItemAt(i).mediaId
                         if (id != currentMediaId && !newIds.contains(id)) {
                             currentPlayer.removeMediaItem(i)
+                        } else {
+                            i++
                         }
                     }
 
@@ -391,13 +404,15 @@ class PlaybackService : MediaSessionService() {
                         if (!existingIdsInPlayer.contains(episode.id)) {
                             val newItem = MediaItemMapper.fromEpisode(episode)
                             if (newItem != null) {
-                                currentPlayer.addMediaItem(index, newItem)
+                                currentPlayer.addMediaItem(newItem)
                             }
                         }
                     }
 
                     // 3. Final reorder check (move items if they are at the wrong index)
                     for (index in episodes.indices) {
+                        if (index >= currentPlayer.mediaItemCount) break
+                        
                         val expectedId = episodes[index].id
                         val actualId = currentPlayer.getMediaItemAt(index).mediaId
                         if (expectedId != actualId) {

@@ -62,8 +62,13 @@ class RssParser @Inject constructor() {
                 }
                 name == Constants.Rss.IMAGE && ns?.contains("itunes") == true -> {
                     // <itunes:image href="..." />
-                    val itunesUrl = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF) ?: ""
-                    podcastImageUrl = itunesUrl // itunes:image usually preferred if present
+                    val rawUrl = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF) ?: ""
+                    podcastImageUrl = when {
+                        rawUrl.startsWith("http") -> rawUrl
+                        rawUrl.startsWith("//") -> "https:$rawUrl"
+                        rawUrl.isNotEmpty() -> "https://$rawUrl"
+                        else -> ""
+                    }
                     // No skip() needed here as it's an empty element or handled by next()
                 }
                 name == Constants.Rss.ITEM -> {
@@ -126,14 +131,26 @@ class RssParser @Inject constructor() {
                     }
                 }
                 name == Constants.Rss.ENCLOSURE -> {
-                    audioUrl = parser.getAttributeValue(null, Constants.Rss.ENCLOSURE_URL) ?: ""
+                    val rawUrl = parser.getAttributeValue(null, Constants.Rss.ENCLOSURE_URL) ?: ""
+                    audioUrl = when {
+                        rawUrl.startsWith("http") -> rawUrl
+                        rawUrl.startsWith("//") -> "https:$rawUrl"
+                        rawUrl.isNotEmpty() -> "https://$rawUrl"
+                        else -> ""
+                    }
                     skip(parser)
                 }
                 name == Constants.Rss.DURATION -> {
                     duration = parseDuration(readText(parser))
                 }
                 name == Constants.Rss.IMAGE && ns?.contains("itunes") == true -> {
-                    imageUrl = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF)
+                    val rawImg = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF)
+                    imageUrl = when {
+                        rawImg == null -> null
+                        rawImg.startsWith("http") -> rawImg
+                        rawImg.startsWith("//") -> "https:$rawImg"
+                        else -> "https://$rawImg"
+                    }
                     skip(parser)
                 }
                 name == Constants.Rss.CHAPTERS -> {
