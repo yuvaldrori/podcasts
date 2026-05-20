@@ -77,7 +77,7 @@ fun EpisodeDetailScreen(
             }
             is EpisodeDetailUiState.Success -> {
                 val data = uiState.episodeWithPodcast
-                Column(
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(
@@ -87,120 +87,121 @@ fun EpisodeDetailScreen(
                             end = 16.dp
                         )
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        val imageUrl = data.episode.imageUrl ?: data.podcast.imageUrl
-                        PodcastCover(
-                            model = imageUrl,
-                            size = Constants.COVER_SIZE_DETAIL_DP.dp
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text(
-                                text = data.episode.title,
-                                style = MaterialTheme.typography.titleLarge
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            val imageUrl = data.episode.imageUrl ?: data.podcast.imageUrl
+                            PodcastCover(
+                                model = imageUrl,
+                                size = Constants.COVER_SIZE_DETAIL_DP.dp
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = data.podcast.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = Formatter.formatDate(data.episode.pubDate),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Button(
-                        onClick = { onAddToQueue(data.episode) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isInQueue
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (uiState.isInQueue) stringResource(R.string.in_queue) else stringResource(R.string.add_to_queue))
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    val shareEpisodeFormat = stringResource(R.string.share_episode_format, data.episode.title, data.episode.episodeWebLink ?: "")
-                    val listeningToString = stringResource(R.string.listening_to, data.episode.title)
-                    OutlinedButton(
-                        onClick = {
-                            val sendIntent: Intent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                val shareText = if (!data.episode.isLocal && data.episode.episodeWebLink != null) {
-                                    shareEpisodeFormat
-                                } else {
-                                    listeningToString
-                                }
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                                type = Constants.MIME_TYPE_TEXT_PLAIN
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = data.episode.title,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = data.podcast.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = Formatter.formatDate(data.episode.pubDate),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
                             }
-                            val shareIntent = Intent.createChooser(sendIntent, null)
-                            context.startActivity(shareIntent)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.share))
-                    }
+                        }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(
-                        text = stringResource(R.string.description_label),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    val annotatedDescription = remember(data.episode.description) {
-                        Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toAnnotatedString()
-                    }
-                    
-                    Column(modifier = Modifier.weight(1f)) {
+                        Button(
+                            onClick = { onAddToQueue(data.episode) },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isInQueue
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (uiState.isInQueue) stringResource(R.string.in_queue) else stringResource(R.string.add_to_queue))
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val shareEpisodeFormat = stringResource(R.string.share_episode_format, data.episode.title, data.episode.episodeWebLink ?: "")
+                        val listeningToString = stringResource(R.string.listening_to, data.episode.title)
+                        OutlinedButton(
+                            onClick = {
+                                val sendIntent: Intent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    val shareText = if (!data.episode.isLocal && data.episode.episodeWebLink != null) {
+                                        shareEpisodeFormat
+                                    } else {
+                                        listeningToString
+                                    }
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                    type = Constants.MIME_TYPE_TEXT_PLAIN
+                                }
+                                val shareIntent = Intent.createChooser(sendIntent, null)
+                                context.startActivity(shareIntent)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.share))
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Text(
+                            text = stringResource(R.string.description_label),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        val annotatedDescription = remember(data.episode.description) {
+                            Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toAnnotatedString()
+                        }
+                        
                         Text(
                             text = annotatedDescription,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f, fill = false)
+                            modifier = Modifier.fillMaxWidth()
                         )
+                    }
 
-                        if (uiState.chapters.isNotEmpty()) {
+                    if (uiState.chapters.isNotEmpty()) {
+                        item {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                             Text(text = stringResource(R.string.chapters_label), style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(8.dp))
-                            LazyColumn(modifier = Modifier.weight(1f)) {
-                                items(uiState.chapters, key = { it.id }) { chapter ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { onChapterClick(chapter) }
-                                            .padding(vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = chapter.title,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(
-                                            text = Formatter.formatTime(chapter.startTimeMs),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.outline
-                                        )
-                                    }
-                                }
+                        }
+
+                        items(uiState.chapters, key = { it.id }) { chapter ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onChapterClick(chapter) }
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = chapter.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = Formatter.formatTime(chapter.startTimeMs),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
                             }
                         }
                     }

@@ -22,6 +22,11 @@ class EnqueueEpisodeUseCase @Inject constructor(
         // Consolidated DB operation (Queue update + Playback status update)
         repository.requeueEpisode(episode)
 
+        // Do not schedule background download if episode is local or already downloaded
+        if (episode.isLocal || episode.downloadStatus == 2) {
+            return
+        }
+
         // Trigger background download
         val downloadData = Data.Builder()
             .putString(DownloadWorker.KEY_EPISODE_ID, episode.id)
@@ -45,3 +50,4 @@ class EnqueueEpisodeUseCase @Inject constructor(
             downloadWorkRequest
         )    }
 }
+

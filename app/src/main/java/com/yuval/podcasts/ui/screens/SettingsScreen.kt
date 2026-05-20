@@ -18,8 +18,12 @@ import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.viewmodel.SettingsUiState
+import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
@@ -37,6 +41,23 @@ fun SettingsScreen(
     var rssUrl by remember { mutableStateOf("") }
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
+    var isLogNoteFocused by remember { mutableStateOf(false) }
+    val isImeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(isLogNoteFocused, isImeVisible) {
+        if (isLogNoteFocused && isImeVisible) {
+            // Animate scroll to bottom as layout updates and keyboard slides up.
+            // We run this at two intervals (150ms and 350ms) to ensure it reaches the true
+            // settled maximum scroll value since the keyboard animation takes some time.
+            delay(150)
+            scrollState.animateScrollTo(scrollState.maxValue)
+            delay(200)
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+
 
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         uiState.errorMessage?.let { error ->
@@ -85,7 +106,7 @@ fun SettingsScreen(
                     bottom = padding.calculateBottomPadding() + contentPadding.calculateBottomPadding()
                 )
                 .imePadding()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(16.dp)
         ) {
             Text(text = stringResource(R.string.add_podcast), style = MaterialTheme.typography.titleLarge)
@@ -198,7 +219,11 @@ fun SettingsScreen(
                 value = uiState.logNote,
                 onValueChange = onLogNoteChanged,
                 label = { Text(stringResource(R.string.debugging_explain_label)) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        isLogNoteFocused = focusState.isFocused
+                    },
                 minLines = 3
             )
             Spacer(modifier = Modifier.height(8.dp))

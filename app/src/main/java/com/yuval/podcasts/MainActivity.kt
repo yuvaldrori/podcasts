@@ -17,9 +17,14 @@ import com.yuval.podcasts.ui.MainScreen
 import com.yuval.podcasts.ui.viewmodel.PlayerViewModel
 import com.yuval.podcasts.ui.viewmodel.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import com.yuval.podcasts.media.PlayerManager
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+    @Inject
+    lateinit var playerManager: PlayerManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -39,5 +44,10 @@ class MainActivity : AppCompatActivity() {
                 MainScreen()
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        playerManager.release()
     }
 }

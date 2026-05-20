@@ -17,6 +17,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -55,7 +56,7 @@ class SyncWorker @AssistedInject constructor(
             
             val completedCount = AtomicInteger(0)
             val semaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
-            var lastForegroundUpdate = 0L
+            val lastForegroundUpdate = AtomicLong(0L)
 
             coroutineScope {
                 podcasts.map { podcast ->
@@ -71,9 +72,10 @@ class SyncWorker @AssistedInject constructor(
                                 val currentTime = System.currentTimeMillis()
                                 try {
                                     setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
-                                    if (current == total || currentTime - lastForegroundUpdate > 1000) {
+                                    val lastUpdate = lastForegroundUpdate.get()
+                                    if (current == total || currentTime - lastUpdate > 1000) {
+                                        lastForegroundUpdate.set(currentTime)
                                         setForeground(createForegroundInfo(current, total))
-                                        lastForegroundUpdate = currentTime
                                     }
                                 } catch (e: Exception) {
                                     // Ignore failures in setForeground/setProgress during the loop

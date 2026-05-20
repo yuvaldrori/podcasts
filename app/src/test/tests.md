@@ -40,7 +40,7 @@ Repositories are the "managers" that decide whether to get data from the databas
 
 Use Cases handle specific business rules.
 
-*   **`EnqueueEpisodeUseCaseTest`**: Verifies the logic for adding a new episode to the queue. If it's a brand new episode, it gets added to the front. If it's older, it gets added to the back. It also checks that downloading starts when an item is queued.
+*   **`EnqueueEpisodeUseCaseTest`**: Verifies the logic for adding a new episode to the queue. If it's a brand new episode, it gets added to the front. If it's older, it gets added to the back. It checks that downloading starts when a remote, un-downloaded item is queued, and verifies that background downloads are skipped for local episodes or already downloaded episodes.
 *   **`RemoveEpisodeUseCaseTest`**: Checks that when an episode is removed from the queue, its downloaded audio file is deleted from the phone to free up storage space.
 *   **`ExportOpmlUseCaseTest`**: Confirms that we can export our podcast subscription list to an OPML backup file.
 *   **`ImportOpmlUseCaseTest`**: Confirms that given an OPML backup file, we can correctly extract the feed URLs and trigger new subscriptions for each.

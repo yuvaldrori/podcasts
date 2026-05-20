@@ -30,6 +30,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+
 
 @HiltWorker
 class OpmlImportWorker @AssistedInject constructor(
@@ -60,7 +62,7 @@ class OpmlImportWorker @AssistedInject constructor(
 
             val completedCount = AtomicInteger(0)
             val semaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
-            var lastForegroundUpdate = 0L
+            val lastForegroundUpdate = AtomicLong(0L)
 
             setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
             setForeground(createForegroundInfo(0, total))
@@ -79,9 +81,10 @@ class OpmlImportWorker @AssistedInject constructor(
                                 setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
                                 
                                 val currentTime = System.currentTimeMillis()
-                                if (current == total || currentTime - lastForegroundUpdate > 500) {
+                                val lastUpdate = lastForegroundUpdate.get()
+                                if (current == total || currentTime - lastUpdate > 500) {
+                                    lastForegroundUpdate.set(currentTime)
                                     setForeground(createForegroundInfo(current, total))
-                                    lastForegroundUpdate = currentTime
                                 }
                             }
                         }

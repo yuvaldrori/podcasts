@@ -23,6 +23,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.FileOutputStream
 import java.io.IOException
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Response
+
 
 @HiltWorker
 class DownloadWorker @AssistedInject constructor(
@@ -55,7 +62,7 @@ class DownloadWorker @AssistedInject constructor(
                 .url(audioUrl)
                 .build()
 
-            val response = okHttpClient.newCall(request).execute()
+            val response = okHttpClient.newCall(request).await()
             if (!response.isSuccessful) {
                 logManager.e("DownloadWorker", "Failed to download $episodeId: ${response.code}")
                 updateDownloadStatus(episodeId, 0, null)
@@ -151,3 +158,23 @@ class DownloadWorker @AssistedInject constructor(
         const val KEY_EPISODE_TITLE = "episode_title"
     }
 }
+
+private suspend fun Call.await(): Response {
+    return suspendCancellableCoroutine { continuation ->
+        enqueue(object : Callback {
+            override fun onResponse(call: Call, response: Response) {
+                continuation.resume(response)
+            }
+
+            override fun onFailure(call: Call, e: IOException) {
+                if (continuation.isCancelled) return
+                continuation.resumeWithException(e)
+            }
+        })
+
+        continuation.invokeOnCancellation {
+            cancel()
+        }
+    }
+}
+

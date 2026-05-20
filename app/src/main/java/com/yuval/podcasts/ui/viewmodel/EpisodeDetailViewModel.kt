@@ -41,11 +41,8 @@ class EpisodeDetailViewModel @Inject constructor(
 
     private val episodeId = savedStateHandle.toRoute<EpisodeDetailScreenRoute>().episodeId
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<EpisodeDetailUiState> = combine(
-        flowOf(episodeId).flatMapLatest { id ->
-            repository.getEpisodeWithPodcastFlow(id)
-        },
+        repository.getEpisodeWithPodcastFlow(episodeId),
         repository.listeningQueue,
         repository.getChapters(episodeId)
     ) { episodeData, queue, chapters ->
