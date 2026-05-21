@@ -86,7 +86,7 @@ class SettingsViewModelTest {
     @Test
     fun addPodcast_success() = runTest {
         val url = "http://example.com/feed"
-        coEvery { repository.fetchAndStorePodcast(url) } returns Unit
+        coEvery { repository.fetchAndStorePodcast(url) } returns 1
 
         viewModel.addPodcast(url)
 

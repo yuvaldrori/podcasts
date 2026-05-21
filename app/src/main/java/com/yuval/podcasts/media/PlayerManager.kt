@@ -261,6 +261,20 @@ class PlayerManager @Inject constructor(
         }
     }
 
+    fun play() {
+        scope.launch {
+            val browser = awaitController()
+            browser?.play()
+        }
+    }
+
+    fun pause() {
+        scope.launch {
+            val browser = awaitController()
+            browser?.pause()
+        }
+    }
+
     fun togglePlayPause() {
         scope.launch {
             val browser = awaitController()

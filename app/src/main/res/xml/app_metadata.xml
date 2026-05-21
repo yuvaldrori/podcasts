@@ -1,0 +1,4 @@
+<AppFunctionAppMetadata 
+    xmlns:appfn="http://schemas.android.com/apk/androidx.appfunctions"
+    appfn:description="A podcast player that allows you to manage subscriptions, listen to episodes, and manage your playback queue."
+    appfn:displayDescription="Podcast Player and Manager" />

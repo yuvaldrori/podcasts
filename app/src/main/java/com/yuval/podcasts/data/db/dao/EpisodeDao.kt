@@ -24,16 +24,19 @@ interface EpisodeDao {
     suspend fun upsertEpisodes(episodes: List<Episode>)
 
     @Transaction
-    suspend fun syncNetworkEpisodes(episodes: List<NetworkEpisode>) {
-        if (episodes.isEmpty()) return
+    suspend fun syncNetworkEpisodes(episodes: List<NetworkEpisode>): Int {
+        if (episodes.isEmpty()) return 0
         
         val podcastFeedUrl = episodes.first().podcastFeedUrl
         val existingEpisodes = getEpisodesForPodcastSync(podcastFeedUrl).associateBy { it.id }
         
+        val newEpisodesCount = episodes.count { it.id !in existingEpisodes }
+
         val episodesToUpsert = episodes.map { networkEp ->
             networkEp.mergeWithLocal(existingEpisodes[networkEp.id])
         }
         upsertEpisodes(episodesToUpsert)
+        return newEpisodesCount
     }
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
