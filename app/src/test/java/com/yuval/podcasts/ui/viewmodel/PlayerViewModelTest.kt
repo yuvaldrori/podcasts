@@ -15,11 +15,14 @@ import org.junit.Test
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.setMain
 
+import com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
+
 class PlayerViewModelTest {
 
     private lateinit var repository: PodcastRepository
     private lateinit var playerManager: PlayerManager
     private lateinit var networkMonitor: NetworkMonitor
+    private lateinit var enqueueEpisodeUseCase: EnqueueEpisodeUseCase
     private lateinit var viewModel: PlayerViewModel
     private val testDispatcher = UnconfinedTestDispatcher()
 
@@ -30,6 +33,7 @@ class PlayerViewModelTest {
         repository = mockk(relaxed = true)
         playerManager = mockk(relaxed = true)
         networkMonitor = mockk(relaxed = true)
+        enqueueEpisodeUseCase = mockk(relaxed = true)
         
         every { playerManager.isPlaying } returns MutableStateFlow(false)
         every { playerManager.isInitialized } returns MutableStateFlow(true)
@@ -38,7 +42,7 @@ class PlayerViewModelTest {
         
         every { repository.listeningQueue } returns flowOf(emptyList())
 
-        viewModel = PlayerViewModel(repository, playerManager, networkMonitor)
+        viewModel = PlayerViewModel(repository, playerManager, networkMonitor, enqueueEpisodeUseCase)
     }
 
     @Test

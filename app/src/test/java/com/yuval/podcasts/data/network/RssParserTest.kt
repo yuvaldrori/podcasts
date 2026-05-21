@@ -161,4 +161,29 @@ class RssParserTest {
         assertEquals("https://epgb.podbean.com/907ade4f.mp3", parsed.episodes[0].episode.audioUrl)
         assertEquals("https://epgb.podbean.com/img.jpg", parsed.episodes[0].episode.imageUrl)
     }
+
+    @Test
+    fun parse_withCDataAndEntities_extractsFullText() {
+        val xml = """
+            <rss version="2.0">
+                <channel>
+                    <title><![CDATA[CDATA Title]]></title>
+                    <description>Description with &amp; entity</description>
+                    <item>
+                        <title>Split<![CDATA[ CDATA]]> Title</title>
+                        <description><![CDATA[Multiple ]]>events<![CDATA[ merged]]></description>
+                        <guid>ep1</guid>
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+        
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val parsed = parser.parse(inputStream, "http://test.com")
+        
+        assertEquals("CDATA Title", parsed.podcast.title)
+        assertEquals("Description with & entity", parsed.podcast.description)
+        assertEquals("Split CDATA Title", parsed.episodes[0].episode.title)
+        assertEquals("Multiple events merged", parsed.episodes[0].episode.description)
+    }
 }

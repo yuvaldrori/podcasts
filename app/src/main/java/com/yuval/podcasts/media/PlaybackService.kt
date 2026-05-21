@@ -147,10 +147,10 @@ class PlaybackService : MediaSessionService() {
             }.asListenableFuture()
         }
 
-        @Deprecated("Use onPlaybackResumption(MediaSession, ControllerInfo, Bundle) instead")
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
-            controller: MediaSession.ControllerInfo
+            controller: MediaSession.ControllerInfo,
+            isStartup: Boolean
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             return serviceScope.async(ioDispatcher) {
                 val episodes = queueDao.getQueueEpisodes().first()
@@ -184,7 +184,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        serviceScope = CoroutineScope(ioDispatcher + SupervisorJob())
+        serviceScope = CoroutineScope(mainDispatcher + SupervisorJob())
         
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -196,7 +196,7 @@ class PlaybackService : MediaSessionService() {
         exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
         castPlayer.repeatMode = Player.REPEAT_MODE_OFF
         
-        serviceScope.launch {
+        serviceScope.launch(ioDispatcher) {
             val speed = settingsRepository.getPlaybackSpeed()
             val skipSilence = settingsRepository.isSkipSilenceEnabled()
             withContext(mainDispatcher) {
@@ -461,9 +461,9 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         serviceScope.cancel()
+        exoPlayer.release()
+        castPlayer.release()
         mediaSession?.run {
-            exoPlayer.release()
-            castPlayer.release()
             release()
             mediaSession = null
         }

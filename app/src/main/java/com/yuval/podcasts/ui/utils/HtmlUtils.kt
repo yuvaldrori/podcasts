@@ -39,8 +39,11 @@ fun Spanned.toAnnotatedString(): AnnotatedString = buildAnnotatedString {
             is ForegroundColorSpan -> addStyle(SpanStyle(color = Color(span.foregroundColor)), start, end)
             is StrikethroughSpan -> addStyle(SpanStyle(textDecoration = TextDecoration.LineThrough), start, end)
             is URLSpan -> {
-                addStyle(SpanStyle(color = Color.Blue, textDecoration = TextDecoration.Underline), start, end)
-                addStringAnnotation("URL", span.url, start, end)
+                val url = span.url
+                if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:")) {
+                    addStyle(SpanStyle(color = Color.Blue, textDecoration = TextDecoration.Underline), start, end)
+                    addStringAnnotation("URL", url, start, end)
+                }
             }
         }
     }

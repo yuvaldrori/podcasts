@@ -27,12 +27,15 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.ui.viewmodel.EpisodeDetailUiState
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.components.LoadingBox
 import com.yuval.podcasts.ui.components.PodcastCover
 import com.yuval.podcasts.ui.utils.Formatter
 import com.yuval.podcasts.ui.utils.toAnnotatedString
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -164,8 +167,10 @@ fun EpisodeDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        val annotatedDescription = remember(data.episode.description) {
-                            Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toAnnotatedString()
+                        val annotatedDescription by produceState<AnnotatedString>(AnnotatedString(""), data.episode.description) {
+                            value = withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toAnnotatedString()
+                            }
                         }
                         
                         Text(

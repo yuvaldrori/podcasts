@@ -25,7 +25,8 @@ import javax.inject.Inject
 class ThemeViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val playerManager: PlayerManager,
-    private val repository: PodcastRepository
+    private val repository: PodcastRepository,
+    private val imageLoader: ImageLoader
 ) : ViewModel() {
 
     private val _dynamicColorScheme = MutableStateFlow<ColorScheme?>(null)
@@ -35,16 +36,19 @@ class ThemeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            @OptIn(kotlinx.coroutines.FlowPreview::class)
-            combine(playerManager.currentMediaId, isDarkThemeFlow) { id, isDark -> id to isDark }
+            @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+            combine(
+                playerManager.currentMediaId.flatMapLatest { id ->
+                    if (id == null) flowOf(null) else repository.getEpisodeByIdFlow(id)
+                },
+                isDarkThemeFlow
+            ) { episode, isDark -> episode to isDark }
                 .debounce(200)
-                .collectLatest { (id, isDark) ->
-                    val imageUrl = if (id != null) {
-                        repository.getEpisodeByIdFlow(id).first()?.imageUrl
-                    } else null
-
-                    if (imageUrl != null && imageUrl.startsWith("http")) {
-                        generateColorScheme(imageUrl, isDark)
+                .collectLatest { (episode, isDark) ->
+                    val finalImageUrl = episode?.imageUrl
+                    
+                    if (finalImageUrl != null && finalImageUrl.startsWith("http")) {
+                        generateColorScheme(finalImageUrl, isDark)
                     } else {
                         _dynamicColorScheme.value = null
                     }
@@ -57,13 +61,12 @@ class ThemeViewModel @Inject constructor(
     }
 
     private suspend fun generateColorScheme(imageUrl: String, isDarkTheme: Boolean) {
-        val loader = ImageLoader(context)
         val request = ImageRequest.Builder(context)
             .data(imageUrl)
             .allowHardware(false)
             .build()
 
-        val result = loader.execute(request)
+        val result = imageLoader.execute(request)
         if (result is SuccessResult) {
             val bitmap = (result.drawable as? BitmapDrawable)?.bitmap ?: return
             val palette = Palette.from(bitmap).generate()

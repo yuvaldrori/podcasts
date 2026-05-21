@@ -6,6 +6,16 @@ import androidx.room.PrimaryKey
 import androidx.room.ColumnInfo
 import kotlin.time.Duration.Companion.seconds
 
+enum class DownloadStatus(val value: Int) {
+    NOT_DOWNLOADED(0),
+    DOWNLOADING(1),
+    DOWNLOADED(2);
+
+    companion object {
+        fun fromInt(value: Int) = values().find { it.value == value } ?: NOT_DOWNLOADED
+    }
+}
+
 @Entity(
     tableName = "episodes",
     indices = [
@@ -45,4 +55,7 @@ data class Episode(
         get() = if (duration > 0) {
             lastPlayedPosition.toFloat() / duration.seconds.inWholeMilliseconds.toFloat().coerceAtLeast(1f)
         } else 0f
+
+    val playableUri: String
+        get() = localFilePath?.takeIf { java.io.File(it).exists() } ?: audioUrl
 }

@@ -13,6 +13,10 @@ import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
+import coil.ImageLoader
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
@@ -33,6 +37,19 @@ object NetworkModule {
             }
             .connectTimeout(Constants.NETWORK_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
             .readTimeout(Constants.NETWORK_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+            .writeTimeout(Constants.NETWORK_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+            .callTimeout(Constants.NETWORK_CALL_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideImageLoader(
+        @ApplicationContext context: Context,
+        okHttpClient: OkHttpClient
+    ): ImageLoader {
+        return ImageLoader.Builder(context)
+            .okHttpClient(okHttpClient)
             .build()
     }
 

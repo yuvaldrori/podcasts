@@ -177,4 +177,45 @@ class PodcastRepositoryTest {
         coVerify { queueDao.updateQueue(match { it.size == 3 && it[1].episodeId == "ep2" }) }
         coVerify { episodeDao.updatePlaybackStatus("ep2", true) }
     }
+
+    @Test
+    fun requeueMissingDownloads_verifiesPhysicalFiles() = runTest {
+        val tempFile = java.io.File.createTempFile("exists_audio", ".mp3").apply { deleteOnExit() }
+        
+        // Ep 1: remote, downloadStatus = 2 but file missing -> should re-download
+        val ep1 = Episode("ep1", "feedUrl", "Ep1", "Desc", "http://example.com/audio1.mp3", null, null, 1000L, 0L, 2, "/nonexistent/path.mp3", false, 0L)
+        // Ep 2: local episode -> should skip
+        val ep2 = Episode("ep2", com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL, "Ep2", "Desc", "/local/path.mp3", null, null, 2000L, 0L, 2, "/local/path.mp3", false, 0L)
+        // Ep 3: remote, downloadStatus = 2 and file exists -> should skip
+        val ep3 = Episode("ep3", "feedUrl", "Ep3", "Desc", "http://example.com/audio3.mp3", null, null, 3000L, 0L, 2, tempFile.absolutePath, false, 0L)
+        
+        coEvery { queueDao.getQueueEpisodesSync() } returns listOf(ep1, ep2, ep3)
+        coEvery { workManager.enqueueUniqueWork(any<String>(), any<androidx.work.ExistingWorkPolicy>(), any<androidx.work.OneTimeWorkRequest>()) } returns mockk()
+        
+        repository.requeueMissingDownloads()
+        
+        coVerify(exactly = 1) { 
+            workManager.enqueueUniqueWork(
+                "${com.yuval.podcasts.data.Constants.WORK_TAG_DOWNLOAD_PREFIX}ep1", 
+                any<androidx.work.ExistingWorkPolicy>(), 
+                any<androidx.work.OneTimeWorkRequest>()
+            ) 
+        }
+        coVerify(exactly = 0) { 
+            workManager.enqueueUniqueWork(
+                "${com.yuval.podcasts.data.Constants.WORK_TAG_DOWNLOAD_PREFIX}ep2", 
+                any<androidx.work.ExistingWorkPolicy>(), 
+                any<androidx.work.OneTimeWorkRequest>()
+            ) 
+        }
+        coVerify(exactly = 0) { 
+            workManager.enqueueUniqueWork(
+                "${com.yuval.podcasts.data.Constants.WORK_TAG_DOWNLOAD_PREFIX}ep3", 
+                any<androidx.work.ExistingWorkPolicy>(), 
+                any<androidx.work.OneTimeWorkRequest>()
+            ) 
+        }
+        
+        tempFile.delete()
+    }
 }

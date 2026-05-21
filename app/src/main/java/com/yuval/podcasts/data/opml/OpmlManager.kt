@@ -22,7 +22,7 @@ class OpmlManager @Inject constructor() {
         while (eventType != XmlPullParser.END_DOCUMENT) {
             if (eventType == XmlPullParser.START_TAG && parser.name == "outline") {
                 val xmlUrl = parser.getAttributeValue(null, "xmlUrl")
-                if (xmlUrl != null) {
+                if (xmlUrl != null && (xmlUrl.startsWith("http://") || xmlUrl.startsWith("https://"))) {
                     try {
                         java.net.URL(xmlUrl).toURI()
                         urls.add(xmlUrl)

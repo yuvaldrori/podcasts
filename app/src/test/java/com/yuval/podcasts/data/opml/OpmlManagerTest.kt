@@ -39,6 +39,28 @@ class OpmlManagerTest {
     }
 
     @Test
+    fun parse_withInvalidSchemes_filtersThem() {
+        val opmlContent = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <opml version="2.0">
+              <body>
+                <outline text="Podcasts">
+                  <outline text="Safe" type="rss" xmlUrl="https://example.com/feed.xml" />
+                  <outline text="Malicious" type="rss" xmlUrl="javascript:alert('evil')" />
+                  <outline text="File" type="rss" xmlUrl="file:///etc/passwd" />
+                </outline>
+              </body>
+            </opml>
+        """.trimIndent()
+        val inputStream = ByteArrayInputStream(opmlContent.toByteArray())
+
+        val urls = opmlManager.parse(inputStream)
+
+        assertEquals(1, urls.size)
+        assertEquals("https://example.com/feed.xml", urls[0])
+    }
+
+    @Test
     fun export_validPodcasts_returnsCorrectOpml() {
         val podcasts = listOf(
             Podcast(

@@ -13,6 +13,7 @@ object Constants {
     val SEEK_BACKWARD_MS = 15.seconds.inWholeMilliseconds
     val SAVE_POSITION_INTERVAL_MS = 15.seconds.inWholeMilliseconds
     val NETWORK_TIMEOUT_MS = 30.seconds.inWholeMilliseconds.toInt()
+    val NETWORK_CALL_TIMEOUT_MS = 60.seconds.inWholeMilliseconds.toInt()
     
     const val COMMAND_REWIND_10 = "REWIND_10"
     const val COMMAND_SKIP_30 = "SKIP_30"

@@ -40,25 +40,32 @@ class ImportLocalFileUseCase @Inject constructor(
 
             // 3. Insert Episode
             val episodeId = "local_${System.currentTimeMillis()}_${metadata.destFile.name.hashCode()}"
-            repository.insertEpisodes(listOf(
-                Episode(
-                    id = episodeId,
-                    podcastFeedUrl = localFeedUrl,
-                    title = metadata.title,
-                    description = metadata.description,
-                    audioUrl = metadata.destFile.absolutePath, 
-                    imageUrl = null,
-                    episodeWebLink = null, 
-                    pubDate = System.currentTimeMillis(),
-                    duration = metadata.durationSecs,
-                    downloadStatus = 2, // 2 = Downloaded
-                    localFilePath = metadata.destFile.absolutePath,
-                    isPlayed = false,
-                    lastPlayedPosition = 0L,
-                    completedAt = null,
-                    localId = 0L
-                )
-            ))
+            try {
+                repository.insertEpisodes(listOf(
+                    Episode(
+                        id = episodeId,
+                        podcastFeedUrl = localFeedUrl,
+                        title = metadata.title,
+                        description = metadata.description,
+                        audioUrl = metadata.destFile.absolutePath, 
+                        imageUrl = null,
+                        episodeWebLink = null, 
+                        pubDate = System.currentTimeMillis(),
+                        duration = metadata.durationSecs,
+                        downloadStatus = 2, // 2 = Downloaded
+                        localFilePath = metadata.destFile.absolutePath,
+                        isPlayed = false,
+                        lastPlayedPosition = 0L,
+                        completedAt = null,
+                        localId = 0L
+                    )
+                ))
+            } catch (e: Exception) {
+                if (metadata.destFile.exists()) {
+                    metadata.destFile.delete()
+                }
+                throw e
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {

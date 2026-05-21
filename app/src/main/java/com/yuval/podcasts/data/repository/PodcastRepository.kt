@@ -217,30 +217,33 @@ class DefaultPodcastRepository @Inject constructor(
     }
 
     override suspend fun requeueMissingDownloads(): Unit = withContext(ioDispatcher) {
-        val missing = queueDao.getQueuedEpisodesNotDownloaded()
-        missing.forEach { episode ->
+        val queuedEpisodes = queueDao.getQueueEpisodesSync()
+        queuedEpisodes.forEach { episode ->
             if (episode.isLocal) return@forEach
 
-            val downloadData = Data.Builder()
-                .putString(DownloadWorker.KEY_EPISODE_ID, episode.id)
-                .putString(DownloadWorker.KEY_AUDIO_URL, episode.audioUrl)
-                .putString(DownloadWorker.KEY_EPISODE_TITLE, episode.title)
-                .build()
+            val fileExists = episode.localFilePath?.let { File(it).exists() } == true
+            if (episode.downloadStatus != 2 || !fileExists) {
+                val downloadData = Data.Builder()
+                    .putString(DownloadWorker.KEY_EPISODE_ID, episode.id)
+                    .putString(DownloadWorker.KEY_AUDIO_URL, episode.audioUrl)
+                    .putString(DownloadWorker.KEY_EPISODE_TITLE, episode.title)
+                    .build()
 
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
+                val constraints = Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
 
-            val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-                .setConstraints(constraints)
-                .setInputData(downloadData)
-                .build()
+                val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
+                    .setConstraints(constraints)
+                    .setInputData(downloadData)
+                    .build()
 
-            workManager.enqueueUniqueWork(
-                "download_${episode.id}",
-                ExistingWorkPolicy.KEEP,
-                downloadWorkRequest
-            )
+                workManager.enqueueUniqueWork(
+                    "${Constants.WORK_TAG_DOWNLOAD_PREFIX}${episode.id}",
+                    ExistingWorkPolicy.KEEP,
+                    downloadWorkRequest
+                )
+            }
         }
     }
 }

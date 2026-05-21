@@ -65,7 +65,7 @@ class ChapterDaoTest {
     @Test
     fun updateChaptersBulk_replacesChaptersEfficiently() = runBlocking {
         val ep1 = Episode("ep1", "f", "T1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
-        episodeDao.insertEpisode(ep1)
+        episodeDao.insertEpisodes(listOf(ep1))
 
         // Initial chapters
         chapterDao.insertChapters(listOf(Chapter(episodeId = "ep1", title = "Old", startTimeMs = 0)))

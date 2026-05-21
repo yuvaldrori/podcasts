@@ -40,38 +40,37 @@ class EpisodeDaoTest {
         database.podcastDao().insertPodcast(Podcast("feed", "Title", "Desc", "url", "web"))
 
         // 2. Insert 10 unplayed episodes
-        for (i in 1..10) {
-            episodeDao.insertEpisode(
-                Episode(
-                    id = "ep$i",
-                    podcastFeedUrl = "feed",
-                    title = "Episode $i",
-                    description = "Desc",
-                    audioUrl = "url",
-                    imageUrl = null,
-                    episodeWebLink = null,
-                    pubDate = 1000L * i,
-                    duration = 300L,
-                    downloadStatus = 0,
-                    localFilePath = null,
-                    isPlayed = false,
-                    lastPlayedPosition = 0L,
-                    completedAt = null,
-                    localId = 0L
-                )
+        val episodes = (1..10).map { i ->
+            Episode(
+                id = "ep$i",
+                podcastFeedUrl = "feed",
+                title = "Episode $i",
+                description = "Desc",
+                audioUrl = "url",
+                imageUrl = null,
+                episodeWebLink = null,
+                pubDate = 1000L * i,
+                duration = 300L,
+                downloadStatus = 0,
+                localFilePath = null,
+                isPlayed = false,
+                lastPlayedPosition = 0L,
+                completedAt = null,
+                localId = 0L
             )
         }
+        episodeDao.insertEpisodes(episodes)
 
         // 3. Test limit of 5
-        val result5 = episodeDao.getUnplayedEpisodes(limit = 5).first()
+        val result5 = episodeDao.getUnplayedEpisodesWithPodcast(limit = 5).first()
         assertEquals(5, result5.size)
 
         // 4. Test limit of 2
-        val result2 = episodeDao.getUnplayedEpisodes(limit = 2).first()
+        val result2 = episodeDao.getUnplayedEpisodesWithPodcast(limit = 2).first()
         assertEquals(2, result2.size)
         
         // 5. Verify most recent is first
-        assertEquals("ep10", result2[0].id)
-        assertEquals("ep9", result2[1].id)
+        assertEquals("ep10", result2[0].episode.id)
+        assertEquals("ep9", result2[1].episode.id)
     }
 }

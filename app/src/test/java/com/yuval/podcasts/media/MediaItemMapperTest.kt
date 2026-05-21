@@ -13,7 +13,8 @@ import org.robolectric.annotation.Config
 class MediaItemMapperTest {
 
     @Test
-    fun testFromEpisode() {
+    fun testFromEpisodeWithLocalFileExists() {
+        val tempFile = java.io.File.createTempFile("temp_audio", ".mp3").apply { deleteOnExit() }
         val episode = Episode(
             id = "test-id",
             podcastFeedUrl = "https://feed.url",
@@ -23,7 +24,7 @@ class MediaItemMapperTest {
             pubDate = 123456789L,
             duration = 3600L,
             imageUrl = "https://image.url",
-            localFilePath = "/local/path/audio.mp3",
+            localFilePath = tempFile.absolutePath,
             downloadStatus = 2
         )
 
@@ -31,10 +32,34 @@ class MediaItemMapperTest {
         
         assertNotNull(mediaItem)
         assertEquals("test-id", mediaItem?.mediaId)
-        // Media3 Uri handling might vary, checking display title or other metadata is often more reliable
+        assertEquals(tempFile.absolutePath, mediaItem?.requestMetadata?.mediaUri?.toString() ?: mediaItem?.localConfiguration?.uri?.toString())
         assertEquals("Test Episode", mediaItem?.mediaMetadata?.title)
         assertEquals("https://feed.url", mediaItem?.mediaMetadata?.artist)
         assertEquals("https://image.url", mediaItem?.mediaMetadata?.artworkUri?.toString())
+        
+        tempFile.delete()
+    }
+
+    @Test
+    fun testFromEpisodeWithLocalFileMissingFallback() {
+        val episode = Episode(
+            id = "test-id",
+            podcastFeedUrl = "https://feed.url",
+            title = "Test Episode",
+            description = "Description",
+            audioUrl = "https://audio.url",
+            pubDate = 123456789L,
+            duration = 3600L,
+            imageUrl = "https://image.url",
+            localFilePath = "/nonexistent/path/audio.mp3",
+            downloadStatus = 2
+        )
+
+        val mediaItem = MediaItemMapper.fromEpisode(episode)
+        
+        assertNotNull(mediaItem)
+        assertEquals("test-id", mediaItem?.mediaId)
+        assertEquals("https://audio.url", mediaItem?.requestMetadata?.mediaUri?.toString() ?: mediaItem?.localConfiguration?.uri?.toString())
     }
 
     @Test
@@ -56,5 +81,6 @@ class MediaItemMapperTest {
         
         assertNotNull(mediaItem)
         assertEquals("test-id", mediaItem?.mediaId)
+        assertEquals("https://audio.url", mediaItem?.requestMetadata?.mediaUri?.toString() ?: mediaItem?.localConfiguration?.uri?.toString())
     }
 }

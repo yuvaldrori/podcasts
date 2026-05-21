@@ -20,25 +20,6 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC LIMIT :limit")
     fun getUnplayedEpisodesWithPodcast(limit: Int = com.yuval.podcasts.data.Constants.UNPLAYED_EPISODES_LIMIT): Flow<List<EpisodeWithPodcast>>
 
-    @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC LIMIT :limit")
-    fun getUnplayedEpisodes(limit: Int = com.yuval.podcasts.data.Constants.UNPLAYED_EPISODES_LIMIT): Flow<List<Episode>>
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertEpisode(episode: Episode)
-
-    @Query("""
-        UPDATE episodes 
-        SET title = :title, 
-            description = :description, 
-            audioUrl = :audioUrl, 
-            imageUrl = :imageUrl, 
-            episodeWebLink = :episodeWebLink,
-            pubDate = :pubDate, 
-            duration = :duration 
-        WHERE id = :id
-    """)
-    suspend fun updateEpisodeDetails(id: String, title: String, description: String, audioUrl: String, imageUrl: String?, episodeWebLink: String?, pubDate: Long, duration: Long)
-
     @Upsert
     suspend fun upsertEpisodes(episodes: List<Episode>)
 
@@ -76,6 +57,9 @@ interface EpisodeDao {
 
     @Query("UPDATE episodes SET downloadStatus = :status, localFilePath = :path WHERE id = :id")
     suspend fun updateDownloadStatus(id: String, status: Int, path: String?)
+
+    @Query("UPDATE episodes SET downloadStatus = :status, localFilePath = :path WHERE id = :id AND downloadStatus = 1")
+    suspend fun updateDownloadStatusAfterSuccess(id: String, status: Int, path: String?)
 
     @Query("UPDATE episodes SET isPlayed = :isPlayed, completedAt = :completedAt WHERE id = :id")
     suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long? = null)

@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import com.yuval.podcasts.di.MainDispatcher
@@ -211,7 +212,7 @@ class PlayerManager @Inject constructor(
             val browser = awaitController()
             browser?.let {
                 val mediaItems = episodes.map { ep ->
-                    val uri = ep.localFilePath ?: ep.audioUrl
+                    val uri = ep.playableUri
                     val metadata = MediaMetadata.Builder()
                         .setTitle(ep.title)
                         .setArtworkUri(ep.imageUrl?.toUri())
@@ -240,7 +241,7 @@ class PlayerManager @Inject constructor(
             val browser = awaitController()
             browser?.let {
                 val mediaItems = episodes.map { ep ->
-                    val uri = ep.localFilePath ?: ep.audioUrl
+                    val uri = ep.playableUri
                     val metadata = MediaMetadata.Builder()
                         .setTitle(ep.title)
                         .setArtworkUri(ep.imageUrl?.toUri())
@@ -341,6 +342,7 @@ class PlayerManager @Inject constructor(
     }
 
     fun release() {
+        scope.cancel()
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
         controller = null

@@ -57,15 +57,21 @@ class QueueViewModel @Inject constructor(
         val currentDur = args[5] as Long
 
         val effectiveQueue: ImmutableList<EpisodeWithPodcast> = manualQueue ?: currentQueue.toImmutableList()
-        val totalMsRemaining = effectiveQueue.sumOf { item ->
-            if (item.episode.id == currentId && currentDur > 0) {
-                (currentDur - currentPos).coerceAtLeast(0L)
-            } else {
-                val durationMs = item.episode.duration.seconds.inWholeMilliseconds
-                (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
+        
+        // If we are reordering (manualQueue != null), skip the expensive sum to keep drag smooth
+        val totalMsRemaining = if (manualQueue != null) {
+            0L // Or cache previous value
+        } else {
+            effectiveQueue.sumOf { item ->
+                if (item.episode.id == currentId && currentDur > 0) {
+                    (currentDur - currentPos).coerceAtLeast(0L)
+                } else {
+                    val durationMs = item.episode.duration.seconds.inWholeMilliseconds
+                    (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
+                }
             }
         }
-        val remaining = if (speed > 0f) (totalMsRemaining / speed).toLong() else 0L
+        val remaining = if (speed > 0f && manualQueue == null) (totalMsRemaining / speed).toLong() else 0L
         QueueUiState.Success(effectiveQueue, remaining)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), QueueUiState.Loading)
 

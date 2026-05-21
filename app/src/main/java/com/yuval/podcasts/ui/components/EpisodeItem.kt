@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
+import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import kotlin.time.Duration.Companion.seconds
 import com.yuval.podcasts.ui.utils.Formatter
@@ -61,20 +62,21 @@ fun EpisodeItem(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    val downloadIcon = when (episode.downloadStatus) {
-                        1 -> Icons.Default.HourglassTop
-                        2 -> Icons.Default.CheckCircle
-                        else -> Icons.Default.CloudDownload
+                    val status = DownloadStatus.fromInt(episode.downloadStatus)
+                    val downloadIcon = when (status) {
+                        DownloadStatus.DOWNLOADING -> Icons.Default.HourglassTop
+                        DownloadStatus.DOWNLOADED -> Icons.Default.CheckCircle
+                        DownloadStatus.NOT_DOWNLOADED -> Icons.Default.CloudDownload
                     }
-                    val downloadColor = when (episode.downloadStatus) {
-                        1 -> MaterialTheme.colorScheme.tertiary
-                        2 -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.outline
+                    val downloadColor = when (status) {
+                        DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.tertiary
+                        DownloadStatus.DOWNLOADED -> MaterialTheme.colorScheme.primary
+                        DownloadStatus.NOT_DOWNLOADED -> MaterialTheme.colorScheme.outline
                     }
-                    val downloadDesc = when (episode.downloadStatus) {
-                        1 -> stringResource(R.string.downloading)
-                        2 -> stringResource(R.string.downloaded)
-                        else -> stringResource(R.string.not_downloaded)
+                    val downloadDesc = when (status) {
+                        DownloadStatus.DOWNLOADING -> stringResource(R.string.downloading)
+                        DownloadStatus.DOWNLOADED -> stringResource(R.string.downloaded)
+                        DownloadStatus.NOT_DOWNLOADED -> stringResource(R.string.not_downloaded)
                     }
                     
                     Icon(

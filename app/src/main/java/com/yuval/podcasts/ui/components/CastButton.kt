@@ -32,7 +32,8 @@ fun CastButton(
             }
         },
         update = { button ->
-            // Proper tinting is handled via the theme R.style.Theme_Podcasts
+            // Proper tinting is typically handled via theme, 
+            // but we could apply it here if we had access to the indicator drawable.
         },
         modifier = modifier.size(48.dp)
     )

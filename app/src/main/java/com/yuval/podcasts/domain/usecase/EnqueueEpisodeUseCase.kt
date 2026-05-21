@@ -22,8 +22,9 @@ class EnqueueEpisodeUseCase @Inject constructor(
         // Consolidated DB operation (Queue update + Playback status update)
         repository.requeueEpisode(episode)
 
-        // Do not schedule background download if episode is local or already downloaded
-        if (episode.isLocal || episode.downloadStatus == 2) {
+        // Do not schedule background download if episode is local or already downloaded and physical file exists
+        val fileExists = episode.localFilePath?.let { java.io.File(it).exists() } == true
+        if (episode.isLocal || (episode.downloadStatus == 2 && fileExists)) {
             return
         }
 

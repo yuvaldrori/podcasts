@@ -30,9 +30,15 @@ class LocalMediaDataSource @Inject constructor(
     suspend fun copyAndExtract(uri: Uri): Result<LocalMediaMetadata> = withContext(ioDispatcher) {
         try {
             // 1. Copy the file to internal storage
-            val fileName = getFileName(uri) ?: "imported_audio_${System.currentTimeMillis()}.mp3"
+            val rawFileName = getFileName(uri) ?: "imported_audio_${System.currentTimeMillis()}.mp3"
+            val sanitizedFileName = rawFileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
             val destDir = File(context.filesDir, "local_podcasts").apply { mkdirs() }
-            val destFile = File(destDir, fileName)
+            val destFile = File(destDir, sanitizedFileName)
+            
+            // Ensure the destination is actually inside the expected directory (path traversal check)
+            if (!destFile.canonicalPath.startsWith(destDir.canonicalPath)) {
+                throw SecurityException("Invalid filename: $sanitizedFileName")
+            }
 
             context.contentResolver.openInputStream(uri)?.use { input ->
                 destFile.outputStream().use { output ->
@@ -45,7 +51,7 @@ class LocalMediaDataSource @Inject constructor(
                 retriever.setDataSource(destFile.absolutePath)
                 
                 val t = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE) 
-                    ?: fileName.substringBeforeLast(".")
+                    ?: sanitizedFileName.substringBeforeLast(".")
                 val a = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST) 
                     ?: retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) 
                     ?: "Unknown Artist"
@@ -56,7 +62,7 @@ class LocalMediaDataSource @Inject constructor(
             }
 
             // 3. Clean up title using Regex if it's just the filename (basic AI fallback)
-            val cleanTitle = if (title == fileName.substringBeforeLast(".")) {
+            val cleanTitle = if (title == sanitizedFileName.substringBeforeLast(".")) {
                 title.replace(Regex("[-_]"), " ").replace(Regex("([a-z])([A-Z]+)"), "$1 $2")
             } else {
                 title

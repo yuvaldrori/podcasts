@@ -21,7 +21,7 @@ import kotlin.time.Duration.Companion.seconds
 class RssParser @Inject constructor() {
     private val dateFormatter = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
 
-    fun parse(inputStream: InputStream, feedUrl: String): ParsedPodcast {
+    fun parse(inputStream: InputStream, feedUrl: String): ParsedPodcast = try {
         val factory = XmlPullParserFactory.newInstance()
         factory.isNamespaceAware = true
         // Harden against XXE vulnerabilities
@@ -63,16 +63,13 @@ class RssParser @Inject constructor() {
                 name == Constants.Rss.IMAGE && ns?.contains("itunes") == true -> {
                     // <itunes:image href="..." />
                     val rawUrl = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF) ?: ""
-                    podcastImageUrl = when {
-                        rawUrl.startsWith("http") -> rawUrl
-                        rawUrl.startsWith("//") -> "https:$rawUrl"
-                        rawUrl.isNotEmpty() -> "https://$rawUrl"
-                        else -> ""
+                    val itunesUrl = sanitizeUrl(rawUrl, feedUrl)
+                    if (itunesUrl.isNotEmpty()) {
+                        podcastImageUrl = itunesUrl
                     }
-                    // No skip() needed here as it's an empty element or handled by next()
                 }
                 name == Constants.Rss.ITEM -> {
-                    episodes.add(readItem(parser, feedUrl))
+                    readItem(parser, feedUrl)?.let { episodes.add(it) }
                 }
             }
         }
@@ -84,7 +81,25 @@ class RssParser @Inject constructor() {
             imageUrl = podcastImageUrl,
             website = podcastWebsite
         )
-        return ParsedPodcast(podcast, episodes)
+        ParsedPodcast(podcast, episodes)
+    } catch (e: Exception) {
+        throw Exception("Failed to parse RSS feed: ${e.message}", e)
+    }
+
+    private fun sanitizeUrl(url: String, baseUrl: String): String {
+        return when {
+            url.isBlank() -> ""
+            url.startsWith("http") -> url
+            url.startsWith("//") -> "https:$url"
+            // If it looks like a schemeless absolute URL (e.g. "example.com/image.jpg")
+            // We assume it's absolute if it contains a dot before any slash
+            url.contains(".") && (!url.contains("/") || url.indexOf(".") < url.indexOf("/")) -> "https://$url"
+            else -> try {
+                java.net.URI(baseUrl).resolve(url).toString()
+            } catch (e: Exception) {
+                ""
+            }
+        }
     }
 
     private fun readPodcastImage(parser: XmlPullParser): String {
@@ -100,7 +115,7 @@ class RssParser @Inject constructor() {
         return imageUrl
     }
 
-    private fun readItem(parser: XmlPullParser, feedUrl: String): NetworkEpisodeWithChapters {
+    private fun readItem(parser: XmlPullParser, feedUrl: String): NetworkEpisodeWithChapters? {
         parser.require(XmlPullParser.START_TAG, null, Constants.Rss.ITEM)
         var id = ""
         var title = ""
@@ -132,12 +147,7 @@ class RssParser @Inject constructor() {
                 }
                 name == Constants.Rss.ENCLOSURE -> {
                     val rawUrl = parser.getAttributeValue(null, Constants.Rss.ENCLOSURE_URL) ?: ""
-                    audioUrl = when {
-                        rawUrl.startsWith("http") -> rawUrl
-                        rawUrl.startsWith("//") -> "https:$rawUrl"
-                        rawUrl.isNotEmpty() -> "https://$rawUrl"
-                        else -> ""
-                    }
+                    audioUrl = sanitizeUrl(rawUrl, feedUrl)
                     skip(parser)
                 }
                 name == Constants.Rss.DURATION -> {
@@ -145,12 +155,7 @@ class RssParser @Inject constructor() {
                 }
                 name == Constants.Rss.IMAGE && ns?.contains("itunes") == true -> {
                     val rawImg = parser.getAttributeValue(null, Constants.Rss.IMAGE_HREF)
-                    imageUrl = when {
-                        rawImg == null -> null
-                        rawImg.startsWith("http") -> rawImg
-                        rawImg.startsWith("//") -> "https:$rawImg"
-                        else -> "https://$rawImg"
-                    }
+                    imageUrl = rawImg?.let { sanitizeUrl(it, feedUrl) }
                     skip(parser)
                 }
                 name == Constants.Rss.CHAPTERS -> {
@@ -161,6 +166,10 @@ class RssParser @Inject constructor() {
         }
 
         if (id.isEmpty()) id = audioUrl
+        if (id.isEmpty()) {
+            // Last resort: hash of title and date to avoid collision
+            id = java.util.UUID.nameUUIDFromBytes((title + pubDate).toByteArray()).toString()
+        }
 
         val episode = NetworkEpisode(
             id = id,
@@ -200,12 +209,12 @@ class RssParser @Inject constructor() {
     }
 
     private fun readText(parser: XmlPullParser): String {
-        var result = ""
-        if (parser.next() == XmlPullParser.TEXT) {
-            result = parser.text
-            parser.next() // consume END_TAG
+        val result = StringBuilder()
+        while (parser.next() == XmlPullParser.TEXT || parser.eventType == XmlPullParser.CDSECT) {
+            result.append(parser.text)
         }
-        return result
+        // After reading all text events, we should be at END_TAG
+        return result.toString().trim()
     }
 
     private fun skip(parser: XmlPullParser) {
@@ -225,6 +234,8 @@ class RssParser @Inject constructor() {
         if (durationStr.isNullOrBlank()) return 0L
         return try {
             val parts = durationStr.split(":")
+            if (parts.size > 3) return 0L // Invalid format
+            
             var totalDuration = Duration.ZERO
             for (part in parts) {
                 val value = part.toDoubleOrNull()?.toLong() ?: 0L

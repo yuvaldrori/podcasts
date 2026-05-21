@@ -17,18 +17,14 @@ import com.yuval.podcasts.utils.LogManager
 import com.yuval.podcasts.utils.StorageUtils
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.FileOutputStream
 import java.io.IOException
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.Response
+import com.yuval.podcasts.data.network.await
 
 
 @HiltWorker
@@ -63,66 +59,83 @@ class DownloadWorker @AssistedInject constructor(
                 .build()
 
             val response = okHttpClient.newCall(request).await()
-            if (!response.isSuccessful) {
-                logManager.e("DownloadWorker", "Failed to download $episodeId: ${response.code}")
-                updateDownloadStatus(episodeId, 0, null)
-                return@withContext Result.failure()
-            }
+            response.use { 
+                if (!response.isSuccessful) {
+                    logManager.e("DownloadWorker", "Failed to download $episodeId: ${response.code}")
+                    updateDownloadStatus(episodeId, 0, null)
+                    return@withContext if (response.code in 400..499) Result.failure() else Result.retry()
+                }
 
-            val body = response.body
-            val totalBytes = body.contentLength()
-            val outputFile = StorageUtils.getFileForEpisode(appContext, episodeId)
+                val body = response.body
+                val totalBytes = body.contentLength()
+                val outputFile = StorageUtils.getFileForEpisode(appContext, episodeId)
+                val partFile = File(outputFile.absolutePath + ".part")
 
-            var lastProgressUpdate = 0L
-            var lastForegroundUpdate = 0L
+                var lastProgressUpdate = 0L
+                var lastForegroundUpdate = 0L
 
-            FileOutputStream(outputFile).use { outputStream ->
-                body.byteStream().use { inputStream ->
-                    val buffer = ByteArray(Constants.DOWNLOAD_BUFFER_SIZE_BYTES)
-                    var bytesRead: Int
-                    var totalRead = 0L
-                    
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        if (isStopped) {
-                            logManager.w("DownloadWorker", "Download stopped for $episodeId")
-                            outputFile.delete()
-                            return@withContext Result.failure()
-                        }
-                        outputStream.write(buffer, 0, bytesRead)
-                        totalRead += bytesRead
-                        
-                        // Update progress if total size is known
-                        if (totalBytes > 0) {
-                            val progress = (totalRead * 100 / totalBytes).toInt()
-                            val currentTime = System.currentTimeMillis()
+                try {
+                    FileOutputStream(partFile).use { outputStream ->
+                        body.byteStream().use { inputStream ->
+                            val buffer = ByteArray(Constants.DOWNLOAD_BUFFER_SIZE_BYTES)
+                            var bytesRead: Int
+                            var totalRead = 0L
                             
-                            // Update WorkManager progress every 1% if it's been at least 100ms
-                            if (progress > lastProgressUpdate && currentTime - lastForegroundUpdate > 100) {
-                                setProgress(androidx.work.workDataOf("progress" to progress))
-                                lastProgressUpdate = progress.toLong()
-                            }
-                            
-                            // Update Notification every 5% to avoid IPC overhead
-                            if (progress >= lastForegroundUpdate + 5) {
-                                setForeground(createForegroundInfo(title, progress))
-                                lastForegroundUpdate = progress.toLong()
+                            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                                if (isStopped) {
+                                    logManager.w("DownloadWorker", "Download stopped for $episodeId")
+                                    partFile.delete()
+                                    return@withContext Result.failure()
+                                }
+                                outputStream.write(buffer, 0, bytesRead)
+                                totalRead += bytesRead
+                                
+                                // Update progress if total size is known
+                                if (totalBytes > 0) {
+                                    val progress = (totalRead * 100 / totalBytes).toInt()
+                                    val currentTime = System.currentTimeMillis()
+                                    
+                                    // Update WorkManager progress every 1% if it's been at least 100ms
+                                    if (progress > lastProgressUpdate && currentTime - lastForegroundUpdate > 100) {
+                                        setProgress(androidx.work.workDataOf("progress" to progress))
+                                        lastProgressUpdate = progress.toLong()
+                                    }
+                                    
+                                    // Update Notification every 5% to avoid IPC overhead
+                                    if (progress >= lastForegroundUpdate + 5) {
+                                        setForeground(createForegroundInfo(title, progress))
+                                        lastForegroundUpdate = progress.toLong()
+                                    }
+                                }
                             }
                         }
                     }
+
+                    if (!partFile.renameTo(outputFile)) {
+                        throw IOException("Failed to rename .part file to final destination")
+                    }
+
+                    logManager.i("DownloadWorker", "Download completed for $episodeId. Saved to ${outputFile.absolutePath}")
+                    // Update status to Downloaded with the local path, but only if we haven't been cancelled/removed
+                    episodeDao.updateDownloadStatusAfterSuccess(episodeId, 2, outputFile.absolutePath)
+                    
+                    Result.success()
+                } catch (e: Exception) {
+                    partFile.delete()
+                    throw e
                 }
             }
-
-            logManager.i("DownloadWorker", "Download completed for $episodeId. Saved to ${outputFile.absolutePath}")
-            // Update status to Downloaded with the local path
-            updateDownloadStatus(episodeId, 2, outputFile.absolutePath)
-            
-            Result.success()
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             logManager.e("DownloadWorker", "Download failed for $episodeId", mapOf("error" to e.message.toString()))
             // Revert status on failure
             updateDownloadStatus(episodeId, 0, null)
-            Result.retry() // Retry for transient network issues
+            
+            // Distinguish between transient and permanent errors
+            return@withContext when (e) {
+                is IOException -> Result.retry()
+                else -> Result.failure()
+            }
         }
     }
 
@@ -156,25 +169,6 @@ class DownloadWorker @AssistedInject constructor(
         const val KEY_EPISODE_ID = "episode_id"
         const val KEY_AUDIO_URL = "audio_url"
         const val KEY_EPISODE_TITLE = "episode_title"
-    }
-}
-
-private suspend fun Call.await(): Response {
-    return suspendCancellableCoroutine { continuation ->
-        enqueue(object : Callback {
-            override fun onResponse(call: Call, response: Response) {
-                continuation.resume(response)
-            }
-
-            override fun onFailure(call: Call, e: IOException) {
-                if (continuation.isCancelled) return
-                continuation.resumeWithException(e)
-            }
-        })
-
-        continuation.invokeOnCancellation {
-            cancel()
-        }
     }
 }
 

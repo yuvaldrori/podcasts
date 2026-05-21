@@ -31,7 +31,7 @@ class CleanupWorker @AssistedInject constructor(
             val files = downloadsDir.listFiles() ?: return@withContext Result.success()
             
             // Get all active episode IDs currently in the queue
-            val queuedEpisodes = queueDao.getQueueEpisodes().first()
+            val queuedEpisodes = queueDao.getQueueEpisodesSync()
             val validNames = queuedEpisodes.map { StorageUtils.getFileName(it.id) }.toSet()
 
             var deletedCount = 0

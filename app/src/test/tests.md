@@ -21,8 +21,8 @@ These tests ensure the app can talk to the internet and understand the podcast d
 
 *   **`PodcastApiIntegrationTest`**: Makes sure that if the app is trying to download an RSS feed and the user cancels the action (like closing the app), the network request stops immediately to save data and battery.
 *   **`PodcastRemoteDataSourceTest`**: Verifies that the remote data source correctly orchestrates the network fetch and RSS parsing into clean data models.
-*   **`RssParserTest`**: Feeds fake XML files (RSS feeds) to the parser to ensure it correctly extracts the podcast title, episode names, audio links, publication dates, and artwork (handling both standard RSS and iTunes image tags).
-*   **`RssParserCrashTest`**: A safety test that feeds broken, corrupted, or badly formatted XML to the parser to ensure the app doesn't crash, but instead handles the error gracefully.
+*   **`RssParserTest`**: Feeds fake XML files (RSS feeds) to the parser to ensure it correctly extracts the podcast title, episode names, audio links, publication dates, and artwork. It specifically verifies the robust handling of CDATA sections, HTML entities, and schemeless URLs (e.g., adding "https:" to "//example.com").
+*   **`RssParserCrashTest`**: A safety test that feeds broken, corrupted, or badly formatted XML to the parser to ensure the app doesn't crash, but instead handles the error gracefully by throwing a managed exception.
 
 ## 📁 Repository Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/data/repository/`*
@@ -30,6 +30,7 @@ These tests ensure the app can talk to the internet and understand the podcast d
 Repositories are the "managers" that decide whether to get data from the database or the internet.
 
 *   **`PodcastRepositoryTest`**: The main test for the repository. It checks that when you subscribe to a podcast, it fetches the data from the internet and saves it to the database. It also ensures long tasks run on background threads.
+*   **`LocalMediaDataSourceTest`**: Verifies that when importing local files, the app correctly sanitizes filenames to prevent "Path Traversal" security vulnerabilities (keeping files safely inside the app's folder).
 *   **`PodcastRepositoryRefreshTest`**: Checks the "Refresh All" feature. It makes sure that if you have 10 subscriptions, it refreshes them all quickly in parallel without freezing the app.
 *   **`AddLocalFileIntegrationTest`**: Tests the feature that lets users import their own local MP3 files. It checks if the app can read the MP3's metadata (title, artist, duration) and fake a "podcast episode" in the database.
 *   **`PodcastRepositoryAddLocalFileTest`**: A smaller test verifying that once the local MP3 is read, the repository properly saves it into the special "Local Files" subscription.
@@ -40,7 +41,7 @@ Repositories are the "managers" that decide whether to get data from the databas
 
 Use Cases handle specific business rules.
 
-*   **`EnqueueEpisodeUseCaseTest`**: Verifies the logic for adding a new episode to the queue. If it's a brand new episode, it gets added to the front. If it's older, it gets added to the back. It checks that downloading starts when a remote, un-downloaded item is queued, and verifies that background downloads are skipped for local episodes or already downloaded episodes.
+*   **`EnqueueEpisodeUseCaseTest`**: Verifies the logic for adding a new episode to the queue. If it's a brand new episode, it gets added to the front. If it's older, it gets added to the back. It checks that downloading starts when a remote, un-downloaded item is queued, and verifies that background downloads are skipped for local episodes or already downloaded episodes (provided their physical file exists). It also verifies that if a downloaded episode's physical file is missing from storage, the usecase schedules a fresh background download.
 *   **`RemoveEpisodeUseCaseTest`**: Checks that when an episode is removed from the queue, its downloaded audio file is deleted from the phone to free up storage space.
 *   **`ExportOpmlUseCaseTest`**: Confirms that we can export our podcast subscription list to an OPML backup file.
 *   **`ImportOpmlUseCaseTest`**: Confirms that given an OPML backup file, we can correctly extract the feed URLs and trigger new subscriptions for each.
@@ -52,7 +53,8 @@ Use Cases handle specific business rules.
 These tests verify small helper functions and data conversion logic.
 
 *   **`FormatterTest`**: Verifies that our date and time formatting functions work correctly. It checks that timestamps are converted to "MMM dd, yyyy" and that durations are correctly shown as "1h 30m" or "02:15".
-*   **`MediaItemMapperTest`**: Ensures that we can correctly convert a podcast "Episode" from our database into a "MediaItem" that the Android audio player understands, preserving the title, artist, and artwork.
+*   **`HtmlUtilsTest`**: Ensures that when converting podcast descriptions from HTML to displayable text, any embedded links are validated for safety. It allows only standard link types like `http`, `https`, and `mailto`, blocking potentially dangerous links like `javascript:`.
+*   **`MediaItemMapperTest`**: Ensures that we can correctly convert a podcast "Episode" from our database into a "MediaItem" that the Android audio player understands, preserving the title, artist, and artwork. It also verifies that when a downloaded episode's physical file is missing from disk, the mapped media item correctly falls back to streaming the network audio URL.
 
 ## 🎧 Media Player Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/media/`*

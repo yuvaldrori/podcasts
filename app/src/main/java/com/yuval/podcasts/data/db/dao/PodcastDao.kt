@@ -9,9 +9,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PodcastDao {
-    @Query("SELECT * FROM podcasts")
-    suspend fun getAllPodcastsStatic(): List<Podcast>
-
     @Query("""
         SELECT podcasts.* FROM podcasts 
         LEFT JOIN episodes ON podcasts.feedUrl = episodes.podcastFeedUrl 

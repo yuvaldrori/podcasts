@@ -32,7 +32,8 @@ data class PlayerUiState(
 class PlayerViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val playerManager: PlayerManager,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    private val enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
 ) : ViewModel() {
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -78,7 +79,12 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun play(episode: Episode) {
-        val uri = episode.localFilePath ?: episode.audioUrl
+        val uri = episode.playableUri
+        if (episode.localFilePath != null && !java.io.File(episode.localFilePath).exists()) {
+            viewModelScope.launch {
+                enqueueEpisodeUseCase(episode)
+            }
+        }
         playerManager.play(
             mediaId = episode.id,
             uri = uri,
@@ -89,6 +95,13 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun playQueue(episodes: List<Episode>, startIndex: Int, startPositionMs: Long = 0L) {
+        viewModelScope.launch {
+            episodes.forEach { episode ->
+                if (episode.localFilePath != null && !java.io.File(episode.localFilePath).exists()) {
+                    enqueueEpisodeUseCase(episode)
+                }
+            }
+        }
         playerManager.playQueue(episodes, startIndex, startPositionMs)
     }
 

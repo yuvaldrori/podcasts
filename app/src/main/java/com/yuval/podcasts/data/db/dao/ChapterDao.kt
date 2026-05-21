@@ -23,12 +23,6 @@ interface ChapterDao {
     suspend fun deleteChaptersBulk(episodeIds: List<String>)
 
     @Transaction
-    suspend fun updateChapters(episodeId: String, chapters: List<Chapter>) {
-        deleteChaptersForEpisode(episodeId)
-        insertChapters(chapters)
-    }
-
-    @Transaction
     suspend fun updateChaptersBulk(episodeIds: List<String>, chapters: List<Chapter>) {
         deleteChaptersBulk(episodeIds)
         insertChapters(chapters)

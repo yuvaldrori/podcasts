@@ -9,7 +9,7 @@ import com.yuval.podcasts.data.db.entity.Episode
 object MediaItemMapper {
     fun fromEpisode(ep: Episode): MediaItem? {
         return try {
-            val uri = (ep.localFilePath ?: ep.audioUrl).toUri()
+            val uri = ep.playableUri.toUri()
             val metadata = MediaMetadata.Builder()
                 .setTitle(ep.title)
                 .setArtist(ep.podcastFeedUrl)

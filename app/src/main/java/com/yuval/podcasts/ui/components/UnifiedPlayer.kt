@@ -121,18 +121,36 @@ fun UnifiedPlayer(
 
             // Bottom Row: Progress Slider and Times
             Column(modifier = Modifier.fillMaxWidth()) {
+                var sliderValue by remember { mutableFloatStateOf(0f) }
+                var isDragging by remember { mutableStateOf(false) }
+                
                 val currentProgress = if (uiState.duration > 0) uiState.currentPosition.toFloat() / uiState.duration.toFloat() else 0f
+                
+                LaunchedEffect(uiState.currentPosition, uiState.duration) {
+                    if (!isDragging) {
+                        sliderValue = currentProgress
+                    }
+                }
+
                 Slider(
-                    value = currentProgress,
-                    onValueChange = { actions.onSeekTo((it * uiState.duration).toLong()) },
+                    value = sliderValue,
+                    onValueChange = { 
+                        isDragging = true
+                        sliderValue = it 
+                    },
+                    onValueChangeFinished = {
+                        isDragging = false
+                        actions.onSeekTo((sliderValue * uiState.duration).toLong())
+                    },
                     modifier = Modifier.fillMaxWidth().height(32.dp)
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    val displayPosition = if (isDragging) (sliderValue * uiState.duration).toLong() else uiState.currentPosition
                     Text(
-                        text = Formatter.formatTime(uiState.currentPosition),
+                        text = Formatter.formatTime(displayPosition),
                         style = MaterialTheme.typography.labelSmall
                     )
                     Text(

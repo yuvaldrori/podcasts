@@ -45,13 +45,26 @@ class EnqueueEpisodeUseCaseTest {
     }
 
     @Test
-    fun `invoke calls requeueEpisode but does not enqueue download work if episode is already downloaded`() = runTest {
-        val downloadedEpisode = Episode("downloadedEp", "feed1", "TDownloaded", "DDownloaded", "http://example.com/audio.mp3", null, null, 3000L, 0L, 2, "/local/path.mp3", false, 0L)
+    fun `invoke calls requeueEpisode but does not enqueue download work if episode is already downloaded and file exists`() = runTest {
+        val tempFile = java.io.File.createTempFile("temp_episode", ".mp3").apply { deleteOnExit() }
+        val downloadedEpisode = Episode("downloadedEp", "feed1", "TDownloaded", "DDownloaded", "http://example.com/audio.mp3", null, null, 3000L, 0L, 2, tempFile.absolutePath, false, 0L)
 
         enqueueEpisodeUseCase(downloadedEpisode)
 
         coVerify { repository.requeueEpisode(downloadedEpisode) }
         coVerify(exactly = 0) { workManager.enqueueUniqueWork(any<String>(), any<androidx.work.ExistingWorkPolicy>(), any<androidx.work.OneTimeWorkRequest>()) }
+        
+        tempFile.delete()
+    }
+
+    @Test
+    fun `invoke calls requeueEpisode and enqueues download work if episode downloadStatus is 2 but physical file is missing`() = runTest {
+        val missingFileEpisode = Episode("missingEp", "feed1", "TMissing", "DMissing", "http://example.com/audio.mp3", null, null, 3000L, 0L, 2, "/nonexistent/path.mp3", false, 0L)
+
+        enqueueEpisodeUseCase(missingFileEpisode)
+
+        coVerify { repository.requeueEpisode(missingFileEpisode) }
+        coVerify(exactly = 1) { workManager.enqueueUniqueWork(any<String>(), any<androidx.work.ExistingWorkPolicy>(), any<androidx.work.OneTimeWorkRequest>()) }
     }
 }
 
