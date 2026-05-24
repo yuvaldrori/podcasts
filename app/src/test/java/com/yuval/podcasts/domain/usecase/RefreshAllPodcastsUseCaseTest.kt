@@ -3,6 +3,7 @@ package com.yuval.podcasts.domain.usecase
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.SettingsRepository
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import io.mockk.mockk
@@ -20,7 +21,7 @@ class RefreshAllPodcastsUseCaseTest {
 
         verify {
             workManager.enqueueUniqueWork(
-                "sync_all_podcasts",
+                Constants.WORK_NAME_SYNC_ALL,
                 ExistingWorkPolicy.KEEP,
                 any<OneTimeWorkRequest>()
             )

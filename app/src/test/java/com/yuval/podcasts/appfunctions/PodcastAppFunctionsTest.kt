@@ -1,6 +1,7 @@
 package com.yuval.podcasts.appfunctions
 
 import androidx.appfunctions.AppFunctionContext
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.RefreshAllPodcastsSyncUseCase
@@ -116,5 +117,19 @@ class PodcastAppFunctionsTest {
         val result = appFunctions.addDebugLog(context, msg)
         verify { logManager.i("AppFunction", "User note: $msg") }
         assertEquals("Log added", result)
+    }
+
+    @Test
+    fun `skipForward seeks forward with Constants duration`() = runTest {
+        val result = appFunctions.skipForward(context)
+        verify { playerManager.seekForward(Constants.SEEK_FORWARD_MS) }
+        assertEquals("Skipped forward 30 seconds", result)
+    }
+
+    @Test
+    fun `skipBackward seeks backward with Constants duration`() = runTest {
+        val result = appFunctions.skipBackward(context)
+        verify { playerManager.seekBackward(Constants.SEEK_BACKWARD_MS) }
+        assertEquals("Skipped backward 15 seconds", result)
     }
 }

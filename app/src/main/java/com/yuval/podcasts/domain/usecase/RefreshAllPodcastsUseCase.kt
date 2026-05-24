@@ -5,6 +5,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.work.SyncWorker
 import javax.inject.Inject
 
@@ -21,7 +22,7 @@ class RefreshAllPodcastsUseCase @Inject constructor(
             .build()
 
         workManager.enqueueUniqueWork(
-            "sync_all_podcasts",
+            Constants.WORK_NAME_SYNC_ALL,
             ExistingWorkPolicy.KEEP,
             syncWorkRequest
         )

@@ -103,12 +103,11 @@ class DefaultPodcastRepository @Inject constructor(
         // Fetch is already dispatched to IO via remoteDataSource
         val parsed = remoteDataSource.fetchPodcastData(feedUrl)
 
-        var newEpisodesCount = 0
-        database.withTransaction {
+        val newEpisodesCount = database.withTransaction {
             podcastDao.insertPodcast(parsed.podcast)
 
             val networkEpisodes = parsed.episodes.map { it.episode }
-            newEpisodesCount = episodeDao.syncNetworkEpisodes(networkEpisodes)
+            val count = episodeDao.syncNetworkEpisodes(networkEpisodes)
 
             // Update chapters for all episodes in bulk
             val allChapters = parsed.episodes.flatMap { item ->
@@ -118,9 +117,11 @@ class DefaultPodcastRepository @Inject constructor(
                 val episodeIds = parsed.episodes.map { it.episode.id }
                 chapterDao.updateChaptersBulk(episodeIds, allChapters)
             }
+            count
         }
         return newEpisodesCount
     }
+
     override suspend fun markAllAsPlayed(): Unit {
         episodeDao.markAllUnplayedAsPlayed()
     }

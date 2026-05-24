@@ -47,7 +47,7 @@ class SettingsViewModel @Inject constructor(
     private val _logNote = MutableStateFlow("")
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        workManager.getWorkInfosForUniqueWorkLiveData("opml_import").asFlow().map { it.firstOrNull() },
+        workManager.getWorkInfosForUniqueWorkLiveData(Constants.WORK_NAME_OPML_IMPORT).asFlow().map { it.firstOrNull() },
         errorMessage,
         _successMessage,
         _logNote,
@@ -113,7 +113,7 @@ class SettingsViewModel @Inject constructor(
             .setInputData(inputData)
             .build()
 
-        workManager.enqueueUniqueWork("opml_import", ExistingWorkPolicy.REPLACE, request)
+        workManager.enqueueUniqueWork(Constants.WORK_NAME_OPML_IMPORT, ExistingWorkPolicy.REPLACE, request)
     }
 
     fun importLocalAudio(uri: Uri) {

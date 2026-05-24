@@ -1,6 +1,5 @@
 package com.yuval.podcasts.domain.usecase
 
-import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.repository.PodcastRepository
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -22,13 +21,8 @@ class ReorderSubscriptionInQueueUseCase @Inject constructor(
 
         if (subscriptionEpisodes.isEmpty()) return
 
-        // New order: existing other episodes first, then subscription episodes at the bottom (sorted chronologically)
         val newOrder = otherEpisodes + subscriptionEpisodes.sortedBy { it.episode.pubDate }
 
-        val newQueueStates = newOrder.mapIndexed { index, epWithPodcast ->
-            QueueState(epWithPodcast.episode.id, index)
-        }
-
-        repository.updateQueue(newQueueStates)
+        repository.reorderQueue(newOrder.map { it.episode.id })
     }
 }

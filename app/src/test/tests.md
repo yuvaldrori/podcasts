@@ -31,9 +31,7 @@ Repositories are the "managers" that decide whether to get data from the databas
 
 *   **`PodcastRepositoryTest`**: The main test for the repository. It checks that when you subscribe to a podcast, it fetches the data from the internet and saves it to the database. It also ensures long tasks run on background threads.
 *   **`LocalMediaDataSourceTest`**: Verifies that when importing local files, the app correctly sanitizes filenames to prevent "Path Traversal" security vulnerabilities (keeping files safely inside the app's folder).
-*   **`PodcastRepositoryRefreshTest`**: Checks the "Refresh All" feature. It makes sure that if you have 10 subscriptions, it refreshes them all quickly in parallel without freezing the app.
 *   **`AddLocalFileIntegrationTest`**: Tests the feature that lets users import their own local MP3 files. It checks if the app can read the MP3's metadata (title, artist, duration) and fake a "podcast episode" in the database.
-*   **`PodcastRepositoryAddLocalFileTest`**: A smaller test verifying that once the local MP3 is read, the repository properly saves it into the special "Local Files" subscription.
 *   **`SettingsRepositoryTest`**: Checks that user preferences (like the default playback speed) are saved and loaded correctly from device storage.
 
 ## 💼 Domain Logic (Use Cases)
@@ -45,7 +43,10 @@ Use Cases handle specific business rules.
 *   **`RemoveEpisodeUseCaseTest`**: Checks that when an episode is removed from the queue, its downloaded audio file is deleted from the phone to free up storage space.
 *   **`ExportOpmlUseCaseTest`**: Confirms that we can export our podcast subscription list to an OPML backup file.
 *   **`ImportOpmlUseCaseTest`**: Confirms that given an OPML backup file, we can correctly extract the feed URLs and trigger new subscriptions for each.
+*   **`ImportLocalFileUseCaseTest`**: Verifies that importing a local audio file parses its metadata (using metadata extractor) and correctly triggers insertion into the local media database.
+*   **`ReorderSubscriptionInQueueUseCaseTest`**: Confirms the business rules for moving all episodes belonging to a specific podcast subscription to the bottom of the playback queue.
 *   **`RefreshAllPodcastsUseCaseTest`**: Verifies that the global refresh command correctly schedules a background worker to sync all subscriptions.
+*   **`RefreshAllPodcastsSyncUseCaseTest`**: Verifies that the synchronous refresh command used by AppFunctions correctly fetches podcast data, uses a Semaphore to limit the number of parallel fetches to avoid network overload, logs errors with simple class names under the `RefreshAllSync` tag, and returns the correct total count of newly added episodes.
 
 ## 🛠️ Utility & Mapping Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/ui/utils/` and `app/src/test/java/com/yuval/podcasts/media/`*
@@ -54,7 +55,9 @@ These tests verify small helper functions and data conversion logic.
 
 *   **`FormatterTest`**: Verifies that our date and time formatting functions work correctly. It checks that timestamps are converted to "MMM dd, yyyy" and that durations are correctly shown as "1h 30m" or "02:15".
 *   **`HtmlUtilsTest`**: Ensures that when converting podcast descriptions from HTML to displayable text, any embedded links are validated for safety. It allows only standard link types like `http`, `https`, and `mailto`, blocking potentially dangerous links like `javascript:`.
+*   **`UiTextTest`**: Checks that `UiText` wrapper correctly resolves dynamic string resources and plain text formatting in diverse context settings.
 *   **`MediaItemMapperTest`**: Ensures that we can correctly convert a podcast "Episode" from our database into a "MediaItem" that the Android audio player understands, preserving the title, artist, and artwork. It also verifies that when a downloaded episode's physical file is missing from disk, the mapped media item correctly falls back to streaming the network audio URL.
+*   **`StorageUtilsTest`**: Checks that file size converters, directory cleaners, and file validation tools calculate sizes accurately and safely delete nested directories.
 
 ## 🎧 Media Player Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/media/`*
@@ -64,6 +67,9 @@ These tests verify the audio player, background playback, and media buttons.
 *   **`PlaybackServiceTest`**: The main audio service test. Ensures that when a track ends, it moves to the next track. Also checks that the service remembers where you paused if you close the app.
 *   **`PlaybackServiceQueueSyncTest`**: Makes sure that if you reorder or delete items in the queue screen, the actual audio player's internal playlist updates instantly to match.
 *   **`PlaybackServiceMetadataSyncTest`**: Verifies that if an episode's metadata (like title or artwork) changes in the database, the player's current item is updated seamlessly using `replaceMediaItem` without interrupting playback.
+*   **`PlaybackServiceCustomCommandTest`**: Verifies custom control commands executed via the MediaSession (such as custom rewind/fast-forward buttons from notification or lock screens).
+*   **`PlaybackServiceResumeTest`**: Ensures that playback resumption via external controllers properly restores the player state and initiates the ExoPlayer instance correctly.
+*   **`PlaybackServiceSilenceToggleTest`**: Tests toggling of skip-silence features inside the active media session and underlying sound processors.
 *   **`MediaSessionCallbackTest`**: Tests the logic that "resolves" media IDs into playable items. This ensures that when external controllers (like Android Auto) request a track, the app correctly finds the URI and metadata from the database.
 *   **`MediaButtonRemappingTest`**: Ensures that pressing the "Fast Forward" or "Rewind" buttons on Bluetooth headphones correctly skips forward/backward by 30/10 seconds instead of skipping to the next episode.
 *   **`PlayerManagerTest`**: Tests the helper class that the UI uses to talk to the background service. It checks play, pause, and seeking functions.
@@ -71,7 +77,6 @@ These tests verify the audio player, background playback, and media buttons.
 *   **`PlayerSpeedTest` / `PlayerSpeedControllerTest`**: Verifies that changing the playback speed (e.g., 1.5x) works and that the speed is saved so the next episode plays at the same speed.
 *   **`PlayerStopPlayTest`**: Ensures that stopping the player clears the current media and resets everything cleanly.
 *   **`PlayerLastEpisodeTest`**: Verifies that when the last episode in the queue finishes, the player correctly stops and does not restart the playlist from the beginning. It also ensures the repeat mode is always set to OFF.
-*   **`PlayerManagerBugTest`**: A specific regression test ensuring that when the app restarts, the UI correctly shows the paused state of the last played episode.
 *   **`PlaybackResumptionTest`**: Verifies that when the app is cold-started or connected to a car (Bluetooth), the current episode correctly resumes from its last played position instead of starting from the beginning. It tests both the manual initialization and the standard Media3 `onPlaybackResumption` mechanism.
 
 ## 📱 UI ViewModels
@@ -84,7 +89,6 @@ ViewModels prepare data for the screen. These tests check that the data is corre
 *   **`QueueViewModelTest`**: Checks the "Up Next" queue logic. Makes sure that removing an item from the queue tells the player to skip if that item was currently playing.
 *   **`QueueViewModelTimeTest`**: Verifies the math that calculates "Total Queue Time Remaining". If you have 3 hours of podcasts but you listen at 2x speed, it correctly tells you there is 1.5 hours remaining.
 *   **`EpisodeDetailViewModelTest`**: Ensures the episode details screen loads the correct episode and knows whether that episode is already in your queue or not.
-*   **`PodcastDetailViewModelTest`**: Ensures clicking a podcast loads only the episodes belonging to that specific podcast.
 *   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files (podcast backups) works and shows error messages if a file is broken.
 
 ## 🤖 Android UI Tests (Instrumented)
@@ -96,5 +100,13 @@ These tests actually boot up the UI on an Android device to "click" buttons and 
 *   **`NewEpisodesScreenTest`**: Opens the "New Episodes" feed, simulates pulling down from the top of the screen to refresh, and checks that the loading spinner appears and disappears correctly.
 *   **`QueueScreenTest`**: Specifically tests the "Up Next" queue. It verifies that the Play/Pause buttons update their icons correctly when an episode starts playing. It also contains stress tests for the drag-and-drop gesture to ensure it doesn't crash or "snap" during rapid reordering.
 
+## 📱 AppFunctions Integration Tests
+*Located in: `app/src/test/java/com/yuval/podcasts/appfunctions/` and `app/src/androidTest/java/com/yuval/podcasts/appfunctions/`*
+
+These tests ensure that system-exposed capabilities (like Google Assistant or Gemini interactions) execute their actions correctly.
+
+*   **`PodcastAppFunctionsTest`**: A local unit test confirming that system voice commands (like resume queue, pause, skip forward/backward, and moving subscription episodes to the bottom of the queue) map to the correct PlayerManager actions using the app's predefined seek duration constants, and that subscription feed resolving uses the optimized Elvis chain fallback hierarchy.
+*   **`PodcastAppFunctionsIntegrationTest`**: An on-device instrumented test running on the emulator. It obtains the real Hilt-injected `PodcastAppFunctions` instance from the `PodcastApplication` context and verifies that all exposed functions (such as `resumeQueue`, `stopPlayback`, `skipForward`, `skipBackward`, `nextEpisode`, `refreshNewEpisodes`, `addDebugLog`, and `moveSubscriptionToBottom`) execute their operations successfully in the real application context without mock dependencies.
+
 ---
-*Note: We also have `OpmlManagerTest` (checks OPML XML parsing/generation for backup files) and `PlayerModuleTest` (checks that our Dependency Injection provides the right ExoPlayer instances).*
+*Note: We also have `OpmlManagerTest` (checks OPML XML parsing/generation for backup files), `OpmlImportWorkerTest` (verifies background worker that downloads, extracts, and imports subscriptions from an OPML feed), and `PlayerModuleTest` (checks that our Dependency Injection provides the right ExoPlayer instances).*

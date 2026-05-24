@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.collect
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.utils.MainDispatcherRule
 import com.yuval.podcasts.ui.utils.UiText
@@ -111,7 +112,7 @@ class SettingsViewModelTest {
     @Test
     fun importOpml_enqueuesWorkManagerTask() = runTest {
         viewModel.importOpml(uri)
-        verify { workManager.enqueueUniqueWork("opml_import", androidx.work.ExistingWorkPolicy.REPLACE, any<androidx.work.OneTimeWorkRequest>()) }
+        verify { workManager.enqueueUniqueWork(Constants.WORK_NAME_OPML_IMPORT, androidx.work.ExistingWorkPolicy.REPLACE, any<androidx.work.OneTimeWorkRequest>()) }
     }
 
     @Test

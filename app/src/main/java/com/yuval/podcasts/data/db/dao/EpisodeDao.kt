@@ -30,10 +30,13 @@ interface EpisodeDao {
         val podcastFeedUrl = episodes.first().podcastFeedUrl
         val existingEpisodes = getEpisodesForPodcastSync(podcastFeedUrl).associateBy { it.id }
         
-        val newEpisodesCount = episodes.count { it.id !in existingEpisodes }
-
+        var newEpisodesCount = 0
         val episodesToUpsert = episodes.map { networkEp ->
-            networkEp.mergeWithLocal(existingEpisodes[networkEp.id])
+            val existing = existingEpisodes[networkEp.id]
+            if (existing == null) {
+                newEpisodesCount++
+            }
+            networkEp.mergeWithLocal(existing)
         }
         upsertEpisodes(episodesToUpsert)
         return newEpisodesCount

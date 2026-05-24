@@ -34,10 +34,11 @@ class PodcastApplication : Application(), Configuration.Provider, AppFunctionCon
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    override val appFunctionConfiguration: AppFunctionConfiguration
-        get() = AppFunctionConfiguration.Builder()
+    override val appFunctionConfiguration: AppFunctionConfiguration by lazy {
+        AppFunctionConfiguration.Builder()
             .addEnclosingClassFactory(PodcastAppFunctions::class.java) { podcastAppFunctions }
             .build()
+    }
 
     override fun onCreate() {
         super.onCreate()

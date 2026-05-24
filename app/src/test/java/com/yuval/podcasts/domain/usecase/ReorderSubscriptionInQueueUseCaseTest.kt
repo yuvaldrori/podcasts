@@ -45,13 +45,8 @@ class ReorderSubscriptionInQueueUseCaseTest {
 
         // Assert
         // Expected order: ep2 (Other), ep4 (Other), ep1 (Sub, old), ep3 (Sub, new)
-        val expectedStates = listOf(
-            QueueState("ep2", 0),
-            QueueState("ep4", 1),
-            QueueState("ep1", 2),
-            QueueState("ep3", 3)
-        )
-        coVerify { repository.updateQueue(expectedStates) }
+        val expectedOrderIds = listOf("ep2", "ep4", "ep1", "ep3")
+        coVerify { repository.reorderQueue(expectedOrderIds) }
     }
 
     private fun createPodcast(feedUrl: String) = Podcast(

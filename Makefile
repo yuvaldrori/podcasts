@@ -23,7 +23,7 @@ init:
 	@echo "Initializing Android environment..."
 	chmod +x gradlew
 	android init
-	android sdk install platforms/android-36 build-tools/36.1.0 emulator platform-tools system-images/android-36/google_apis_playstore/x86_64
+	android sdk install platforms/android-36 platforms/android-37 build-tools/36.1.0 build-tools/37.0.0 emulator platform-tools system-images/android-36/google_apis_playstore/x86_64
 
 build:
 	./gradlew :app:assembleDebug

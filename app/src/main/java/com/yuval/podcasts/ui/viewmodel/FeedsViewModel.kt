@@ -54,7 +54,7 @@ class FeedsViewModel @Inject constructor(
     val uiState: StateFlow<FeedsUiState> = combine(
         repository.allPodcasts,
         repository.unplayedEpisodes,
-        workManager.getWorkInfosForUniqueWorkLiveData("sync_all_podcasts").asFlow(),
+        workManager.getWorkInfosForUniqueWorkLiveData(Constants.WORK_NAME_SYNC_ALL).asFlow(),
         errorMessage
     ) { podcasts, episodes, workInfos, error ->
         val activeWorkInfo = workInfos.find { 

@@ -264,14 +264,20 @@ class PlayerManager @Inject constructor(
     fun play() {
         scope.launch {
             val browser = awaitController()
-            browser?.play()
+            browser?.let {
+                logManager.i("PlayerManager", "Resuming playback")
+                it.play()
+            }
         }
     }
 
     fun pause() {
         scope.launch {
             val browser = awaitController()
-            browser?.pause()
+            browser?.let {
+                logManager.i("PlayerManager", "Pausing playback")
+                it.pause()
+            }
         }
     }
 

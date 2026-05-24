@@ -37,7 +37,8 @@ class QueueScreenTest {
                     currentMediaId = null,
                     onEpisodeClick = {},
                     onRemoveFromQueue = {},
-                    onReorderQueue = {},
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = {},
                     onPlayQueue = { _, _, _ -> }
                 )
             }
@@ -59,7 +60,8 @@ class QueueScreenTest {
                     currentMediaId = "ep1",
                     onEpisodeClick = {},
                     onRemoveFromQueue = {},
-                    onReorderQueue = {},
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = {},
                     onPlayQueue = { _, _, _ -> }
                 )
             }
@@ -84,7 +86,8 @@ class QueueScreenTest {
                     currentMediaId = null,
                     onEpisodeClick = {},
                     onRemoveFromQueue = {},
-                    onReorderQueue = { callCount++ },
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = { callCount++ },
                     onPlayQueue = { _, _, _ -> }
                 )
             }
@@ -125,7 +128,8 @@ class QueueScreenTest {
                     currentMediaId = null,
                     onEpisodeClick = {},
                     onRemoveFromQueue = {},
-                    onReorderQueue = {},
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = {},
                     onPlayQueue = { _, _, _ -> }
                 )
             }
