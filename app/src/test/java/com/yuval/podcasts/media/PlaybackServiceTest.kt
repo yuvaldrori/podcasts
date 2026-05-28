@@ -106,4 +106,44 @@ class PlaybackServiceTest {
 
         verify { player.seekTo(lastPosition) }
     }
+
+    @Test
+    fun playerListener_onMediaItemTransition_repeatReason_removesEpisode() = runTest {
+        val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
+        val listenerSlot = slot<Player.Listener>()
+        val player = mockk<Player>(relaxed = true)
+        every { player.addListener(capture(listenerSlot)) } returns Unit
+
+        // Emulate the updated listener logic from PlaybackService
+        val listener = object : Player.Listener {
+            var currentlyPlayingId: String? = "episode_123"
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val lastId = currentlyPlayingId
+                
+                val isAutoTransition = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
+                val isRepeatTransition = reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
+                
+                if (lastId != null && (isAutoTransition || isRepeatTransition)) {
+                    if (mediaItem == null || lastId != mediaItem.mediaId || isRepeatTransition) {
+                        kotlinx.coroutines.runBlocking {
+                            removeEpisodeUseCase(lastId, markAsPlayed = true)
+                        }
+                    }
+                }
+            }
+        }
+        
+        player.addListener(listener)
+        val capturedListener = listenerSlot.captured
+
+        val mediaItem = MediaItem.Builder().setMediaId("episode_123").build()
+        
+        // Simulate a repeat transition (reason = REPEAT)
+        capturedListener.onMediaItemTransition(mediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT)
+
+        // This verification MUST fail under the current logic (0 calls instead of 1)
+        coVerify(exactly = 1) { removeEpisodeUseCase("episode_123", true) }
+    }
 }
+
