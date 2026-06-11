@@ -19,6 +19,13 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/Theme.Podcasts">
         <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="com.android.automotive"
+            android:resource="@xml/automotive_app_desc" />
+
+        <meta-data
             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
             android:value="com.yuval.podcasts.media.cast.CastOptionsProvider" />
 
@@ -37,7 +44,7 @@
             </intent-filter>
         </activity>
 
-        <!-- MediaSessionService must be exported to allow system-level bindings (Auto, Assistant, etc.) 
+        <!-- MediaLibraryService must be exported to allow system-level bindings (Auto, Assistant, etc.) 
              We ignore ExportedService lint because Media3 requirements mandate this be exported. -->
         <service
             android:name=".media.PlaybackService"
@@ -45,7 +52,9 @@
             android:foregroundServiceType="mediaPlayback"
             tools:ignore="ExportedService">
             <intent-filter>
-                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
             </intent-filter>
         </service>
 

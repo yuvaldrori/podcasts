@@ -19,6 +19,7 @@ object Constants {
     const val COMMAND_SKIP_30 = "SKIP_30"
     val REWIND_10_MS = 10.seconds.inWholeMilliseconds
     val SKIP_30_MS = 30.seconds.inWholeMilliseconds
+    const val VOLUME_BOOST_GAIN_MB = 600
 
     // UI & ViewModel
     val FLOW_STOP_TIMEOUT_MS = 5.seconds.inWholeMilliseconds

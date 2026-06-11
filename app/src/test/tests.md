@@ -71,6 +71,7 @@ These tests verify the audio player, background playback, and media buttons.
 *   **`PlaybackServiceResumeTest`**: Ensures that playback resumption via external controllers properly restores the player state and initiates the ExoPlayer instance correctly.
 *   **`PlaybackServiceSilenceToggleTest`**: Tests toggling of skip-silence features inside the active media session and underlying sound processors.
 *   **`MediaSessionCallbackTest`**: Tests the logic that "resolves" media IDs into playable items. This ensures that when external controllers (like Android Auto) request a track, the app correctly finds the URI and metadata from the database.
+*   **`MediaLibraryCallbackTest`**: Tests the media library service's browse callbacks (like `onGetLibraryRoot` and `onGetChildren`) used by Android Auto, ensuring they return the correct folder structure and queue episodes.
 *   **`MediaButtonRemappingTest`**: Ensures that pressing the "Fast Forward" or "Rewind" buttons on Bluetooth headphones correctly skips forward/backward by 30/10 seconds instead of skipping to the next episode.
 *   **`PlayerManagerTest`**: Tests the helper class that the UI uses to talk to the background service. It checks play, pause, and seeking functions.
 *   **`PlayerManagerInitializationTest`**: Checks that the PlayerManager doesn't try to send commands before it has successfully connected to the background audio service.
@@ -89,7 +90,7 @@ ViewModels prepare data for the screen. These tests check that the data is corre
 *   **`QueueViewModelTest`**: Checks the "Up Next" queue logic. Makes sure that removing an item from the queue tells the player to skip if that item was currently playing.
 *   **`QueueViewModelTimeTest`**: Verifies the math that calculates "Total Queue Time Remaining". If you have 3 hours of podcasts but you listen at 2x speed, it correctly tells you there is 1.5 hours remaining.
 *   **`EpisodeDetailViewModelTest`**: Ensures the episode details screen loads the correct episode and knows whether that episode is already in your queue or not.
-*   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files (podcast backups) works and shows error messages if a file is broken.
+*   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files works, and verifying that toggling settings like Smart Silence and Volume Boost propagates changes to the repository and UI state correctly.
 
 ## 🤖 Android UI Tests (Instrumented)
 *Located in: `app/src/androidTest/java/com/yuval/podcasts/ui/screens/`*
@@ -109,4 +110,4 @@ These tests ensure that system-exposed capabilities (like Google Assistant or Ge
 *   **`PodcastAppFunctionsIntegrationTest`**: An on-device instrumented test running on the emulator. It obtains the real Hilt-injected `PodcastAppFunctions` instance from the `PodcastApplication` context and verifies that all exposed functions (such as `resumeQueue`, `stopPlayback`, `skipForward`, `skipBackward`, `nextEpisode`, `refreshNewEpisodes`, `addDebugLog`, and `moveSubscriptionToBottom`) execute their operations successfully in the real application context without mock dependencies.
 
 ---
-*Note: We also have `OpmlManagerTest` (checks OPML XML parsing/generation for backup files), `OpmlImportWorkerTest` (verifies background worker that downloads, extracts, and imports subscriptions from an OPML feed), and `PlayerModuleTest` (checks that our Dependency Injection provides the right ExoPlayer instances).*
+*Note: We also have `OpmlManagerTest` (checks OPML XML parsing/generation for backup files), `OpmlImportWorkerTest` (verifies background worker that downloads, extracts, and imports subscriptions from an OPML feed), `PlayerModuleTest` (checks that our Dependency Injection provides the right ExoPlayer instances), `MediaSessionIntegrationTest` (instrumented integration test verifying PlaybackService custom commands and play/pause controls), and `MediaBrowserIntegrationTest` (instrumented integration test verifying PlaybackService catalog root and browse capability for Android Auto).*

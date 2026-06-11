@@ -162,12 +162,13 @@ fun MainScreen(
                     uiState = settingsUiState,
                     onAddPodcast = { url -> settingsViewModel.addPodcast(url) },
                     onImportOpml = { uri -> settingsViewModel.importOpml(uri) },
-                    onExportOpml = { ctx, uri -> settingsViewModel.exportOpml(ctx, uri) },
+                    onExportOpml = { uri -> settingsViewModel.exportOpml(uri) },
                     onToggleSkipSilence = { enabled -> settingsViewModel.toggleSkipSilence(enabled) },
+                    onToggleVolumeBoost = { enabled -> settingsViewModel.toggleVolumeBoost(enabled) },
                     onImportLocalAudio = { uri -> settingsViewModel.importLocalAudio(uri) },
                     onLogNoteChanged = { note -> settingsViewModel.onLogNoteChanged(note) },
                     onSaveLogNote = { settingsViewModel.saveLogNote() },
-                    onDownloadLogs = { ctx, uri -> settingsViewModel.exportLogs(ctx, uri) },
+                    onDownloadLogs = { uri -> settingsViewModel.exportLogs(uri) },
                     onClearError = { settingsViewModel.clearMessages() },
                     contentPadding = innerPadding
                 )

@@ -7,6 +7,7 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.repository.LocalMediaDataSource
 import com.yuval.podcasts.data.repository.LocalMediaMetadata
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.utils.LogManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -23,6 +24,7 @@ class ImportLocalFileUseCaseTest {
     private lateinit var repository: PodcastRepository
     private lateinit var localMediaDataSource: LocalMediaDataSource
     private lateinit var context: Context
+    private lateinit var logManager: LogManager
     private lateinit var useCase: ImportLocalFileUseCase
 
     @Before
@@ -30,8 +32,9 @@ class ImportLocalFileUseCaseTest {
         repository = mockk(relaxed = true)
         localMediaDataSource = mockk()
         context = mockk(relaxed = true)
+        logManager = mockk(relaxed = true)
         
-        useCase = ImportLocalFileUseCase(context, repository, localMediaDataSource)
+        useCase = ImportLocalFileUseCase(context, repository, localMediaDataSource, logManager)
     }
 
     @Test

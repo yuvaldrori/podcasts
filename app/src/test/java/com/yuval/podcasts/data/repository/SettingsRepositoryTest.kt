@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import com.yuval.podcasts.data.Constants
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -43,7 +44,7 @@ class SettingsRepositoryTest {
     @Test
     fun getPlaybackSpeed_returnsDefault() = runTest {
         val speed = settingsRepository.getPlaybackSpeed()
-        assertEquals(1.0f, speed)
+        assertEquals(Constants.DEFAULT_PLAYBACK_SPEED, speed)
     }
 
     @Test

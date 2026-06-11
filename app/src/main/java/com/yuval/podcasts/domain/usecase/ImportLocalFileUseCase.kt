@@ -2,20 +2,21 @@ package com.yuval.podcasts.domain.usecase
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.LocalMediaDataSource
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.utils.LogManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 class ImportLocalFileUseCase @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: PodcastRepository,
-    private val localMediaDataSource: LocalMediaDataSource
+    private val localMediaDataSource: LocalMediaDataSource,
+    private val logManager: LogManager
 ) {
     suspend operator fun invoke(uri: Uri): Result<Unit> {
         return try {
@@ -69,7 +70,7 @@ class ImportLocalFileUseCase @Inject constructor(
 
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e("ImportLocalFileUseCase", "Failed to add local file", e)
+            logManager.e("ImportLocalFileUseCase", "Failed to add local file", mapOf("error" to e.message.toString()))
             Result.failure(e)
         }
     }

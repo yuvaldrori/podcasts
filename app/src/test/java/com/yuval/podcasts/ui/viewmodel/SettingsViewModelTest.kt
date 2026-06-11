@@ -72,8 +72,10 @@ class SettingsViewModelTest {
         every { uri.toString() } returns "content://test.opml"
         
         every { settingsRepository.skipSilenceFlow } returns kotlinx.coroutines.flow.MutableStateFlow(false)
+        every { settingsRepository.volumeBoostFlow } returns kotlinx.coroutines.flow.MutableStateFlow(false)
         
         viewModel = SettingsViewModel(
+            context = context,
             repository = repository,
             settingsRepository = settingsRepository,
             workManager = workManager,
@@ -145,7 +147,7 @@ class SettingsViewModelTest {
         coEvery { exportOpmlUseCase(outputStream) } returns Unit
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
-        viewModel.exportOpml(context, uri)
+        viewModel.exportOpml(uri)
         advanceUntilIdle()
 
         coVerify { exportOpmlUseCase(outputStream) }
@@ -167,6 +169,40 @@ class SettingsViewModelTest {
         viewModel.clearMessages()
         advanceUntilIdle()
         assertNull(viewModel.uiState.value.errorMessage)
+        job.cancel()
+    }
+
+    @Test
+    fun toggleVolumeBoost_savesToSettingsRepository() = runTest {
+        viewModel.toggleVolumeBoost(true)
+        coVerify { settingsRepository.saveVolumeBoostEnabled(true) }
+    }
+
+    @Test
+    fun volumeBoostFlow_emissions_propagateToUiState() = runTest {
+        val flow = kotlinx.coroutines.flow.MutableStateFlow(false)
+        every { settingsRepository.volumeBoostFlow } returns flow
+
+        // Re-create VM to pick up mock flow
+        viewModel = SettingsViewModel(
+            context = context,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            workManager = workManager,
+            exportOpmlUseCase = exportOpmlUseCase,
+            importLocalFileUseCase = importLocalFileUseCase,
+            logManager = logManager,
+            messageDelegate = DefaultMessageDelegate()
+        )
+
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        assertEquals(false, viewModel.uiState.value.volumeBoostEnabled)
+
+        flow.value = true
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.uiState.value.volumeBoostEnabled)
         job.cancel()
     }
 }

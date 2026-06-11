@@ -68,4 +68,6 @@
     <string name="notification_channel_sync">Library Sync</string>
     <string name="notification_syncing_title">Syncing Podcasts</string>
     <string name="notification_syncing_progress">Refreshing %1$d of %2$d</string>
+    <string name="volume_boost_title">Volume Boost</string>
+    <string name="volume_boost_desc">Boost dialogue loudness for car and noisy environments</string>
 </resources>

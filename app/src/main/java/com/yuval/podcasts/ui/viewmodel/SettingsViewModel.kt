@@ -20,6 +20,7 @@ import com.yuval.podcasts.ui.utils.UiText
 import com.yuval.podcasts.utils.LogManager
 import com.yuval.podcasts.work.OpmlImportWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,12 +29,14 @@ data class SettingsUiState(
     val importWorkInfo: WorkInfo? = null,
     val errorMessage: UiText? = null,
     val skipSilenceEnabled: Boolean = false,
+    val volumeBoostEnabled: Boolean = false,
     val logNote: String = "",
     val successMessage: UiText? = null
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val repository: PodcastRepository,
     private val settingsRepository: SettingsRepository,
     private val workManager: WorkManager,
@@ -51,14 +54,16 @@ class SettingsViewModel @Inject constructor(
         errorMessage,
         _successMessage,
         _logNote,
-        settingsRepository.skipSilenceFlow
-    ) { workInfo, error, success, note, skipSilence ->
+        settingsRepository.skipSilenceFlow,
+        settingsRepository.volumeBoostFlow
+    ) { array ->
         SettingsUiState(
-            importWorkInfo = workInfo,
-            errorMessage = error,
-            successMessage = success,
-            logNote = note,
-            skipSilenceEnabled = skipSilence
+            importWorkInfo = array[0] as WorkInfo?,
+            errorMessage = array[1] as UiText?,
+            successMessage = array[2] as UiText?,
+            logNote = array[3] as String,
+            skipSilenceEnabled = array[4] as Boolean,
+            volumeBoostEnabled = array[5] as Boolean
         )
     }.stateIn(
         scope = viewModelScope,
@@ -78,7 +83,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun exportLogs(context: Context, uri: Uri) {
+    fun exportLogs(uri: Uri) {
         viewModelScope.launch {
             try {
                 context.contentResolver.openOutputStream(uri)?.use { stream ->
@@ -125,7 +130,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun exportOpml(context: Context, uri: Uri) {
+    fun exportOpml(uri: Uri) {
         viewModelScope.launch {
             try {
                 context.contentResolver.openOutputStream(uri)?.use { stream ->
@@ -142,6 +147,12 @@ class SettingsViewModel @Inject constructor(
     fun toggleSkipSilence(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.saveSkipSilenceEnabled(enabled)
+        }
+    }
+
+    fun toggleVolumeBoost(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.saveVolumeBoostEnabled(enabled)
         }
     }
 

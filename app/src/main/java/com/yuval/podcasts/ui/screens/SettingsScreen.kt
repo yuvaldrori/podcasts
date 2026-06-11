@@ -29,12 +29,13 @@ fun SettingsScreen(
     uiState: SettingsUiState,
     onAddPodcast: (String) -> Unit,
     onImportOpml: (Uri) -> Unit,
-    onExportOpml: (android.content.Context, Uri) -> Unit,
+    onExportOpml: (Uri) -> Unit,
     onToggleSkipSilence: (Boolean) -> Unit,
+    onToggleVolumeBoost: (Boolean) -> Unit,
     onImportLocalAudio: (Uri) -> Unit,
     onLogNoteChanged: (String) -> Unit,
     onSaveLogNote: () -> Unit,
-    onDownloadLogs: (android.content.Context, Uri) -> Unit,
+    onDownloadLogs: (Uri) -> Unit,
     onClearError: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
@@ -77,7 +78,7 @@ fun SettingsScreen(
 
     val opmlExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(Constants.MIME_TYPE_OPML),
-        onResult = { uri -> uri?.let { onExportOpml(context, it) } }
+        onResult = { uri -> uri?.let { onExportOpml(it) } }
     )
 
     val localAudioLauncher = rememberLauncherForActivityResult(
@@ -87,7 +88,7 @@ fun SettingsScreen(
 
     val logExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(Constants.MIME_TYPE_JSONL),
-        onResult = { uri -> uri?.let { onDownloadLogs(context, it) } }
+        onResult = { uri -> uri?.let { onDownloadLogs(it) } }
     )
 
     Scaffold(
@@ -197,6 +198,27 @@ fun SettingsScreen(
                 Switch(
                     checked = uiState.skipSilenceEnabled,
                     onCheckedChange = onToggleSkipSilence
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(R.string.volume_boost_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = stringResource(R.string.volume_boost_desc), 
+                        style = MaterialTheme.typography.bodyMedium, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = uiState.volumeBoostEnabled,
+                    onCheckedChange = onToggleVolumeBoost
                 )
             }
 

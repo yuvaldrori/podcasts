@@ -12,7 +12,11 @@ import androidx.media3.cast.SessionAvailabilityListener
 import androidx.media3.session.CommandButton
 import android.os.Bundle
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
+import androidx.media3.session.MediaLibraryService.LibraryParams
+import androidx.media3.session.LibraryResult
+import com.google.common.collect.ImmutableList
 import com.yuval.podcasts.MainActivity
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.QueueDao
@@ -46,7 +50,7 @@ import com.yuval.podcasts.utils.LogManager
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @AndroidEntryPoint
-class PlaybackService : MediaSessionService() {
+class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var exoPlayer: ExoPlayer
     @Inject lateinit var castPlayer: CastPlayer
@@ -61,11 +65,15 @@ class PlaybackService : MediaSessionService() {
     @Inject @IoDispatcher lateinit var ioDispatcher: CoroutineDispatcher
     @Inject @MainDispatcher lateinit var mainDispatcher: CoroutineDispatcher
 
-    private var mediaSession: MediaSession? = null
+    private var mediaSession: MediaLibrarySession? = null
     private var lastResumedId: String? = null
     private lateinit var serviceScope: CoroutineScope
+    private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
+    private var currentAudioSessionId: Int = androidx.media3.common.C.AUDIO_SESSION_ID_UNSET
 
-    private val mediaSessionCallback = object : MediaSession.Callback {
+
+
+    private val mediaSessionCallback = object : MediaLibrarySession.Callback {
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo
@@ -177,6 +185,57 @@ class PlaybackService : MediaSessionService() {
                 }
             }.asListenableFuture()
         }
+
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            val rootMetadata = MediaMetadata.Builder()
+                .setIsBrowsable(true)
+                .setIsPlayable(false)
+                .build()
+            val rootItem = MediaItem.Builder()
+                .setMediaId("root")
+                .setMediaMetadata(rootMetadata)
+                .build()
+            return Futures.immediateFuture(LibraryResult.ofItem(rootItem, params))
+        }
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            return serviceScope.async(ioDispatcher) {
+                val items = when (parentId) {
+                    "root" -> {
+                        val queueFolderMetadata = MediaMetadata.Builder()
+                            .setTitle("Queue")
+                            .setIsBrowsable(true)
+                            .setIsPlayable(false)
+                            .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS)
+                            .build()
+                        val queueFolder = MediaItem.Builder()
+                            .setMediaId("queue")
+                            .setMediaMetadata(queueFolderMetadata)
+                            .build()
+                        listOf(queueFolder)
+                    }
+                    "queue" -> {
+                        val episodes = queueDao.getQueueEpisodesSync()
+                        episodes.mapNotNull { ep ->
+                            MediaItemMapper.fromEpisode(ep)
+                        }
+                    }
+                    else -> emptyList()
+                }
+                LibraryResult.ofItemList(ImmutableList.copyOf(items), params)
+            }.asListenableFuture()
+        }
     }
 
     private fun seekForward(ms: Long = Constants.SEEK_FORWARD_MS) {
@@ -190,6 +249,8 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         serviceScope = CoroutineScope(mainDispatcher + SupervisorJob())
+        
+
         
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -220,9 +281,8 @@ class PlaybackService : MediaSessionService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
             
-        mediaSession = MediaSession.Builder(this, currentPlayer)
+        mediaSession = MediaLibrarySession.Builder(this, currentPlayer, mediaSessionCallback)
             .setSessionActivity(pendingIntent)
-            .setCallback(mediaSessionCallback)
             .build()
 
         @Suppress("DEPRECATION")
@@ -238,6 +298,10 @@ class PlaybackService : MediaSessionService() {
         var currentlyPlayingId: String? = null
 
         val listener = object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                setupLoudnessEnhancer(audioSessionId)
+            }
+
             override fun onPositionDiscontinuity(
                 oldPosition: Player.PositionInfo,
                 newPosition: Player.PositionInfo,
@@ -323,6 +387,17 @@ class PlaybackService : MediaSessionService() {
         serviceScope.launch(mainDispatcher) {
             settingsRepository.skipSilenceFlow.collect { enabled ->
                 exoPlayer.skipSilenceEnabled = enabled
+            }
+        }
+
+        // Live Volume Boost Toggle
+        serviceScope.launch(mainDispatcher) {
+            settingsRepository.volumeBoostFlow.collect { enabled ->
+                try {
+                    loudnessEnhancer?.setTargetGain(if (enabled) Constants.VOLUME_BOOST_GAIN_MB else 0)
+                } catch (e: Exception) {
+                    logManager.e("PlaybackService", "Failed to update target gain on LoudnessEnhancer", mapOf("error" to e.message.toString()))
+                }
             }
         }
 
@@ -464,7 +539,30 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+    private fun setupLoudnessEnhancer(audioSessionId: Int) {
+        if (audioSessionId == androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) return
+
+        currentAudioSessionId = audioSessionId
+        try {
+            loudnessEnhancer?.release()
+
+            serviceScope.launch(mainDispatcher) {
+                val enabled = settingsRepository.isVolumeBoostEnabled()
+                withContext(mainDispatcher) {
+                    if (currentAudioSessionId == audioSessionId) {
+                        loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(audioSessionId).apply {
+                            setTargetGain(if (enabled) Constants.VOLUME_BOOST_GAIN_MB else 0)
+                            setEnabled(true)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            logManager.e("PlaybackService", "Failed to setup LoudnessEnhancer", mapOf("error" to e.message.toString()))
+        }
+    }
+
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
 
@@ -472,6 +570,8 @@ class PlaybackService : MediaSessionService() {
         serviceScope.cancel()
         exoPlayer.release()
         castPlayer.release()
+        loudnessEnhancer?.release()
+        loudnessEnhancer = null
         mediaSession?.run {
             release()
             mediaSession = null

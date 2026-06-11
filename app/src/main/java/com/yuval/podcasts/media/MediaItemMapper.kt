@@ -15,6 +15,9 @@ object MediaItemMapper {
                 .setArtist(ep.podcastFeedUrl)
                 .setDisplayTitle(ep.title)
                 .setArtworkUri(ep.imageUrl?.toUri())
+                .setIsPlayable(true)
+                .setIsBrowsable(false)
+                .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST)
                 .build()
             
             MediaItem.Builder()
