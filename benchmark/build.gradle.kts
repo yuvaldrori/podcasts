@@ -4,11 +4,11 @@ plugins {
 
 android {
     namespace = "com.yuval.podcasts.benchmark"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
-        minSdk = 36
-        targetSdk = 36
+        minSdk = 37
+        targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR"
     }

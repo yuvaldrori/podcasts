@@ -33,8 +33,8 @@ android {
 
     defaultConfig {
         applicationId = "com.yuval.podcasts"
-        minSdk = 36
-        targetSdk = 36
+        minSdk = 37
+        targetSdk = 37
         versionCode = verCode
         versionName = "$verMajor.$verMinor.$verPatch"
 
@@ -95,7 +95,7 @@ android {
         abortOnError = true
         warningsAsErrors = true
         checkReleaseBuilds = true
-        disable += listOf("OldTargetApi", "GradleDependency")
+        disable += listOf("OldTargetApi", "GradleDependency", "AndroidGradlePluginVersion")
     }
 
     sourceSets {
