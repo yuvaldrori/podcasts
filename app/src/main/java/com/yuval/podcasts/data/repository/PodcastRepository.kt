@@ -7,6 +7,7 @@ import com.yuval.podcasts.data.db.AppDatabase
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.QueueDao
+import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
@@ -157,7 +158,7 @@ class DefaultPodcastRepository @Inject constructor(
             }
         }
         
-        episodeDao.updateDownloadStatus(episodeId, 0, null)
+        episodeDao.updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
     }
 
     override suspend fun updateQueue(queue: List<QueueState>) {
@@ -223,21 +224,13 @@ class DefaultPodcastRepository @Inject constructor(
             if (episode.isLocal) return@forEach
 
             val fileExists = episode.localFilePath?.let { File(it).exists() } == true
-            if (episode.downloadStatus != 2 || !fileExists) {
-                val downloadData = Data.Builder()
-                    .putString(DownloadWorker.KEY_EPISODE_ID, episode.id)
-                    .putString(DownloadWorker.KEY_AUDIO_URL, episode.audioUrl)
-                    .putString(DownloadWorker.KEY_EPISODE_TITLE, episode.title)
-                    .build()
-
-                val constraints = Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-
-                val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-                    .setConstraints(constraints)
-                    .setInputData(downloadData)
-                    .build()
+            if (episode.downloadStatus != DownloadStatus.DOWNLOADED.value || !fileExists) {
+                val downloadWorkRequest = DownloadWorker.createWorkRequest(
+                    episodeId = episode.id,
+                    audioUrl = episode.audioUrl,
+                    title = episode.title,
+                    isExpedited = false
+                )
 
                 workManager.enqueueUniqueWork(
                     "${Constants.WORK_TAG_DOWNLOAD_PREFIX}${episode.id}",

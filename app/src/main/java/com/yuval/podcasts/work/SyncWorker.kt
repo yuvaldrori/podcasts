@@ -73,7 +73,7 @@ class SyncWorker @AssistedInject constructor(
                                 try {
                                     setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
                                     val lastUpdate = lastForegroundUpdate.get()
-                                    if (current == total || currentTime - lastUpdate > 1000) {
+                                    if (current == total || currentTime - lastUpdate > Constants.SYNC_PROGRESS_NOTIFICATION_THROTTLE_MS) {
                                         lastForegroundUpdate.set(currentTime)
                                         setForeground(createForegroundInfo(current, total))
                                     }
@@ -92,7 +92,7 @@ class SyncWorker @AssistedInject constructor(
             Result.success()
         } catch (e: Exception) {
             logManager.e("SyncWorker", "Sync failed", mapOf("error" to (e.javaClass.simpleName + ": " + e.message)))
-            if (runAttemptCount < 3) {
+            if (runAttemptCount < Constants.SYNC_RETRY_COUNT) {
                 Result.retry()
             } else {
                 Result.failure()

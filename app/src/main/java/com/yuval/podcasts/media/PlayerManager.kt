@@ -211,19 +211,7 @@ class PlayerManager @Inject constructor(
         scope.launch {
             val browser = awaitController()
             browser?.let {
-                val mediaItems = episodes.map { ep ->
-                    val uri = ep.playableUri
-                    val metadata = MediaMetadata.Builder()
-                        .setTitle(ep.title)
-                        .setArtworkUri(ep.imageUrl?.toUri())
-                        .build()
-
-                    MediaItem.Builder()
-                        .setMediaId(ep.id)
-                        .setUri(uri)
-                        .setMediaMetadata(metadata)
-                        .build()
-                }
+                val mediaItems = mapEpisodesToMediaItems(episodes)
                 it.setMediaItems(mediaItems, startIndex, startPositionMs)
                 it.prepare()
             }
@@ -240,25 +228,17 @@ class PlayerManager @Inject constructor(
         scope.launch {
             val browser = awaitController()
             browser?.let {
-                val mediaItems = episodes.map { ep ->
-                    val uri = ep.playableUri
-                    val metadata = MediaMetadata.Builder()
-                        .setTitle(ep.title)
-                        .setArtworkUri(ep.imageUrl?.toUri())
-                        .build()
-
-                    MediaItem.Builder()
-                        .setMediaId(ep.id)
-                        .setUri(uri)
-                        .setMediaMetadata(metadata)
-                        .build()
-                }
+                val mediaItems = mapEpisodesToMediaItems(episodes)
                 it.setMediaItems(mediaItems, startIndex, startPositionMs)
                 it.prepare()
                 logManager.i("PlayerManager", "Starting queue playback at $startIndex")
                 it.play()
             }
         }
+    }
+
+    private fun mapEpisodesToMediaItems(episodes: List<com.yuval.podcasts.data.db.entity.Episode>): List<MediaItem> {
+        return episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
     }
 
     fun play() {

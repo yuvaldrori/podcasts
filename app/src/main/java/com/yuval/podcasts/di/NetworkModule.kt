@@ -31,7 +31,7 @@ object NetworkModule {
             .addInterceptor(loggingInterceptor)
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
-                    .header("User-Agent", "PodcastsAndroidApp/1.0")
+                    .header("User-Agent", Constants.HTTP_USER_AGENT)
                     .build()
                 chain.proceed(request)
             }

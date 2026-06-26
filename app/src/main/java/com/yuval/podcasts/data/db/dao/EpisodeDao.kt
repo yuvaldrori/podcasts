@@ -6,6 +6,7 @@ import androidx.room.Transaction
 import androidx.room.Upsert
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
+import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.NetworkEpisode
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
@@ -64,8 +65,8 @@ interface EpisodeDao {
     @Query("UPDATE episodes SET downloadStatus = :status, localFilePath = :path WHERE id = :id")
     suspend fun updateDownloadStatus(id: String, status: Int, path: String?)
 
-    @Query("UPDATE episodes SET downloadStatus = :status, localFilePath = :path WHERE id = :id AND downloadStatus = 1")
-    suspend fun updateDownloadStatusAfterSuccess(id: String, status: Int, path: String?)
+    @Query("UPDATE episodes SET downloadStatus = :status, localFilePath = :path WHERE id = :id AND downloadStatus = :expectedStatus")
+    suspend fun updateDownloadStatusAfterSuccess(id: String, status: Int, path: String?, expectedStatus: Int = DownloadStatus.DOWNLOADING.value)
 
     @Query("UPDATE episodes SET isPlayed = :isPlayed, completedAt = :completedAt WHERE id = :id")
     suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long? = null)

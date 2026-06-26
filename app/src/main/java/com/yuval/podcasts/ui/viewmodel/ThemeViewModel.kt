@@ -15,6 +15,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.media.PlayerManager
+import com.yuval.podcasts.data.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
@@ -43,7 +44,7 @@ class ThemeViewModel @Inject constructor(
                 },
                 isDarkThemeFlow
             ) { episode, isDark -> episode to isDark }
-                .debounce(200)
+                .debounce(Constants.DYNAMIC_THEME_DEBOUNCE_MS)
                 .collectLatest { (episode, isDark) ->
                     val finalImageUrl = episode?.imageUrl
                     

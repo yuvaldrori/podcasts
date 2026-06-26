@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.yuval.podcasts.data.db.AppDatabase
+import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
@@ -93,5 +94,37 @@ class QueueDaoTest {
         // Position 1 is ep1
         assertEquals("ep1", joinedQueue[1].episode.id)
         assertEquals("P1", joinedQueue[1].podcast.title)
+    }
+
+    @Test
+    fun getQueuedEpisodesNotDownloaded_returnsOnlyNotDownloaded() = runBlocking {
+        // Setup Podcast
+        val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
+        podcastDao.insertPodcast(podcast)
+
+        // Setup Episodes
+        val episodeNotDownloaded = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, DownloadStatus.NOT_DOWNLOADED.value, null, false, 0L, null, 0L)
+        val episodeDownloading = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, DownloadStatus.DOWNLOADING.value, null, false, 0L, null, 0L)
+        val episodeDownloaded = Episode("ep3", "url1", "E3", "D", "A", null, null, 3000L, 0L, DownloadStatus.DOWNLOADED.value, "/path", false, 0L, null, 0L)
+        episodeDao.insertEpisodes(listOf(episodeNotDownloaded, episodeDownloading, episodeDownloaded))
+
+        // Setup Queue
+        queueDao.updateQueue(listOf(
+            QueueState("ep1", position = 0),
+            QueueState("ep2", position = 1),
+            QueueState("ep3", position = 2)
+        ))
+
+        // By default, should return episodes that are NOT Downloaded (i.e. downloadStatus != DOWNLOADED)
+        val notDownloaded = queueDao.getQueuedEpisodesNotDownloaded()
+        assertEquals(2, notDownloaded.size)
+        assertEquals("ep1", notDownloaded[0].id)
+        assertEquals("ep2", notDownloaded[1].id)
+
+        // With custom filter (e.g. filter out NOT_DOWNLOADED), should return the other ones
+        val notDownloadedCustom = queueDao.getQueuedEpisodesNotDownloaded(DownloadStatus.NOT_DOWNLOADED.value)
+        assertEquals(2, notDownloadedCustom.size)
+        assertEquals("ep2", notDownloadedCustom[0].id)
+        assertEquals("ep3", notDownloadedCustom[1].id)
     }
 }

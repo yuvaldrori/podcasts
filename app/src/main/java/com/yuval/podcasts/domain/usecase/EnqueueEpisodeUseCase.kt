@@ -6,6 +6,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.repository.PodcastRepository
@@ -24,26 +25,17 @@ class EnqueueEpisodeUseCase @Inject constructor(
 
         // Do not schedule background download if episode is local or already downloaded and physical file exists
         val fileExists = episode.localFilePath?.let { java.io.File(it).exists() } == true
-        if (episode.isLocal || (episode.downloadStatus == 2 && fileExists)) {
+        if (episode.isLocal || (episode.downloadStatus == DownloadStatus.DOWNLOADED.value && fileExists)) {
             return
         }
 
         // Trigger background download
-        val downloadData = Data.Builder()
-            .putString(DownloadWorker.KEY_EPISODE_ID, episode.id)
-            .putString(DownloadWorker.KEY_AUDIO_URL, episode.audioUrl)
-            .putString(DownloadWorker.KEY_EPISODE_TITLE, episode.title)
-            .build()
-
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-        val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setConstraints(constraints)
-            .setInputData(downloadData)
-            .setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            .build()
+        val downloadWorkRequest = DownloadWorker.createWorkRequest(
+            episodeId = episode.id,
+            audioUrl = episode.audioUrl,
+            title = episode.title,
+            isExpedited = true
+        )
 
         workManager.enqueueUniqueWork(
             "${com.yuval.podcasts.data.Constants.WORK_TAG_DOWNLOAD_PREFIX}${episode.id}",

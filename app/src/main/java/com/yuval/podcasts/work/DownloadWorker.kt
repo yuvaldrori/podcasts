@@ -12,6 +12,7 @@ import androidx.work.WorkerParameters
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.dao.EpisodeDao
+import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.utils.LogManager
 import com.yuval.podcasts.utils.StorageUtils
@@ -52,7 +53,7 @@ class DownloadWorker @AssistedInject constructor(
         try {
             setForeground(createForegroundInfo(title, 0))
             // Update status to Downloading
-            updateDownloadStatus(episodeId, 1, null)
+            updateDownloadStatus(episodeId, DownloadStatus.DOWNLOADING.value, null)
 
             val request = Request.Builder()
                 .url(audioUrl)
@@ -62,7 +63,7 @@ class DownloadWorker @AssistedInject constructor(
             response.use { 
                 if (!response.isSuccessful) {
                     logManager.e("DownloadWorker", "Failed to download $episodeId: ${response.code}")
-                    updateDownloadStatus(episodeId, 0, null)
+                    updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
                     return@withContext if (response.code in 400..499) Result.failure() else Result.retry()
                 }
 
@@ -95,14 +96,14 @@ class DownloadWorker @AssistedInject constructor(
                                     val progress = (totalRead * 100 / totalBytes).toInt()
                                     val currentTime = System.currentTimeMillis()
                                     
-                                    // Update WorkManager progress every 1% if it's been at least 100ms
-                                    if (progress > lastProgressUpdate && currentTime - lastForegroundUpdate > 100) {
+                                    // Update WorkManager progress if it's been at least the threshold
+                                    if (progress > lastProgressUpdate && currentTime - lastForegroundUpdate > Constants.DOWNLOAD_PROGRESS_WORKER_THROTTLE_MS) {
                                         setProgress(androidx.work.workDataOf("progress" to progress))
                                         lastProgressUpdate = progress.toLong()
                                     }
                                     
-                                    // Update Notification every 5% to avoid IPC overhead
-                                    if (progress >= lastForegroundUpdate + 5) {
+                                    // Update Notification based on percentage step to avoid IPC overhead
+                                    if (progress >= lastForegroundUpdate + Constants.DOWNLOAD_PROGRESS_NOTIFICATION_INCREMENT_PERCENT) {
                                         setForeground(createForegroundInfo(title, progress))
                                         lastForegroundUpdate = progress.toLong()
                                     }
@@ -117,11 +118,13 @@ class DownloadWorker @AssistedInject constructor(
 
                     logManager.i("DownloadWorker", "Download completed for $episodeId. Saved to ${outputFile.absolutePath}")
                     // Update status to Downloaded with the local path, but only if we haven't been cancelled/removed
-                    episodeDao.updateDownloadStatusAfterSuccess(episodeId, 2, outputFile.absolutePath)
+                    episodeDao.updateDownloadStatusAfterSuccess(episodeId, DownloadStatus.DOWNLOADED.value, outputFile.absolutePath)
                     
                     Result.success()
                 } catch (e: Exception) {
-                    partFile.delete()
+                    if (partFile.exists()) {
+                        partFile.delete()
+                    }
                     throw e
                 }
             }
@@ -129,7 +132,7 @@ class DownloadWorker @AssistedInject constructor(
             if (e is kotlinx.coroutines.CancellationException) throw e
             logManager.e("DownloadWorker", "Download failed for $episodeId", mapOf("error" to e.message.toString()))
             // Revert status on failure
-            updateDownloadStatus(episodeId, 0, null)
+            updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
             
             // Distinguish between transient and permanent errors
             return@withContext when (e) {
@@ -169,6 +172,33 @@ class DownloadWorker @AssistedInject constructor(
         const val KEY_EPISODE_ID = "episode_id"
         const val KEY_AUDIO_URL = "audio_url"
         const val KEY_EPISODE_TITLE = "episode_title"
+
+        fun createWorkRequest(
+            episodeId: String,
+            audioUrl: String,
+            title: String,
+            isExpedited: Boolean = false
+        ): androidx.work.OneTimeWorkRequest {
+            val downloadData = androidx.work.Data.Builder()
+                .putString(KEY_EPISODE_ID, episodeId)
+                .putString(KEY_AUDIO_URL, audioUrl)
+                .putString(KEY_EPISODE_TITLE, title)
+                .build()
+
+            val constraints = androidx.work.Constraints.Builder()
+                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                .build()
+
+            val builder = androidx.work.OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setConstraints(constraints)
+                .setInputData(downloadData)
+
+            if (isExpedited) {
+                builder.setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            }
+
+            return builder.build()
+        }
     }
 }
 

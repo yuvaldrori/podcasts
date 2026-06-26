@@ -72,14 +72,7 @@ class LogManager @Inject constructor(
     fun e(tag: String, message: String, metadata: Map<String, String>? = null) = log(tag, message, "ERROR", metadata)
 
     private fun log(tag: String, message: String, level: String, metadata: Map<String, String>? = null) {
-        val levelInt = when (level) {
-            "VERBOSE" -> Log.VERBOSE
-            "DEBUG" -> Log.DEBUG
-            "INFO" -> Log.INFO
-            "WARN" -> Log.WARN
-            "ERROR" -> Log.ERROR
-            else -> Log.INFO
-        }
+        val levelInt = getLogLevelInt(level)
 
         if (levelInt < Constants.MIN_LOG_LEVEL) return
 
@@ -143,14 +136,7 @@ class LogManager @Inject constructor(
 
     @Synchronized
     private fun logSync(tag: String, message: String, level: String, metadata: Map<String, String>?) {
-        val levelInt = when (level) {
-            "VERBOSE" -> Log.VERBOSE
-            "DEBUG" -> Log.DEBUG
-            "INFO" -> Log.INFO
-            "WARN" -> Log.WARN
-            "ERROR" -> Log.ERROR
-            else -> Log.INFO
-        }
+        val levelInt = getLogLevelInt(level)
         if (levelInt < Constants.MIN_LOG_LEVEL) return
 
         try {
@@ -172,6 +158,17 @@ class LogManager @Inject constructor(
         if (activeLogFile.exists() && activeLogFile.length() > maxFileSize) {
             if (previousLogFile.exists()) previousLogFile.delete()
             activeLogFile.renameTo(previousLogFile)
+        }
+    }
+
+    private fun getLogLevelInt(level: String): Int {
+        return when (level) {
+            "VERBOSE" -> Log.VERBOSE
+            "DEBUG" -> Log.DEBUG
+            "INFO" -> Log.INFO
+            "WARN" -> Log.WARN
+            "ERROR" -> Log.ERROR
+            else -> Log.INFO
         }
     }
 

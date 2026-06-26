@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.yuval.podcasts.data.db.AppDatabase
+import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
 import kotlinx.coroutines.flow.first
@@ -169,5 +170,34 @@ class EpisodeDaoTest {
         
         org.junit.Assert.assertNull(remainingEp1)
         assertNotNull(remainingEp2)
+    }
+
+    @Test
+    fun updateDownloadStatusAfterSuccess_updatesOnlyIfMatch() = runBlocking {
+        val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
+        podcastDao.insertPodcast(podcast)
+
+        // 1. Set up an episode in DOWNLOADING status (1)
+        val episodeDownloading = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, DownloadStatus.DOWNLOADING.value, null, false, 0L, null, 0L)
+        
+        // 2. Set up an episode in NOT_DOWNLOADED status (0)
+        val episodeNotDownloaded = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, DownloadStatus.NOT_DOWNLOADED.value, null, false, 0L, null, 0L)
+        
+        episodeDao.insertEpisodes(listOf(episodeDownloading, episodeNotDownloaded))
+
+        // 3. Call updateDownloadStatusAfterSuccess for ep1 (which is DOWNLOADING). Should update successfully.
+        episodeDao.updateDownloadStatusAfterSuccess("ep1", DownloadStatus.DOWNLOADED.value, "/path/to/ep1")
+        
+        // 4. Call updateDownloadStatusAfterSuccess for ep2 (which is NOT_DOWNLOADED). Should NOT update because its current status is NOT DOWNLOADING.
+        episodeDao.updateDownloadStatusAfterSuccess("ep2", DownloadStatus.DOWNLOADED.value, "/path/to/ep2")
+
+        val fetchedEp1 = episodeDao.getEpisodeById("ep1")
+        val fetchedEp2 = episodeDao.getEpisodeById("ep2")
+
+        assertEquals(DownloadStatus.DOWNLOADED.value, fetchedEp1?.downloadStatus)
+        assertEquals("/path/to/ep1", fetchedEp1?.localFilePath)
+
+        assertEquals(DownloadStatus.NOT_DOWNLOADED.value, fetchedEp2?.downloadStatus)
+        assertEquals(null, fetchedEp2?.localFilePath)
     }
 }

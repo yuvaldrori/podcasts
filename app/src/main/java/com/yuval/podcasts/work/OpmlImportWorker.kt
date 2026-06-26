@@ -80,7 +80,7 @@ class OpmlImportWorker @AssistedInject constructor(
                                 
                                 val currentTime = System.currentTimeMillis()
                                 val lastUpdate = lastForegroundUpdate.get()
-                                if (current == total || currentTime - lastUpdate > 500) {
+                                if (current == total || currentTime - lastUpdate > Constants.OPML_IMPORT_PROGRESS_NOTIFICATION_THROTTLE_MS) {
                                     lastForegroundUpdate.set(currentTime)
                                     setForeground(createForegroundInfo(current, total))
                                 }

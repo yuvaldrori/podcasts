@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
+import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.LocalMediaDataSource
@@ -53,7 +54,7 @@ class ImportLocalFileUseCase @Inject constructor(
                         episodeWebLink = null, 
                         pubDate = System.currentTimeMillis(),
                         duration = metadata.durationSecs,
-                        downloadStatus = 2, // 2 = Downloaded
+                        downloadStatus = DownloadStatus.DOWNLOADED.value,
                         localFilePath = metadata.destFile.absolutePath,
                         isPlayed = false,
                         lastPlayedPosition = 0L,

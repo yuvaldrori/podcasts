@@ -359,7 +359,7 @@ class PlaybackService : MediaLibraryService() {
                                 if (episode != null && episode.lastPlayedPosition > 0) {
                                     withContext(mainDispatcher) {
                                         // Only seek if we are at the start (prevent fighting manual seeks)
-                                        if (currentPlayer.currentPosition < 2000) {
+                                        if (currentPlayer.currentPosition < Constants.SEEK_POSITION_RESTORATION_THRESHOLD_MS) {
                                             currentPlayer.seekTo(episode.lastPlayedPosition)
                                         }
                                     }

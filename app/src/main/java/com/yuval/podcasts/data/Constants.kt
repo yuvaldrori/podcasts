@@ -14,6 +14,7 @@ object Constants {
     val SAVE_POSITION_INTERVAL_MS = 15.seconds.inWholeMilliseconds
     val NETWORK_TIMEOUT_MS = 30.seconds.inWholeMilliseconds.toInt()
     val NETWORK_CALL_TIMEOUT_MS = 60.seconds.inWholeMilliseconds.toInt()
+    const val SEEK_POSITION_RESTORATION_THRESHOLD_MS = 2000L
     
     const val COMMAND_REWIND_10 = "REWIND_10"
     const val COMMAND_SKIP_30 = "SKIP_30"
@@ -24,6 +25,7 @@ object Constants {
     // UI & ViewModel
     val FLOW_STOP_TIMEOUT_MS = 5.seconds.inWholeMilliseconds
     const val UNPLAYED_EPISODES_LIMIT = 150
+    const val DYNAMIC_THEME_DEBOUNCE_MS = 200L
     
     // UI Sizes
     const val COVER_SIZE_LIST_DP = 48
@@ -52,6 +54,12 @@ object Constants {
     const val WORK_KEY_PROGRESS = "PROGRESS"
     const val WORK_KEY_TOTAL = "TOTAL"
 
+    // WorkManager Throttling
+    const val SYNC_PROGRESS_NOTIFICATION_THROTTLE_MS = 1000L
+    const val OPML_IMPORT_PROGRESS_NOTIFICATION_THROTTLE_MS = 500L
+    const val DOWNLOAD_PROGRESS_WORKER_THROTTLE_MS = 100L
+    const val DOWNLOAD_PROGRESS_NOTIFICATION_INCREMENT_PERCENT = 5
+    
     // Storage
     const val DOWNLOAD_DIR_NAME = "podcasts"
     const val SYNC_RETRY_COUNT = 3
@@ -72,6 +80,9 @@ object Constants {
     const val LOG_BUFFER_LIMIT = 50
     val LOG_FLUSH_INTERVAL_MS = 2.seconds.inWholeMilliseconds
     val MAX_LOG_FILE_SIZE = 10 * BYTES_PER_MB
+
+    // Network Headers
+    const val HTTP_USER_AGENT = "PodcastsAndroidApp/1.0"
 
     
     /**

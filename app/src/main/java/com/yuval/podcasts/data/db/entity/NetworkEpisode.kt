@@ -28,7 +28,7 @@ data class NetworkEpisode(
         episodeWebLink = episodeWebLink,
         pubDate = pubDate,
         duration = duration,
-        downloadStatus = 0,
+        downloadStatus = DownloadStatus.NOT_DOWNLOADED.value,
         localFilePath = null,
         isPlayed = false,
         lastPlayedPosition = 0L
