@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
@@ -79,12 +81,22 @@ fun EpisodeItem(
                         DownloadStatus.NOT_DOWNLOADED -> stringResource(R.string.not_downloaded)
                     }
                     
-                    Icon(
-                        imageVector = downloadIcon,
-                        contentDescription = downloadDesc,
-                        modifier = Modifier.size(14.dp),
-                        tint = downloadColor
-                    )
+                    if (status == DownloadStatus.DOWNLOADING) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .semantics { contentDescription = downloadDesc },
+                            strokeWidth = 2.dp,
+                            color = downloadColor
+                        )
+                    } else {
+                        Icon(
+                            imageVector = downloadIcon,
+                            contentDescription = downloadDesc,
+                            modifier = Modifier.size(14.dp),
+                            tint = downloadColor
+                        )
+                    }
                     Spacer(modifier = Modifier.width(4.dp))
                     
                     Text(

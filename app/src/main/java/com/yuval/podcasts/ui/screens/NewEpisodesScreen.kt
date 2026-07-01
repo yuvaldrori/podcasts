@@ -107,6 +107,20 @@ fun NewEpisodesScreen(
                     )
                 }
                 
+                if (episodesData.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.empty_new_episodes_message),
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -148,6 +162,7 @@ fun NewEpisodesScreen(
                             )
                         }
                     }
+                }
                 }
             }
         }

@@ -32,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.components.UnifiedPlayer
 import com.yuval.podcasts.ui.navigation.*
@@ -79,16 +80,27 @@ fun MainScreen(
                             BottomNavItem.NewEpisodes -> newEpisodeCount
                             else -> 0
                         }
+                        val label = stringResource(screen.titleRes)
+                        val iconDescription = if (badgeCount > 0) {
+                            stringResource(R.string.nav_item_with_badge, label, badgeCount)
+                        } else {
+                            label
+                        }
                         NavigationBarItem(
                             icon = {
                                 BadgedBox(
                                     badge = {
                                         if (badgeCount > 0) {
-                                            Badge { Text(if (badgeCount > 99) "99+" else badgeCount.toString()) }
+                                            Badge(
+                                                containerColor = MaterialTheme.colorScheme.primary,
+                                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                            ) {
+                                                Text(if (badgeCount > 99) "99+" else badgeCount.toString())
+                                            }
                                         }
                                     }
                                 ) {
-                                    Icon(screen.icon, contentDescription = stringResource(screen.titleRes))
+                                    Icon(screen.icon, contentDescription = iconDescription)
                                 }
                             },
                             label = { Text(stringResource(screen.titleRes)) },

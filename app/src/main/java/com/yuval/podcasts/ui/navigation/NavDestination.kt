@@ -3,9 +3,9 @@ package com.yuval.podcasts.ui.navigation
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.yuval.podcasts.R
 import kotlinx.serialization.Serializable
@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
 sealed class BottomNavItem(val route: Any, @get:StringRes val titleRes: Int, val icon: ImageVector) {
     object Queue : BottomNavItem(QueueScreenRoute, R.string.queue_title, Icons.AutoMirrored.Filled.List)
     object NewEpisodes : BottomNavItem(NewEpisodesScreenRoute, R.string.new_episodes_title, Icons.Default.Notifications)
-    object Subscriptions : BottomNavItem(SubscriptionsScreenRoute, R.string.episodes_title, Icons.Default.Info)
+    object Subscriptions : BottomNavItem(SubscriptionsScreenRoute, R.string.episodes_title, Icons.Default.Subscriptions)
     object Settings : BottomNavItem(SettingsScreenRoute, R.string.settings_title, Icons.Default.Settings)
 }
 

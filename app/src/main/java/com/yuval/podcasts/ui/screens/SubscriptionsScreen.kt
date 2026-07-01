@@ -8,7 +8,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.ui.components.PodcastItem
@@ -25,6 +27,22 @@ fun SubscriptionsScreen(
     onUnsubscribe: (String) -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
+    if (podcasts.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(R.string.empty_subscriptions_message),
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center
+            )
+        }
+        return
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
