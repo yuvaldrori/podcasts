@@ -23,7 +23,9 @@ init:
 	@echo "Initializing Android environment..."
 	chmod +x gradlew
 	android init
-	android sdk install platforms/android-36 platforms/android-37.0 build-tools/36.1.0 build-tools/37.0.0 emulator platform-tools system-images/android-36/google_apis_playstore/x86_64
+	# The app targets minSdk/compileSdk/targetSdk = API 37, so provision the API 37
+	# platform, build tools, and emulator system image (the app won't install on older).
+	android sdk install platforms/android-37.0 build-tools/37.0.0 emulator platform-tools system-images/android-37.0/google_apis_playstore_ps16k/x86_64
 
 build:
 	./gradlew :app:assembleDebug
@@ -44,13 +46,20 @@ verify: clean lint test build
 	@echo "Verification complete. Running layout check..."
 	@make layout || echo "Layout check skipped (no device connected)"
 
+AVD_NAME := podcasts_api37
+SYS_IMG_37 := system-images;android-37.0;google_apis_playstore_ps16k;x86_64
+
 emulator:
-	@echo "Starting emulator..."
-	android emulator start medium_phone || (android emulator create --profile=medium_phone && android emulator start medium_phone)
+	@echo "Starting API 37 emulator ($(AVD_NAME))..."
+	@if ! android emulator list | grep -qx "$(AVD_NAME)"; then \
+		printf 'no\n' | "$$ANDROID_HOME/cmdline-tools/bin/avdmanager" create avd -n $(AVD_NAME) -k "$(SYS_IMG_37)" -d pixel_8 --force; \
+		sed -i 's#^image.sysdir.1=Android/system-images#image.sysdir.1=system-images#' "$$HOME/.android/avd/$(AVD_NAME).avd/config.ini"; \
+	fi
+	android emulator start $(AVD_NAME)
 
 stop-emulator:
 	@echo "Stopping emulator..."
-	android emulator stop medium_phone
+	android emulator stop $(AVD_NAME)
 
 run:
 	@echo "Deploying and running application..."
