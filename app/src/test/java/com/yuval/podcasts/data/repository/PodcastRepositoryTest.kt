@@ -93,6 +93,29 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun fetchAndStorePodcast_clearsStaleChapters_whenFeedNoLongerHasChapters() = runBlocking {
+        val feedUrl = "http://example.com/feed"
+        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
+        // Episodes that previously had chapters in the DB but now arrive with NONE
+        // (e.g. the publisher removed the <psc:chapters> from the feed). The stored
+        // chapters for these episodes must still be cleared.
+        val episodes = listOf(
+            NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()),
+            NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep2", feedUrl, "Ep2", "Desc", "audio", null, null, 0L, 0L), emptyList())
+        )
+        coEvery { remoteDataSource.fetchPodcastData(feedUrl) } returns ParsedPodcast(podcast, episodes)
+
+        repository.fetchAndStorePodcast(feedUrl)
+
+        coVerify {
+            chapterDao.updateChaptersBulk(
+                match { it.containsAll(listOf("ep1", "ep2")) },
+                emptyList()
+            )
+        }
+    }
+
+    @Test
     fun fetchAndStorePodcast_usesSyncNetworkEpisodes_preventsOverwritingUserStates() = runBlocking {
         val feedUrl = "http://test.com/feed"
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
@@ -136,6 +159,42 @@ class PodcastRepositoryTest {
         coVerify { queueDao.removeFromQueueBulk(listOf("ep1", "ep2")) }
         coVerify { episodeDao.deleteEpisodesByPodcast(feedUrl) }
         coVerify { podcastDao.deletePodcast(feedUrl) }
+    }
+
+    @Test
+    fun markAsPlayed_atomicallyMarksPlayedAndResetsPosition() = runTest {
+        repository.markAsPlayed("ep1")
+
+        // Must be a single atomic update, not two separate writes that can be interrupted.
+        coVerify(exactly = 1) { episodeDao.markPlayedAndResetPosition("ep1", any()) }
+        coVerify(exactly = 0) { episodeDao.updateLastPlayedPosition(any(), any()) }
+    }
+
+    @Test
+    fun removeFromQueue_deletesFileAndUpdatesDbInTransaction() = runTest {
+        val tempFile = java.io.File.createTempFile("remove_me", ".mp3")
+        val ep = Episode(
+            "ep1", "feed", "T", "D", "A", null, null, 0L, 0L,
+            com.yuval.podcasts.data.db.entity.DownloadStatus.DOWNLOADED.value,
+            tempFile.absolutePath, false, 0L
+        )
+        coEvery { episodeDao.getEpisodeById("ep1") } returns ep
+
+        repository.removeFromQueue("ep1")
+
+        // Queue removal + download-status reset must happen atomically inside a transaction.
+        coVerify { database.withTransaction(any()) }
+        coVerify { queueDao.removeFromQueue("ep1") }
+        coVerify {
+            episodeDao.updateDownloadStatus(
+                "ep1",
+                com.yuval.podcasts.data.db.entity.DownloadStatus.NOT_DOWNLOADED.value,
+                null
+            )
+        }
+        coVerify { workManager.cancelUniqueWork("${com.yuval.podcasts.data.Constants.WORK_TAG_DOWNLOAD_PREFIX}ep1") }
+        // The local file is deleted.
+        org.junit.Assert.assertFalse(tempFile.exists())
     }
 
     @Test

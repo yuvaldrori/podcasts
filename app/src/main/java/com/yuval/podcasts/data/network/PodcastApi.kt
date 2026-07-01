@@ -42,7 +42,9 @@ internal suspend fun Call.await(): Response {
     return suspendCancellableCoroutine { continuation ->
         enqueue(object : Callback {
             override fun onResponse(call: Call, response: Response) {
-                continuation.resume(response)
+                // If the coroutine was already cancelled, resume is a no-op and the caller's
+                // `use {}` never runs — close the response here to avoid leaking the connection.
+                continuation.resume(response) { _, _, _ -> response.close() }
             }
 
             override fun onFailure(call: Call, e: IOException) {

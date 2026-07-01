@@ -33,7 +33,8 @@ class PlayerViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val playerManager: PlayerManager,
     private val networkMonitor: NetworkMonitor,
-    private val enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
+    private val enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase,
+    @param:com.yuval.podcasts.di.IoDispatcher private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher
 ) : ViewModel() {
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -78,11 +79,15 @@ class PlayerViewModel @Inject constructor(
         playerManager.togglePlayPause()
     }
 
-    fun play(episode: Episode) {
+    fun play(episode: Episode, startPositionMs: Long = episode.lastPlayedPosition) {
         val uri = episode.playableUri
-        if (episode.localFilePath != null && !java.io.File(episode.localFilePath).exists()) {
-            viewModelScope.launch {
-                enqueueEpisodeUseCase(episode)
+        // The File.exists() check is blocking filesystem I/O; run it off the main thread
+        // so the playback hot path never risks jank/ANR.
+        if (episode.localFilePath != null) {
+            viewModelScope.launch(ioDispatcher) {
+                if (!java.io.File(episode.localFilePath).exists()) {
+                    enqueueEpisodeUseCase(episode)
+                }
             }
         }
         playerManager.play(
@@ -90,12 +95,12 @@ class PlayerViewModel @Inject constructor(
             uri = uri,
             title = episode.title,
             imageUrl = episode.imageUrl,
-            startPositionMs = episode.lastPlayedPosition
+            startPositionMs = startPositionMs
         )
     }
 
     fun playQueue(episodes: List<Episode>, startIndex: Int, startPositionMs: Long = 0L) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             episodes.forEach { episode ->
                 if (episode.localFilePath != null && !java.io.File(episode.localFilePath).exists()) {
                     enqueueEpisodeUseCase(episode)
@@ -127,7 +132,14 @@ class PlayerViewModel @Inject constructor(
         playerManager.seekBackward()
     }
 
-    fun seekToChapter(chapter: com.yuval.podcasts.data.db.entity.Chapter) {
-        playerManager.seekTo(chapter.startTimeMs)
+    fun seekToChapter(episode: Episode, chapter: com.yuval.podcasts.data.db.entity.Chapter) {
+        // Only an in-place seek if this chapter's episode is the one currently loaded;
+        // otherwise start that episode from the chapter offset instead of seeking whatever
+        // happens to be playing.
+        if (playerManager.currentMediaId.value == episode.id) {
+            playerManager.seekTo(chapter.startTimeMs)
+        } else {
+            play(episode, startPositionMs = chapter.startTimeMs)
+        }
     }
 }

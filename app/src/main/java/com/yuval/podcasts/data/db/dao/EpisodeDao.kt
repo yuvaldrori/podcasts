@@ -71,6 +71,10 @@ interface EpisodeDao {
     @Query("UPDATE episodes SET isPlayed = :isPlayed, completedAt = :completedAt WHERE id = :id")
     suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long? = null)
 
+    /** Marks an episode played and resets its resume position in a single atomic update. */
+    @Query("UPDATE episodes SET isPlayed = 1, completedAt = :completedAt, lastPlayedPosition = 0 WHERE id = :id")
+    suspend fun markPlayedAndResetPosition(id: String, completedAt: Long)
+
     @Query("UPDATE episodes SET lastPlayedPosition = :position WHERE id = :id")
     suspend fun updateLastPlayedPosition(id: String, position: Long)
 

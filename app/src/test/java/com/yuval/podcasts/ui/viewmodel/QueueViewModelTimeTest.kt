@@ -66,10 +66,48 @@ class QueueViewModelTimeTest {
     }
 
     @Test
+    fun uiState_doesNotReEmitOnPlaybackPositionTicks_butTimeRemainingDoes() = runTest {
+        val uiEmissions = mutableListOf<QueueUiState>()
+        val timeEmissions = mutableListOf<Long>()
+        val uiJob = launch { viewModel.uiState.collect { uiEmissions.add(it) } }
+        val timeJob = launch { viewModel.queueTimeRemaining.collect { timeEmissions.add(it) } }
+
+        val podcast = Podcast("p1", "Title", "desc", "url", "url")
+        val episode = Episode(
+            id = "e1", podcastFeedUrl = "p1", title = "Title", description = "desc", audioUrl = "url",
+            imageUrl = null, episodeWebLink = null, pubDate = 0L, duration = 4800L, downloadStatus = 0,
+            localFilePath = null, isPlayed = false, lastPlayedPosition = 0L, completedAt = null, localId = 0L
+        )
+        queueFlow.value = listOf(EpisodeWithPodcast(episode, podcast))
+        currentMediaIdFlow.value = "e1"
+        durationFlow.value = 5_100_000L
+        advanceUntilIdle()
+
+        val uiEmissionsAfterQueueLoaded = uiEmissions.size
+        val timeEmissionsAfterQueueLoaded = timeEmissions.size
+
+        // Simulate five one-second playback-position ticks.
+        repeat(5) { tick ->
+            currentPositionFlow.value = (tick + 1) * 1000L
+            advanceUntilIdle()
+        }
+
+        // The queue list state must NOT re-emit just because the position advanced (this is what
+        // stops the whole list from recomposing once per second)...
+        assertEquals(uiEmissionsAfterQueueLoaded, uiEmissions.size)
+        // ...while the lightweight time-remaining flow DOES track the position ticks, proving the
+        // ticks are live and merely routed away from the list state.
+        assertEquals(timeEmissionsAfterQueueLoaded + 5, timeEmissions.size)
+
+        uiJob.cancel()
+        timeJob.cancel()
+    }
+
+    @Test
     fun testQueueTimeRemaining_usesPlayerManagerLiveDataForCurrentEpisode() = runTest {
         // Collect the flow to trigger the combine block
         val job = launch {
-            viewModel.uiState.collect {}
+            viewModel.queueTimeRemaining.collect {}
         }
         
         // DB says duration is 80 minutes (4800s), position is 55 mins (3300000ms)
@@ -105,7 +143,7 @@ class QueueViewModelTimeTest {
         // Should calculate:
         // Remaining real = 5100000 - 3324000 = 1776000 ms
         // Speed 2x => 1776000 / 2 = 888000 ms
-        val remaining = (viewModel.uiState.value as QueueUiState.Success).queueTimeRemaining
+        val remaining = viewModel.queueTimeRemaining.value
         assertEquals(888000L, remaining)
         
         job.cancel()

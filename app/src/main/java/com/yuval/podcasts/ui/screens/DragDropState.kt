@@ -45,11 +45,13 @@ class DragDropState(
             val targetIndex = targetItem.index
             onMove(currentIndex, targetIndex)
             draggedItemIndex = targetIndex
-            
-            // Adjust the offset to counteract the layout shift caused by the swap
-            // This keeps the item visually pinned to the finger during the jump
-            val offsetAdjustment = if (targetIndex > currentIndex) -targetItem.size else targetItem.size
-            draggingItemOffset += offsetAdjustment.toFloat()
+
+            // Adjust the offset to counteract the layout shift caused by the move, keeping the
+            // item visually pinned to the finger. Compensate by the difference between the
+            // dragged item's current and target layout offsets so this stays correct when a fast
+            // drag jumps several positions at once (and for non-uniform item heights) rather than
+            // assuming a single item-height shift.
+            draggingItemOffset += (currentItem.offset - targetItem.offset).toFloat()
         }
     }
 

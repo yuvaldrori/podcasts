@@ -72,8 +72,9 @@ class DownloadWorker @AssistedInject constructor(
                 val outputFile = StorageUtils.getFileForEpisode(appContext, episodeId)
                 val partFile = File(outputFile.absolutePath + ".part")
 
-                var lastProgressUpdate = 0L
-                var lastForegroundUpdate = 0L
+                var lastProgressPercent = 0
+                var lastProgressUpdateTime = 0L
+                var lastNotifiedPercent = 0
 
                 try {
                     FileOutputStream(partFile).use { outputStream ->
@@ -81,31 +82,38 @@ class DownloadWorker @AssistedInject constructor(
                             val buffer = ByteArray(Constants.DOWNLOAD_BUFFER_SIZE_BYTES)
                             var bytesRead: Int
                             var totalRead = 0L
-                            
+
                             while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                                 if (isStopped) {
                                     logManager.w("DownloadWorker", "Download stopped for $episodeId")
                                     partFile.delete()
+                                    // Revert the DOWNLOADING status set above so the episode
+                                    // doesn't stay stuck as "Downloading" after being stopped.
+                                    updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
                                     return@withContext Result.failure()
                                 }
                                 outputStream.write(buffer, 0, bytesRead)
                                 totalRead += bytesRead
-                                
+
                                 // Update progress if total size is known
                                 if (totalBytes > 0) {
                                     val progress = (totalRead * 100 / totalBytes).toInt()
                                     val currentTime = System.currentTimeMillis()
-                                    
-                                    // Update WorkManager progress if it's been at least the threshold
-                                    if (progress > lastProgressUpdate && currentTime - lastForegroundUpdate > Constants.DOWNLOAD_PROGRESS_WORKER_THROTTLE_MS) {
+
+                                    // Throttle WorkManager progress updates by elapsed time, and
+                                    // only when the percentage actually advances, to limit IPC.
+                                    if (progress > lastProgressPercent &&
+                                        currentTime - lastProgressUpdateTime > Constants.DOWNLOAD_PROGRESS_WORKER_THROTTLE_MS
+                                    ) {
                                         setProgress(androidx.work.workDataOf("progress" to progress))
-                                        lastProgressUpdate = progress.toLong()
+                                        lastProgressPercent = progress
+                                        lastProgressUpdateTime = currentTime
                                     }
-                                    
+
                                     // Update Notification based on percentage step to avoid IPC overhead
-                                    if (progress >= lastForegroundUpdate + Constants.DOWNLOAD_PROGRESS_NOTIFICATION_INCREMENT_PERCENT) {
+                                    if (progress >= lastNotifiedPercent + Constants.DOWNLOAD_PROGRESS_NOTIFICATION_INCREMENT_PERCENT) {
                                         setForeground(createForegroundInfo(title, progress))
-                                        lastForegroundUpdate = progress.toLong()
+                                        lastNotifiedPercent = progress
                                     }
                                 }
                             }
@@ -146,7 +154,8 @@ class DownloadWorker @AssistedInject constructor(
         episodeDao.updateDownloadStatus(episodeId, status, path)
     }
 
-    private fun createForegroundInfo(title: String, progress: Int): ForegroundInfo {
+    @androidx.annotation.VisibleForTesting
+    internal fun createForegroundInfo(title: String, progress: Int): ForegroundInfo {
         val channelId = "download_channel"
         val channel = NotificationChannel(
             channelId,

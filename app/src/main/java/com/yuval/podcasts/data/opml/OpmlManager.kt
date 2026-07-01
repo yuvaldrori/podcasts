@@ -16,22 +16,34 @@ class OpmlManager @Inject constructor() {
         val urls = mutableListOf<String>()
         val parser = Xml.newPullParser()
         parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
+        // Disable DOCTYPE/entity processing to harden against XXE in untrusted OPML files.
+        try {
+            parser.setFeature("http://xmlpull.org/v1/doc/features.html#process-docdecl", false)
+        } catch (e: Exception) {
+            // Some parsers may not support this feature; we still attempt it for safety.
+        }
         parser.setInput(inputStream, null)
-        
-        var eventType = parser.eventType
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            if (eventType == XmlPullParser.START_TAG && parser.name == "outline") {
-                val xmlUrl = parser.getAttributeValue(null, "xmlUrl")
-                if (xmlUrl != null && (xmlUrl.startsWith("http://") || xmlUrl.startsWith("https://"))) {
-                    try {
-                        java.net.URL(xmlUrl).toURI()
-                        urls.add(xmlUrl)
-                    } catch (e: Exception) {
-                        // Ignore invalid URLs
+
+        // Parse defensively: a malformed/truncated OPML should yield whatever subscriptions
+        // were successfully read rather than crashing the whole import.
+        try {
+            var eventType = parser.eventType
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                if (eventType == XmlPullParser.START_TAG && parser.name == "outline") {
+                    val xmlUrl = parser.getAttributeValue(null, "xmlUrl")
+                    if (xmlUrl != null && (xmlUrl.startsWith("http://") || xmlUrl.startsWith("https://"))) {
+                        try {
+                            java.net.URL(xmlUrl).toURI()
+                            urls.add(xmlUrl)
+                        } catch (e: Exception) {
+                            // Ignore invalid URLs
+                        }
                     }
                 }
+                eventType = parser.next()
             }
-            eventType = parser.next()
+        } catch (e: Exception) {
+            // Malformed XML past this point: return what we have so far.
         }
         return urls
     }

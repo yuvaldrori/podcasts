@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -26,8 +27,7 @@ import kotlin.time.Duration.Companion.seconds
 sealed interface QueueUiState {
     object Loading : QueueUiState
     data class Success(
-        val queue: ImmutableList<EpisodeWithPodcast>,
-        val queueTimeRemaining: Long
+        val queue: ImmutableList<EpisodeWithPodcast>
     ) : QueueUiState
 }
 
@@ -40,40 +40,49 @@ class QueueViewModel @Inject constructor(
 
     private val _manualQueue = MutableStateFlow<ImmutableList<EpisodeWithPodcast>?>(null)
 
-    @Suppress("UNCHECKED_CAST")
-    val uiState: StateFlow<QueueUiState> = combine(
+    // The effective queue = the in-progress manual reorder, or the persisted queue.
+    private val effectiveQueue: kotlinx.coroutines.flow.Flow<ImmutableList<EpisodeWithPodcast>> = combine(
         repository.listeningQueue,
+        _manualQueue
+    ) { current, manual -> manual ?: current.toImmutableList() }
+
+    // Only re-emits when the queue itself changes — NOT on every playback-position tick — so
+    // the queue list doesn't recompose once per second during playback.
+    val uiState: StateFlow<QueueUiState> = effectiveQueue
+        .map { QueueUiState.Success(it) as QueueUiState }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), QueueUiState.Loading)
+
+    // Header "time remaining" ticks with the playback position but carries only a Long, so
+    // position updates recompose the header text without touching the list.
+    @Suppress("UNCHECKED_CAST")
+    val queueTimeRemaining: StateFlow<Long> = combine(
+        effectiveQueue,
         _manualQueue,
         playerManager.playbackSpeed,
         playerManager.currentMediaId,
         playerManager.currentPosition,
         playerManager.duration
     ) { args: Array<Any?> ->
-        val currentQueue = args[0] as List<EpisodeWithPodcast>
+        val queue = args[0] as ImmutableList<EpisodeWithPodcast>
         val manualQueue = args[1] as? ImmutableList<EpisodeWithPodcast>
         val speed = args[2] as Float
         val currentId = args[3] as? String
         val currentPos = args[4] as Long
         val currentDur = args[5] as Long
 
-        val effectiveQueue: ImmutableList<EpisodeWithPodcast> = manualQueue ?: currentQueue.toImmutableList()
-        
-        // If we are reordering (manualQueue != null), skip the expensive sum to keep drag smooth
-        val totalMsRemaining = if (manualQueue != null) {
-            0L // Or cache previous value
-        } else {
-            effectiveQueue.sumOf { item ->
-                if (item.episode.id == currentId && currentDur > 0) {
-                    (currentDur - currentPos).coerceAtLeast(0L)
-                } else {
-                    val durationMs = item.episode.duration.seconds.inWholeMilliseconds
-                    (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
-                }
+        // While reordering, or with a non-positive speed, don't compute a remaining time.
+        if (manualQueue != null || speed <= 0f) return@combine 0L
+
+        val totalMsRemaining = queue.sumOf { item ->
+            if (item.episode.id == currentId && currentDur > 0) {
+                (currentDur - currentPos).coerceAtLeast(0L)
+            } else {
+                val durationMs = item.episode.duration.seconds.inWholeMilliseconds
+                (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
             }
         }
-        val remaining = if (speed > 0f && manualQueue == null) (totalMsRemaining / speed).toLong() else 0L
-        QueueUiState.Success(effectiveQueue, remaining)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), QueueUiState.Loading)
+        (totalMsRemaining / speed).toLong()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), 0L)
 
     fun moveItem(fromIndex: Int, toIndex: Int) {
         val currentSuccess = uiState.value as? QueueUiState.Success ?: return

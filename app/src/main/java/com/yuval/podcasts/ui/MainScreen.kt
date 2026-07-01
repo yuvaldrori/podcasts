@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -44,6 +46,10 @@ fun MainScreen(
     val navController = rememberNavController()
     val uiState by playerViewModel.uiState.collectAsStateWithLifecycle()
 
+    val navBadgeViewModel: NavBadgeViewModel = hiltViewModel()
+    val queueCount by navBadgeViewModel.queueCount.collectAsStateWithLifecycle()
+    val newEpisodeCount by navBadgeViewModel.newEpisodeCount.collectAsStateWithLifecycle()
+
     Scaffold(
         bottomBar = {
             Column {
@@ -65,11 +71,26 @@ fun MainScreen(
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
                     bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { 
+                        val selected = currentDestination?.hierarchy?.any {
                             it.hasRoute(screen.route::class)
                         } == true
+                        val badgeCount = when (screen) {
+                            BottomNavItem.Queue -> queueCount
+                            BottomNavItem.NewEpisodes -> newEpisodeCount
+                            else -> 0
+                        }
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = stringResource(screen.titleRes)) },
+                            icon = {
+                                BadgedBox(
+                                    badge = {
+                                        if (badgeCount > 0) {
+                                            Badge { Text(if (badgeCount > 99) "99+" else badgeCount.toString()) }
+                                        }
+                                    }
+                                ) {
+                                    Icon(screen.icon, contentDescription = stringResource(screen.titleRes))
+                                }
+                            },
                             label = { Text(stringResource(screen.titleRes)) },
                             selected = selected,
                             colors = NavigationBarItemDefaults.colors(
@@ -107,9 +128,11 @@ fun MainScreen(
             composable<QueueScreenRoute> { 
                 val queueViewModel: QueueViewModel = hiltViewModel()
                 val queueUiState by queueViewModel.uiState.collectAsStateWithLifecycle()
-                
+                val queueTimeRemaining by queueViewModel.queueTimeRemaining.collectAsStateWithLifecycle()
+
                 QueueScreen(
                     uiState = queueUiState,
+                    queueTimeRemaining = queueTimeRemaining,
                     isPlaying = uiState.isPlaying,
                     currentMediaId = uiState.currentEpisode?.id,
                     onEpisodeClick = { episodeId -> 
@@ -198,7 +221,9 @@ fun MainScreen(
                         episodeViewModel.addToQueue(episode)
                     },
                     onChapterClick = { chapter ->
-                        playerViewModel.seekTo(chapter.startTimeMs)
+                        (episodeUiState as? com.yuval.podcasts.ui.viewmodel.EpisodeDetailUiState.Success)?.let { state ->
+                            playerViewModel.seekToChapter(state.episodeWithPodcast.episode, chapter)
+                        }
                     },
                     contentPadding = innerPadding
                 )

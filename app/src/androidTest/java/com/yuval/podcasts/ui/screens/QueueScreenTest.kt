@@ -27,12 +27,13 @@ class QueueScreenTest {
 
     @Test
     fun playButtonShowsWhenNotPlaying() {
-        val state = QueueUiState.Success(persistentListOf(EpisodeWithPodcast(ep1, dummyPodcast)), 1000)
+        val state = QueueUiState.Success(persistentListOf(EpisodeWithPodcast(ep1, dummyPodcast)))
 
         composeTestRule.setContent {
             PodcastsTheme {
                 QueueScreen(
                     uiState = state,
+                    queueTimeRemaining = 1000,
                     isPlaying = false,
                     currentMediaId = null,
                     onEpisodeClick = {},
@@ -50,12 +51,13 @@ class QueueScreenTest {
 
     @Test
     fun pauseButtonShowsWhenPlaying() {
-        val state = QueueUiState.Success(persistentListOf(EpisodeWithPodcast(ep1, dummyPodcast)), 1000)
+        val state = QueueUiState.Success(persistentListOf(EpisodeWithPodcast(ep1, dummyPodcast)))
 
         composeTestRule.setContent {
             PodcastsTheme {
                 QueueScreen(
                     uiState = state,
+                    queueTimeRemaining = 1000,
                     isPlaying = true,
                     currentMediaId = "ep1",
                     onEpisodeClick = {},
@@ -76,12 +78,13 @@ class QueueScreenTest {
         val state = QueueUiState.Success(persistentListOf(
             EpisodeWithPodcast(ep1, dummyPodcast),
             EpisodeWithPodcast(ep2, dummyPodcast)
-        ), 2000)
+        ))
 
         composeTestRule.setContent {
             PodcastsTheme {
                 QueueScreen(
                     uiState = state,
+                    queueTimeRemaining = 2000,
                     isPlaying = false,
                     currentMediaId = null,
                     onEpisodeClick = {},
@@ -118,12 +121,13 @@ class QueueScreenTest {
         val state = QueueUiState.Success(persistentListOf(
             EpisodeWithPodcast(ep1, dummyPodcast),
             EpisodeWithPodcast(ep2, dummyPodcast)
-        ), 2000)
+        ))
 
         restorationTester.setContent {
             PodcastsTheme {
                 QueueScreen(
                     uiState = state,
+                    queueTimeRemaining = 2000,
                     isPlaying = false,
                     currentMediaId = null,
                     onEpisodeClick = {},

@@ -109,14 +109,14 @@ class DefaultPodcastRepository @Inject constructor(
             val networkEpisodes = parsed.episodes.map { it.episode }
             val count = episodeDao.syncNetworkEpisodes(networkEpisodes)
 
-            // Update chapters for all episodes in bulk
+            // Update chapters for all episodes in bulk. Always run this (even when the
+            // feed now carries no chapters) so chapters removed upstream are cleared from
+            // the DB rather than left stale. Inserting an empty list is a no-op.
+            val episodeIds = parsed.episodes.map { it.episode.id }
             val allChapters = parsed.episodes.flatMap { item ->
                 item.chapters.map { it.copy(episodeId = item.episode.id) }
             }
-            if (allChapters.isNotEmpty()) {
-                val episodeIds = parsed.episodes.map { it.episode.id }
-                chapterDao.updateChaptersBulk(episodeIds, allChapters)
-            }
+            chapterDao.updateChaptersBulk(episodeIds, allChapters)
             count
         }
         return newEpisodesCount
@@ -127,8 +127,9 @@ class DefaultPodcastRepository @Inject constructor(
     }
 
     override suspend fun markAsPlayed(id: String): Unit {
-        episodeDao.updatePlaybackStatus(id, true, System.currentTimeMillis())
-        episodeDao.updateLastPlayedPosition(id, 0L)
+        // Single atomic update so we never persist "played" without also resetting the
+        // resume position (or vice-versa) if interrupted between two separate writes.
+        episodeDao.markPlayedAndResetPosition(id, System.currentTimeMillis())
     }
 
     override suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long?) {
@@ -143,22 +144,25 @@ class DefaultPodcastRepository @Inject constructor(
         episodeDao.updateDownloadStatus(id, status, path)
     }
 
-    override suspend fun removeFromQueue(episodeId: String) {
-        queueDao.removeFromQueue(episodeId)
-        
+    override suspend fun removeFromQueue(episodeId: String): Unit = withContext(ioDispatcher) {
+        val episode = episodeDao.getEpisodeById(episodeId)
+
+        // Drop from the queue and reset download status atomically, so we never end up in an
+        // inconsistent state (still queued but NOT_DOWNLOADED, or vice-versa) on a crash.
+        database.withTransaction {
+            queueDao.removeFromQueue(episodeId)
+            episodeDao.updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
+        }
+
         workManager.cancelUniqueWork("${Constants.WORK_TAG_DOWNLOAD_PREFIX}$episodeId")
 
-        val episode = episodeDao.getEpisodeById(episodeId)
+        // Blocking file I/O runs on ioDispatcher (this whole function), not the caller's thread.
         episode?.localFilePath?.let { path ->
             val file = File(path)
-            if (file.exists()) {
-                if (!file.delete()) {
-                    logManager.w("PodcastRepository", "Failed to delete file for episode $episodeId: $path")
-                }
+            if (file.exists() && !file.delete()) {
+                logManager.w("PodcastRepository", "Failed to delete file for episode $episodeId: $path")
             }
         }
-        
-        episodeDao.updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
     }
 
     override suspend fun updateQueue(queue: List<QueueState>) {

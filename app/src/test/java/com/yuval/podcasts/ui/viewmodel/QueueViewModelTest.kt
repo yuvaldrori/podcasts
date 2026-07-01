@@ -100,21 +100,21 @@ class QueueViewModelTest {
         val queue = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
         listeningQueueFlow.value = queue
         
-        // Use a job to collect uiState
-        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        // Use a job to collect the time-remaining flow
+        val job = backgroundScope.launch { viewModel.queueTimeRemaining.collect {} }
 
         // Test 1x speed
         playbackSpeedFlow.value = 1f
         advanceUntilIdle()
         // (3600 + 7200) * 1000 = 10,800,000 ms = 3 hours
-        assertEquals(10800000L, (viewModel.uiState.value as QueueUiState.Success).queueTimeRemaining)
+        assertEquals(10800000L, viewModel.queueTimeRemaining.value)
 
         // Test 2x speed
         playbackSpeedFlow.value = 2f
         advanceUntilIdle()
         // 10,800,000 / 2 = 5,400,000 ms = 1.5 hours
-        assertEquals(5400000L, (viewModel.uiState.value as QueueUiState.Success).queueTimeRemaining)
-        
+        assertEquals(5400000L, viewModel.queueTimeRemaining.value)
+
         job.cancel()
     }
 }

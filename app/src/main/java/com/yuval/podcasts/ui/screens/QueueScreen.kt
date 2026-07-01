@@ -33,6 +33,7 @@ import com.yuval.podcasts.ui.utils.Formatter
 @Composable
 fun QueueScreen(
     uiState: QueueUiState,
+    queueTimeRemaining: Long,
     isPlaying: Boolean,
     currentMediaId: String?,
     onEpisodeClick: (String) -> Unit,
@@ -60,14 +61,14 @@ fun QueueScreen(
 
     Scaffold(
         topBar = {
-            val queueTimeRemaining = Formatter.formatRemainingTime(successState.queueTimeRemaining)
+            val queueTimeRemainingText = Formatter.formatRemainingTime(queueTimeRemaining)
             TopAppBar(
                 title = { 
                     Column {
                         Text(stringResource(R.string.queue_title))
                         if (queue.isNotEmpty()) {
                             Text(
-                                text = stringResource(R.string.queue_listening_time, queueTimeRemaining),
+                                text = stringResource(R.string.queue_listening_time, queueTimeRemainingText),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

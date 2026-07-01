@@ -61,6 +61,44 @@ class OpmlManagerTest {
     }
 
     @Test
+    fun parse_malformedOpml_doesNotThrowAndReturnsPartialResults() {
+        // Valid opening with one good subscription, then truncated/garbage XML.
+        val opmlContent = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <opml version="2.0">
+              <body>
+                <outline text="Good" type="rss" xmlUrl="https://example.com/feed.xml" />
+                <outline text="Broken" type="rss" xmlUrl="https://broken.com/feed
+        """.trimIndent()
+        val inputStream = ByteArrayInputStream(opmlContent.toByteArray())
+
+        // Must not throw on malformed XML; the already-parsed subscription is returned.
+        val urls = opmlManager.parse(inputStream)
+
+        assertEquals(listOf("https://example.com/feed.xml"), urls)
+    }
+
+    @Test
+    fun parse_withDoctypeEntity_doesNotCrash() {
+        // An OPML carrying a DOCTYPE/entity declaration must not crash the parser
+        // (DOCTYPE processing is disabled for XXE hardening).
+        val opmlContent = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE opml [ <!ENTITY foo "bar"> ]>
+            <opml version="2.0">
+              <body>
+                <outline text="Safe" type="rss" xmlUrl="https://example.com/feed.xml" />
+              </body>
+            </opml>
+        """.trimIndent()
+        val inputStream = ByteArrayInputStream(opmlContent.toByteArray())
+
+        val urls = opmlManager.parse(inputStream)
+
+        assertEquals(listOf("https://example.com/feed.xml"), urls)
+    }
+
+    @Test
     fun export_validPodcasts_returnsCorrectOpml() {
         val podcasts = listOf(
             Podcast(
