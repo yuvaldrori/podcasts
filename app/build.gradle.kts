@@ -100,7 +100,7 @@ android {
 
     sourceSets {
         getByName("androidTest") {
-            assets.srcDirs(files("$projectDir/schemas"))
+            assets.directories.add("$projectDir/schemas")
         }
     }
 
@@ -139,6 +139,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.mediarouter)
     implementation(libs.androidx.navigation.compose)

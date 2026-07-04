@@ -15,6 +15,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,9 +52,64 @@ fun MainScreen(
     val queueCount by navBadgeViewModel.queueCount.collectAsStateWithLifecycle()
     val newEpisodeCount by navBadgeViewModel.newEpisodeCount.collectAsStateWithLifecycle()
 
-    Scaffold(
-        bottomBar = {
-            Column {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    NavigationSuiteScaffold(
+        navigationSuiteItems = {
+            bottomNavItems.forEach { screen ->
+                val selected = currentDestination?.hierarchy?.any {
+                    it.hasRoute(screen.route::class)
+                } == true
+                val badgeCount = when (screen) {
+                    BottomNavItem.Queue -> queueCount
+                    BottomNavItem.NewEpisodes -> newEpisodeCount
+                    else -> 0
+                }
+                item(
+                    selected = selected,
+                    onClick = {
+                        if (selected) {
+                            navController.popBackStack(screen.route, inclusive = false, saveState = true)
+                        } else {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
+                    icon = {
+                        val label = stringResource(screen.titleRes)
+                        val iconDescription = if (badgeCount > 0) {
+                            stringResource(R.string.nav_item_with_badge, label, badgeCount)
+                        } else {
+                            label
+                        }
+                        BadgedBox(
+                            badge = {
+                                if (badgeCount > 0) {
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ) {
+                                        Text(if (badgeCount > 99) "99+" else badgeCount.toString())
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(screen.icon, contentDescription = iconDescription)
+                        }
+                    },
+                    label = { Text(stringResource(screen.titleRes)) }
+                )
+            }
+        }
+    ) {
+        Scaffold(
+            bottomBar = {
                 val actions = remember(playerViewModel) {
                     com.yuval.podcasts.ui.components.PlayerActions(
                         onToggleSpeed = { playerViewModel.toggleSpeed() },
@@ -67,67 +123,8 @@ fun MainScreen(
                     uiState = uiState,
                     actions = actions
                 )
-                
-                NavigationBar {
-                    val navBackStackEntry by navController.currentBackStackEntryAsState()
-                    val currentDestination = navBackStackEntry?.destination
-                    bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any {
-                            it.hasRoute(screen.route::class)
-                        } == true
-                        val badgeCount = when (screen) {
-                            BottomNavItem.Queue -> queueCount
-                            BottomNavItem.NewEpisodes -> newEpisodeCount
-                            else -> 0
-                        }
-                        val label = stringResource(screen.titleRes)
-                        val iconDescription = if (badgeCount > 0) {
-                            stringResource(R.string.nav_item_with_badge, label, badgeCount)
-                        } else {
-                            label
-                        }
-                        NavigationBarItem(
-                            icon = {
-                                BadgedBox(
-                                    badge = {
-                                        if (badgeCount > 0) {
-                                            Badge(
-                                                containerColor = MaterialTheme.colorScheme.primary,
-                                                contentColor = MaterialTheme.colorScheme.onPrimary
-                                            ) {
-                                                Text(if (badgeCount > 99) "99+" else badgeCount.toString())
-                                            }
-                                        }
-                                    }
-                                ) {
-                                    Icon(screen.icon, contentDescription = iconDescription)
-                                }
-                            },
-                            label = { Text(stringResource(screen.titleRes)) },
-                            selected = selected,
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            onClick = {
-                                if (selected) {
-                                    navController.popBackStack(screen.route, inclusive = false, saveState = true)
-                                } else {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
-                            }
-                        )
-                    }
-                }
             }
-        }
-    ) { innerPadding ->
+        ) { innerPadding ->
         NavHost(
             navController = navController, 
             startDestination = QueueScreenRoute,
@@ -156,6 +153,7 @@ fun MainScreen(
                     onPlayQueue = { episodes, startIndex, position -> 
                         playerViewModel.playQueue(episodes, startIndex, position)
                     },
+                    onPause = { playerViewModel.playPause() },
                     contentPadding = innerPadding
                 ) 
             }
@@ -242,4 +240,5 @@ fun MainScreen(
             }
         }
     }
+}
 }
