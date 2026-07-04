@@ -120,6 +120,26 @@ class EpisodeDaoTest {
     }
 
     @Test
+    fun getUnplayedEpisodesWithPodcast_excludesQueuedEpisodes() = runBlocking {
+        val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
+        podcastDao.insertPodcast(podcast)
+
+        val episode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
+        val episode2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
+        episodeDao.insertEpisodes(listOf(episode1, episode2))
+
+        // Queue episode1
+        val queueDao = database.queueDao()
+        queueDao.insertQueueItem(com.yuval.podcasts.data.db.entity.QueueState("ep1", 0))
+
+        val unplayed = episodeDao.getUnplayedEpisodesWithPodcast().first()
+
+        assertEquals(1, unplayed.size)
+        assertEquals("ep2", unplayed[0].episode.id)
+    }
+
+
+    @Test
     fun markAllUnplayedAsPlayed_updatesAll() = runBlocking {
         val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
         podcastDao.insertPodcast(podcast)

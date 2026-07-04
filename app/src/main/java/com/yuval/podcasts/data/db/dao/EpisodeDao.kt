@@ -18,7 +18,13 @@ interface EpisodeDao {
     fun getEpisodesForPodcast(feedUrl: String): Flow<List<Episode>>
 
     @Transaction
-    @Query("SELECT * FROM episodes WHERE isPlayed = 0 ORDER BY pubDate DESC LIMIT :limit")
+    @Query("""
+        SELECT * FROM episodes 
+        WHERE isPlayed = 0 
+        AND id NOT IN (SELECT episodeId FROM queue) 
+        ORDER BY pubDate DESC 
+        LIMIT :limit
+    """)
     fun getUnplayedEpisodesWithPodcast(limit: Int = com.yuval.podcasts.data.Constants.UNPLAYED_EPISODES_LIMIT): Flow<List<EpisodeWithPodcast>>
 
     @Upsert
@@ -78,7 +84,7 @@ interface EpisodeDao {
     @Query("UPDATE episodes SET lastPlayedPosition = :position WHERE id = :id")
     suspend fun updateLastPlayedPosition(id: String, position: Long)
 
-    @Query("UPDATE episodes SET isPlayed = 1, completedAt = :completedAt, lastPlayedPosition = 0 WHERE isPlayed = 0")
+    @Query("UPDATE episodes SET isPlayed = 1, completedAt = :completedAt, lastPlayedPosition = 0 WHERE isPlayed = 0 AND id NOT IN (SELECT episodeId FROM queue)")
     suspend fun markAllUnplayedAsPlayed(completedAt: Long)
 
     @Query("SELECT * FROM episodes WHERE downloadStatus IN (1, 2)")

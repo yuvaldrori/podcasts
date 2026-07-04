@@ -8,7 +8,7 @@ The tests are split into two main categories: **Local Unit Tests** (which run fa
 
 These tests ensure the local Room database saves, retrieves, and migrates information correctly.
 
-*   **`EpisodeDaoTest`**: Verifies that we can insert, update, and delete podcast episodes. It checks that we can correctly fetch a list of unplayed episodes, and specifically verifies that `updateDownloadStatusAfterSuccess` only updates the download path and status if the current status matches the expected downloading state.
+*   **`EpisodeDaoTest`**: Verifies that we can insert, update, and delete podcast episodes. It checks that we can correctly fetch a list of unplayed episodes, verifies that queued episodes are excluded from the unplayed episodes feed, and specifically verifies that `updateDownloadStatusAfterSuccess` only updates the download path and status if the current status matches the expected downloading state.
 *   **`PodcastDaoTest`**: Checks that adding and removing Podcast subscriptions works, and ensures that fetching "all podcasts" returns the correct list ordered alphabetically.
 *   **`QueueDaoTest`**: Confirms that adding episodes to the play queue, reordering the queue, and removing items from the queue behaves as expected in the database. Specifically verifies the position-shifting logic for efficient insertions, and confirms the parameterized querying of queued episodes that are not yet downloaded.
 *   **`ChapterDaoTest`**: Verifies that we can bulk delete and update chapters for multiple episodes in a single operation to maintain performance during synchronization.
