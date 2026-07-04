@@ -20,6 +20,7 @@ import com.yuval.podcasts.R
 
 import kotlinx.collections.immutable.ImmutableList
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionsScreen(
     podcasts: ImmutableList<Podcast>,
@@ -27,64 +28,72 @@ fun SubscriptionsScreen(
     onUnsubscribe: (String) -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
-    if (podcasts.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = stringResource(R.string.empty_subscriptions_message),
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.episodes_title)) }
             )
         }
-        return
-    }
+    ) { padding ->
+        if (podcasts.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.empty_subscriptions_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 16.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                )
+            ) {
+                items(
+                    items = podcasts,
+                    key = { it.feedUrl }
+                ) { podcast ->
+                    var expanded by remember { mutableStateOf(false) }
+                    val handlePodcastClick = remember(podcast.feedUrl) { { onPodcastClick(podcast.feedUrl) } }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            top = WindowInsets.systemBars.asPaddingValues().calculateTopPadding() + 16.dp,
-            bottom = contentPadding.calculateBottomPadding() + 16.dp,
-            start = 16.dp,
-            end = 16.dp
-        )
-    ) {
-        items(
-            items = podcasts,
-            key = { it.feedUrl }
-        ) { podcast ->
-            var expanded by remember { mutableStateOf(false) }
-            val handlePodcastClick = remember(podcast.feedUrl) { { onPodcastClick(podcast.feedUrl) } }
-
-            PodcastItem(
-                podcast = podcast,
-                onClick = handlePodcastClick,
-                trailingContent = {
-                    Box {
-                        IconButton(onClick = { expanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options), modifier = Modifier.size(24.dp))
-                        }
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.unsubscribe)) },
-                                onClick = {
-                                    expanded = false
-                                    onUnsubscribe(podcast.feedUrl)
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.unsubscribe))
+                    PodcastItem(
+                        podcast = podcast,
+                        onClick = handlePodcastClick,
+                        trailingContent = {
+                            Box {
+                                IconButton(onClick = { expanded = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options), modifier = Modifier.size(24.dp))
                                 }
-                            )
+                                DropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.unsubscribe)) },
+                                        onClick = {
+                                            expanded = false
+                                            onUnsubscribe(podcast.feedUrl)
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.unsubscribe))
+                                        }
+                                    )
+                                }
+                            }
                         }
-                    }
+                    )
                 }
-            )
+            }
         }
     }
 }

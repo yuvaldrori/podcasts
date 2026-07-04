@@ -106,6 +106,16 @@ class PlayerManagerTest {
     }
 
     @Test
+    fun seekForward_whenDurationUnknown_doesNotSeek() {
+        every { mediaController.currentPosition } returns 10000L
+        every { mediaController.duration } returns androidx.media3.common.C.TIME_UNSET
+        
+        playerManager.seekForward()
+        
+        verify(exactly = 0) { mediaController.seekTo(any()) }
+    }
+
+    @Test
     fun seekBackward_calculatesCorrectPosition() {
         every { mediaController.currentPosition } returns 30000L
         

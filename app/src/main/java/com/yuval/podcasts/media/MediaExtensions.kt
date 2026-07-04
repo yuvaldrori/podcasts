@@ -7,7 +7,11 @@ import androidx.media3.common.Player
  */
 
 fun Player.seekForwardBounded(ms: Long) {
-    val newPosition = (currentPosition + ms).coerceAtMost(duration.coerceAtLeast(0L))
+    val dur = duration
+    if (dur <= 0 || dur == androidx.media3.common.C.TIME_UNSET) {
+        return
+    }
+    val newPosition = (currentPosition + ms).coerceAtMost(dur)
     seekTo(newPosition)
 }
 

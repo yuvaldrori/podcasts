@@ -61,7 +61,7 @@ class SettingsViewModelTest {
         importLocalFileUseCase = mockk()
         logManager = mockk(relaxed = true)
         context = mockk()
-        contentResolver = mockk()
+        contentResolver = mockk(relaxed = true)
         uri = mockk(relaxed = true)
         inputStream = mockk()
         outputStream = mockk()
@@ -82,7 +82,8 @@ class SettingsViewModelTest {
             exportOpmlUseCase = exportOpmlUseCase,
             importLocalFileUseCase = importLocalFileUseCase,
             logManager = logManager,
-            messageDelegate = DefaultMessageDelegate()
+            messageDelegate = DefaultMessageDelegate(),
+            ioDispatcher = mainDispatcherRule.testDispatcher
         )
     }
 
@@ -192,7 +193,8 @@ class SettingsViewModelTest {
             exportOpmlUseCase = exportOpmlUseCase,
             importLocalFileUseCase = importLocalFileUseCase,
             logManager = logManager,
-            messageDelegate = DefaultMessageDelegate()
+            messageDelegate = DefaultMessageDelegate(),
+            ioDispatcher = mainDispatcherRule.testDispatcher
         )
 
         val job = backgroundScope.launch { viewModel.uiState.collect {} }

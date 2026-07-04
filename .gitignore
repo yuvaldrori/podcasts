@@ -59,3 +59,8 @@ build_warnings.txt
 /system-images/
 /.knownPackages
 
+
+# Local project/build generation ignores
+.kotlin/
+podcasts_logs.jsonl*
+

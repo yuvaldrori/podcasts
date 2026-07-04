@@ -40,7 +40,8 @@ class QueueScreenTest {
                     onRemoveFromQueue = {},
                     onMoveItem = { _, _ -> },
                     onCommitReorder = {},
-                    onPlayQueue = { _, _, _ -> }
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
                 )
             }
         }
@@ -64,7 +65,8 @@ class QueueScreenTest {
                     onRemoveFromQueue = {},
                     onMoveItem = { _, _ -> },
                     onCommitReorder = {},
-                    onPlayQueue = { _, _, _ -> }
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
                 )
             }
         }
@@ -91,7 +93,8 @@ class QueueScreenTest {
                     onRemoveFromQueue = {},
                     onMoveItem = { _, _ -> },
                     onCommitReorder = { callCount++ },
-                    onPlayQueue = { _, _, _ -> }
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
                 )
             }
         }
@@ -134,7 +137,8 @@ class QueueScreenTest {
                     onRemoveFromQueue = {},
                     onMoveItem = { _, _ -> },
                     onCommitReorder = {},
-                    onPlayQueue = { _, _, _ -> }
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
                 )
             }
         }

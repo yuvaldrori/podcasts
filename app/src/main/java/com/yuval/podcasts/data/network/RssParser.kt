@@ -139,11 +139,7 @@ class RssParser @Inject constructor() {
                 name == Constants.Rss.GUID -> id = readText(parser)
                 name == Constants.Rss.PUB_DATE -> {
                     val dateStr = readText(parser)
-                    pubDate = try {
-                        java.time.ZonedDateTime.parse(dateStr, dateFormatter).toInstant().toEpochMilli()
-                    } catch (e: Exception) {
-                        0L
-                    }
+                    pubDate = DateParser.parsePubDate(dateStr)
                 }
                 name == Constants.Rss.ENCLOSURE -> {
                     val rawUrl = parser.getAttributeValue(null, Constants.Rss.ENCLOSURE_URL) ?: ""

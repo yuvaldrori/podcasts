@@ -123,7 +123,7 @@ class DefaultPodcastRepository @Inject constructor(
     }
 
     override suspend fun markAllAsPlayed(): Unit {
-        episodeDao.markAllUnplayedAsPlayed()
+        episodeDao.markAllUnplayedAsPlayed(System.currentTimeMillis())
     }
 
     override suspend fun markAsPlayed(id: String): Unit {
@@ -187,7 +187,7 @@ class DefaultPodcastRepository @Inject constructor(
                 val newQueue = currentQueue.mapIndexed { index, ep -> QueueState(ep.id, index) }
                 queueDao.updateQueue(newQueue)
             }
-            episodeDao.updatePlaybackStatus(episode.id, isPlayed = true)
+            episodeDao.updatePlaybackStatus(episode.id, isPlayed = false, completedAt = null)
         }
     }
 

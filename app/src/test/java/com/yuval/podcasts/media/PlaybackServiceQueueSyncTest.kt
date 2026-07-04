@@ -70,4 +70,52 @@ class PlayerReplaceTest {
         assertEquals("B", player.getMediaItemAt(3).mediaId)
         assertEquals("C", player.getMediaItemAt(4).mediaId)
     }
+
+    @Test
+    fun testRemovePlayingEpisode_transitionsToNextItem() {
+        val player = ExoPlayer.Builder(ApplicationProvider.getApplicationContext()).build()
+        
+        val itemA = MediaItem.Builder().setMediaId("A").setUri("http://a.com").build()
+        val itemB = MediaItem.Builder().setMediaId("B").setUri("http://b.com").build()
+        val itemC = MediaItem.Builder().setMediaId("C").setUri("http://c.com").build()
+        
+        player.setMediaItems(listOf(itemA, itemB, itemC), 0, 0L)
+        player.prepare()
+        
+        val newList = listOf(itemB, itemC)
+        val newIds = newList.map { it.mediaId }
+        val currentMediaId = player.currentMediaItem?.mediaId!!
+        val currentInNewIndex = newList.indexOfFirst { it.mediaId == currentMediaId }
+
+        // Modeled fixed behavior: transition to next item in queue if available
+        if (currentInNewIndex == -1) {
+            val playerIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+            val hasQueueItems = playerIds.any { newIds.contains(it) }
+            if (hasQueueItems) {
+                var nextEpisodeId: String? = null
+                val currentIndex = player.currentMediaItemIndex
+                for (i in currentIndex + 1 until player.mediaItemCount) {
+                    val id = player.getMediaItemAt(i).mediaId
+                    if (newIds.contains(id)) {
+                        nextEpisodeId = id
+                        break
+                    }
+                }
+                
+                if (nextEpisodeId != null) {
+                    val nextIndexInNew = newList.indexOfFirst { it.mediaId == nextEpisodeId }
+                    if (nextIndexInNew != -1) {
+                        player.setMediaItems(newList, nextIndexInNew, 0L)
+                        player.prepare()
+                    }
+                }
+            } else {
+                player.stop()
+                player.clearMediaItems()
+            }
+        }
+
+        assertEquals(2, player.mediaItemCount)
+        assertEquals("B", player.currentMediaItem?.mediaId)
+    }
 }

@@ -55,8 +55,7 @@ class PlaybackResumptionTest {
             localFilePath = null,
             isPlayed = false,
             lastPlayedPosition = lastPosition,
-            completedAt = null,
-            localId = 1
+            completedAt = null
         )
 
         coEvery { queueDao.getQueueEpisodes() } returns flowOf(listOf(episode))
@@ -113,8 +112,7 @@ class PlaybackResumptionTest {
             localFilePath = null,
             isPlayed = false,
             lastPlayedPosition = lastPosition,
-            completedAt = null,
-            localId = 1
+            completedAt = null
         )
 
         coEvery { queueDao.getQueueEpisodes() } returns flowOf(listOf(episode))

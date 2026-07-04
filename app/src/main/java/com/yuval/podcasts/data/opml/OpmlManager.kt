@@ -31,12 +31,18 @@ class OpmlManager @Inject constructor() {
             while (eventType != XmlPullParser.END_DOCUMENT) {
                 if (eventType == XmlPullParser.START_TAG && parser.name == "outline") {
                     val xmlUrl = parser.getAttributeValue(null, "xmlUrl")
-                    if (xmlUrl != null && (xmlUrl.startsWith("http://") || xmlUrl.startsWith("https://"))) {
-                        try {
-                            java.net.URL(xmlUrl).toURI()
-                            urls.add(xmlUrl)
-                        } catch (e: Exception) {
-                            // Ignore invalid URLs
+                    if (xmlUrl != null) {
+                        var sanitizedUrl = xmlUrl
+                        if (sanitizedUrl.startsWith("http://")) {
+                            sanitizedUrl = "https://" + sanitizedUrl.substring(7)
+                        }
+                        if (sanitizedUrl.startsWith("https://")) {
+                            try {
+                                java.net.URL(sanitizedUrl).toURI()
+                                urls.add(sanitizedUrl)
+                            } catch (e: Exception) {
+                                // Ignore invalid URLs
+                            }
                         }
                     }
                 }

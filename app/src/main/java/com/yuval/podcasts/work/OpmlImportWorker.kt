@@ -62,8 +62,18 @@ class OpmlImportWorker @AssistedInject constructor(
             val semaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
             val lastForegroundUpdate = AtomicLong(0L)
 
-            setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
-            setForeground(createForegroundInfo(0, total))
+            var isForegroundAllowed = true
+            try {
+                setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
+            } catch (e: Exception) {
+                logManager.w("OpmlImportWorker", "Failed to set initial progress", mapOf("error" to e.message.toString()))
+            }
+            try {
+                setForeground(createForegroundInfo(0, total))
+            } catch (e: Exception) {
+                isForegroundAllowed = false
+                logManager.w("OpmlImportWorker", "Failed to set initial foreground status", mapOf("error" to e.message.toString()))
+            }
             
             coroutineScope {
                 urls.map { url ->
@@ -76,13 +86,22 @@ class OpmlImportWorker @AssistedInject constructor(
                                 logManager.e("OpmlImportWorker", "Failed to import podcast: $url", mapOf("error" to e.message.toString()))
                             } finally {
                                 val current = completedCount.incrementAndGet()
-                                setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
+                                try {
+                                    setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
+                                } catch (e: Exception) {
+                                    logManager.w("OpmlImportWorker", "Failed to set progress", mapOf("error" to e.message.toString()))
+                                }
                                 
                                 val currentTime = System.currentTimeMillis()
                                 val lastUpdate = lastForegroundUpdate.get()
-                                if (current == total || currentTime - lastUpdate > Constants.OPML_IMPORT_PROGRESS_NOTIFICATION_THROTTLE_MS) {
+                                if (isForegroundAllowed && (current == total || currentTime - lastUpdate > Constants.OPML_IMPORT_PROGRESS_NOTIFICATION_THROTTLE_MS)) {
                                     lastForegroundUpdate.set(currentTime)
-                                    setForeground(createForegroundInfo(current, total))
+                                    try {
+                                        setForeground(createForegroundInfo(current, total))
+                                    } catch (e: Exception) {
+                                        isForegroundAllowed = false
+                                        logManager.w("OpmlImportWorker", "Failed to set foreground status progress", mapOf("error" to e.message.toString()))
+                                    }
                                 }
                             }
                         }

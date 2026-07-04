@@ -199,11 +199,11 @@ class PodcastRepositoryTest {
 
     @Test
     fun markAllAsPlayed_callsDao() = runTest {
-        coEvery { episodeDao.markAllUnplayedAsPlayed() } returns Unit
+        coEvery { episodeDao.markAllUnplayedAsPlayed(any()) } returns Unit
         
         repository.markAllAsPlayed()
         
-        coVerify { episodeDao.markAllUnplayedAsPlayed() }
+        coVerify { episodeDao.markAllUnplayedAsPlayed(any()) }
     }
 
     @Test
@@ -234,7 +234,7 @@ class PodcastRepositoryTest {
         repository.requeueEpisode(newEp)
         
         coVerify { queueDao.updateQueue(match { it.size == 3 && it[1].episodeId == "ep2" }) }
-        coVerify { episodeDao.updatePlaybackStatus("ep2", true) }
+        coVerify { episodeDao.updatePlaybackStatus("ep2", false) }
     }
 
     @Test

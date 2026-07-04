@@ -45,13 +45,17 @@ class SyncWorker @AssistedInject constructor(
             val total = podcasts.size
             if (total == 0) return Result.success()
             
+            var isForegroundAllowed = true
             try {
                 setForeground(createForegroundInfo(0, total))
+            } catch (e: Exception) {
+                isForegroundAllowed = false
+                logManager.w("SyncWorker", "Failed to set initial foreground status", mapOf("error" to e.message.toString()))
+            }
+            try {
                 setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
             } catch (e: Exception) {
-                // In some test environments, setForeground may fail. 
-                // We log it but continue the sync as it's not critical for the task itself.
-                logManager.w("SyncWorker", "Failed to set foreground/progress", mapOf("error" to e.message.toString()))
+                logManager.w("SyncWorker", "Failed to set initial progress", mapOf("error" to e.message.toString()))
             }
             
             val completedCount = AtomicInteger(0)
@@ -73,12 +77,16 @@ class SyncWorker @AssistedInject constructor(
                                 try {
                                     setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
                                     val lastUpdate = lastForegroundUpdate.get()
-                                    if (current == total || currentTime - lastUpdate > Constants.SYNC_PROGRESS_NOTIFICATION_THROTTLE_MS) {
+                                    if (isForegroundAllowed && (current == total || currentTime - lastUpdate > Constants.SYNC_PROGRESS_NOTIFICATION_THROTTLE_MS)) {
                                         lastForegroundUpdate.set(currentTime)
-                                        setForeground(createForegroundInfo(current, total))
+                                        try {
+                                            setForeground(createForegroundInfo(current, total))
+                                        } catch (e: Exception) {
+                                            isForegroundAllowed = false
+                                        }
                                     }
                                 } catch (e: Exception) {
-                                    // Ignore failures in setForeground/setProgress during the loop
+                                    // Ignore failures in setProgress during the loop
                                 }
                             }
                         }

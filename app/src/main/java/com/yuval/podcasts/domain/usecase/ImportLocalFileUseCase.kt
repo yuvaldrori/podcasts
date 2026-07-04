@@ -58,8 +58,7 @@ class ImportLocalFileUseCase @Inject constructor(
                         localFilePath = metadata.destFile.absolutePath,
                         isPlayed = false,
                         lastPlayedPosition = 0L,
-                        completedAt = null,
-                        localId = 0L
+                        completedAt = null
                     )
                 ))
             } catch (e: Exception) {
@@ -71,6 +70,7 @@ class ImportLocalFileUseCase @Inject constructor(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             logManager.e("ImportLocalFileUseCase", "Failed to add local file", mapOf("error" to e.message.toString()))
             Result.failure(e)
         }

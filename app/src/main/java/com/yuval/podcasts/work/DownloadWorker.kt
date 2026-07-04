@@ -39,8 +39,9 @@ class DownloadWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
+        val episodeId = inputData.getString(KEY_EPISODE_ID) ?: ""
         val title = inputData.getString(KEY_EPISODE_TITLE) ?: "Episode"
-        return createForegroundInfo(title, 0)
+        return createForegroundInfo(episodeId, title, 0)
     }
 
     override suspend fun doWork(): Result = withContext(ioDispatcher) {
@@ -50,8 +51,15 @@ class DownloadWorker @AssistedInject constructor(
 
         logManager.i("DownloadWorker", "Starting download for $episodeId: $audioUrl")
 
+        var isForegroundAllowed = true
+
         try {
-            setForeground(createForegroundInfo(title, 0))
+            try {
+                setForeground(createForegroundInfo(episodeId, title, 0))
+            } catch (e: Exception) {
+                isForegroundAllowed = false
+                logManager.w("DownloadWorker", "Failed to set foreground status initial", mapOf("error" to e.message.toString()))
+            }
             // Update status to Downloading
             updateDownloadStatus(episodeId, DownloadStatus.DOWNLOADING.value, null)
 
@@ -105,14 +113,23 @@ class DownloadWorker @AssistedInject constructor(
                                     if (progress > lastProgressPercent &&
                                         currentTime - lastProgressUpdateTime > Constants.DOWNLOAD_PROGRESS_WORKER_THROTTLE_MS
                                     ) {
-                                        setProgress(androidx.work.workDataOf("progress" to progress))
+                                        try {
+                                            setProgress(androidx.work.workDataOf("progress" to progress))
+                                        } catch (e: Exception) {
+                                            logManager.w("DownloadWorker", "Failed to set progress", mapOf("error" to e.message.toString()))
+                                        }
                                         lastProgressPercent = progress
                                         lastProgressUpdateTime = currentTime
                                     }
 
                                     // Update Notification based on percentage step to avoid IPC overhead
-                                    if (progress >= lastNotifiedPercent + Constants.DOWNLOAD_PROGRESS_NOTIFICATION_INCREMENT_PERCENT) {
-                                        setForeground(createForegroundInfo(title, progress))
+                                    if (isForegroundAllowed && progress >= lastNotifiedPercent + Constants.DOWNLOAD_PROGRESS_NOTIFICATION_INCREMENT_PERCENT) {
+                                        try {
+                                            setForeground(createForegroundInfo(episodeId, title, progress))
+                                        } catch (e: Exception) {
+                                            isForegroundAllowed = false
+                                            logManager.w("DownloadWorker", "Failed to set foreground status progress", mapOf("error" to e.message.toString()))
+                                        }
                                         lastNotifiedPercent = progress
                                     }
                                 }
@@ -144,7 +161,14 @@ class DownloadWorker @AssistedInject constructor(
             
             // Distinguish between transient and permanent errors
             return@withContext when (e) {
-                is IOException -> Result.retry()
+                is IOException -> {
+                    if (runAttemptCount >= 3) {
+                        logManager.e("DownloadWorker", "Download failed after 3 attempts", mapOf("error" to e.message.toString()))
+                        Result.failure()
+                    } else {
+                        Result.retry()
+                    }
+                }
                 else -> Result.failure()
             }
         }
@@ -155,7 +179,7 @@ class DownloadWorker @AssistedInject constructor(
     }
 
     @androidx.annotation.VisibleForTesting
-    internal fun createForegroundInfo(title: String, progress: Int): ForegroundInfo {
+    internal fun createForegroundInfo(episodeId: String, title: String, progress: Int): ForegroundInfo {
         val channelId = "download_channel"
         val channel = NotificationChannel(
             channelId,
@@ -173,8 +197,9 @@ class DownloadWorker @AssistedInject constructor(
             .setOngoing(true)
             .build()
 
+        val notificationId = Constants.NOTIFICATION_ID_DOWNLOAD + (episodeId.hashCode() and 0x00ffffff)
 
-        return ForegroundInfo(Constants.NOTIFICATION_ID_DOWNLOAD, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        return ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     }
 
     companion object {

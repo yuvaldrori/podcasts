@@ -116,7 +116,7 @@ class DownloadWorkerStreamTest {
             mockk<Notification>(relaxed = true),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         )
-        every { worker.createForegroundInfo(any(), any()) } returns foregroundInfo
+        every { worker.createForegroundInfo(any(), any(), any()) } returns foregroundInfo
         return worker
     }
 

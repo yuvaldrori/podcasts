@@ -16,6 +16,11 @@ import com.yuval.podcasts.ui.theme.PodcastsTheme
 import com.yuval.podcasts.ui.MainScreen
 import com.yuval.podcasts.ui.viewmodel.PlayerViewModel
 import com.yuval.podcasts.ui.viewmodel.ThemeViewModel
+import android.os.Build
+import android.Manifest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import com.yuval.podcasts.media.PlayerManager
@@ -25,8 +30,21 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var playerManager: PlayerManager
 
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ -> }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         enableEdgeToEdge()
         
         window.isNavigationBarContrastEnforced = false

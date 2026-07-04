@@ -43,6 +43,7 @@ import android.view.KeyEvent
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.isActive
 import androidx.media3.common.MediaMetadata
 import com.yuval.podcasts.data.Constants
 import kotlinx.coroutines.guava.asListenableFuture
@@ -167,12 +168,15 @@ class PlaybackService : MediaLibraryService() {
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             return serviceScope.async(ioDispatcher) {
                 val episodes = queueDao.getQueueEpisodes().first()
+                val lastPlayedId = settingsRepository.getLastPlayedEpisodeId()
                 if (episodes.isNotEmpty()) {
-                    val currentEp = episodes.first()
+                    var startIndex = episodes.indexOfFirst { it.id == lastPlayedId }
+                    if (startIndex == -1) startIndex = 0
+                    val currentEp = episodes[startIndex]
                     val mediaItems = episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
                     MediaSession.MediaItemsWithStartPosition(
                         mediaItems,
-                        0, // Starting with the first item in queue
+                        startIndex,
                         currentEp.lastPlayedPosition
                     )
                 } else {
@@ -307,12 +311,22 @@ class PlaybackService : MediaLibraryService() {
                 newPosition: Player.PositionInfo,
                 reason: Int
             ) {
-                saveCurrentPosition()
+                val oldMediaId = oldPosition.mediaItem?.mediaId
+                val newMediaId = newPosition.mediaItem?.mediaId
+                if (oldMediaId != null) {
+                    if (oldMediaId != newMediaId) {
+                        saveCurrentPosition(oldMediaId, oldPosition.positionMs)
+                    } else if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                        saveCurrentPosition(oldMediaId, newPosition.positionMs)
+                    }
+                }
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (!isPlaying) {
-                    saveCurrentPosition()
+                    if (currentPlayer.playbackState != Player.STATE_ENDED) {
+                        saveCurrentPosition()
+                    }
                 }
             }
 
@@ -347,6 +361,9 @@ class PlaybackService : MediaLibraryService() {
 
                 if (mediaItem != null) {
                     currentlyPlayingId = mediaItem.mediaId
+                    serviceScope.launch(ioDispatcher) {
+                        settingsRepository.saveLastPlayedEpisodeId(mediaItem.mediaId)
+                    }
                     
                     // If it's an automatic transition, a skip, or playlist change (initial load), check for saved position to resume
                     if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || 
@@ -405,14 +422,27 @@ class PlaybackService : MediaLibraryService() {
         serviceScope.launch(mainDispatcher) {
             val episodes = queueDao.getQueueEpisodes().first()
             if (episodes.isNotEmpty() && currentPlayer.mediaItemCount == 0) {
-                val currentEp = episodes.first()
-                val mediaItems = episodes.mapNotNull { ep ->
-                    MediaItemMapper.fromEpisode(ep)
+                val lastPlayedId = settingsRepository.getLastPlayedEpisodeId()
+                var startIndex = episodes.indexOfFirst { it.id == lastPlayedId }
+                if (startIndex == -1) startIndex = 0
+                val currentEp = episodes[startIndex]
+                val mediaItems = withContext(ioDispatcher) {
+                    episodes.mapNotNull { ep -> MediaItemMapper.fromEpisode(ep) }
                 }
                 if (mediaItems.isNotEmpty()) {
                     currentPlayer.setMediaItems(mediaItems)
-                    currentPlayer.seekTo(0, currentEp.lastPlayedPosition)
+                    currentPlayer.seekTo(startIndex, currentEp.lastPlayedPosition)
                     currentPlayer.prepare()
+                }
+            }
+        }
+
+        // Periodic position saver
+        serviceScope.launch(mainDispatcher) {
+            while (isActive) {
+                kotlinx.coroutines.delay(Constants.SAVE_POSITION_INTERVAL_MS)
+                if (currentPlayer.isPlaying) {
+                    saveCurrentPosition()
                 }
             }
         }
@@ -431,6 +461,9 @@ class PlaybackService : MediaLibraryService() {
     private fun observeQueue() {
         serviceScope.launch {
             queueDao.getQueueEpisodes().distinctUntilChanged().collect { episodes ->
+                val mediaItems = withContext(ioDispatcher) {
+                    episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
+                }
                 withContext(mainDispatcher) {
                     if (episodes.isEmpty()) {
                         if (currentPlayer.mediaItemCount > 0) {
@@ -444,26 +477,53 @@ class PlaybackService : MediaLibraryService() {
                     
                     if (currentMediaId == null) {
                         // If nothing is playing, just set the items
-                        val mediaItems = episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
                         currentPlayer.setMediaItems(mediaItems)
                         return@withContext
                     }
 
+                    val newIds = episodes.map { it.id }
+
                     val currentInNewIndex = episodes.indexOfFirst { it.id == currentMediaId }
                     if (currentInNewIndex == -1) {
-                        logManager.i("PlaybackService", "Current item $currentMediaId removed from queue, stopping player")
+                        val playerIds = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
+                        val hasQueueItems = playerIds.any { newIds.contains(it) }
+                        if (!hasQueueItems) {
+                            // Playing outside the queue, ignore this update
+                            return@withContext
+                        }
+
+                        // Find the next item to play
+                        var nextEpisodeId: String? = null
+                        val currentIndex = currentPlayer.currentMediaItemIndex
+                        for (i in currentIndex + 1 until currentPlayer.mediaItemCount) {
+                            val id = currentPlayer.getMediaItemAt(i).mediaId
+                            if (newIds.contains(id)) {
+                                nextEpisodeId = id
+                                break
+                            }
+                        }
+
+                        if (nextEpisodeId != null) {
+                            val nextIndexInNew = episodes.indexOfFirst { it.id == nextEpisodeId }
+                            if (nextIndexInNew != -1) {
+                                logManager.i("PlaybackService", "Current item $currentMediaId removed from queue, transitioning to next item $nextEpisodeId")
+                                currentPlayer.setMediaItems(mediaItems, nextIndexInNew, 0L)
+                                currentPlayer.prepare()
+                                currentPlayer.play()
+                                return@withContext
+                            }
+                        }
+
+                        logManager.i("PlaybackService", "Current item $currentMediaId removed from queue and no next item found, stopping player")
                         currentPlayer.stop()
                         currentPlayer.clearMediaItems()
                         return@withContext
                     }
 
                     val currentIds = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
-                    val newIds = episodes.map { it.id }
                     
                     if (currentIds != newIds) {
                         // Surgically update the playlist to avoid restarting playback
-                        val currentMediaIdInNewIndex = episodes.indexOfFirst { it.id == currentMediaId }
-                        val currentMediaIndexInPlayer = currentPlayer.currentMediaItemIndex
 
                         // 1. Remove items that are no longer in the new list, EXCEPT the currently playing one
                         var i = 0
@@ -485,7 +545,7 @@ class PlaybackService : MediaLibraryService() {
                         val existingIdsInPlayer = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
                         episodes.forEachIndexed { index, episode ->
                             if (!existingIdsInPlayer.contains(episode.id)) {
-                                val newItem = MediaItemMapper.fromEpisode(episode)
+                                val newItem = mediaItems.getOrNull(index)
                                 if (newItem != null) {
                                     currentPlayer.addMediaItem(newItem)
                                 }
@@ -515,7 +575,7 @@ class PlaybackService : MediaLibraryService() {
                         if (index < currentPlayer.mediaItemCount) {
                             val itemInPlayer = currentPlayer.getMediaItemAt(index)
                             if (itemInPlayer.mediaId == episode.id) {
-                                val updatedItem = MediaItemMapper.fromEpisode(episode)
+                                val updatedItem = mediaItems.getOrNull(index)
                                 if (updatedItem != null && (updatedItem.mediaMetadata != itemInPlayer.mediaMetadata || updatedItem.localConfiguration?.uri != itemInPlayer.localConfiguration?.uri)) {
                                     // Media3's replaceMediaItem on the current index DOES causes a slight pause/restart.
                                     // We only replace if it's NOT the playing one to avoid playback interruption.
@@ -531,12 +591,16 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    private fun saveCurrentPosition() {
-        val mediaId = currentPlayer.currentMediaItem?.mediaId ?: return
-        val position = currentPlayer.currentPosition
+    private fun saveCurrentPosition(mediaId: String, position: Long) {
         serviceScope.launch(ioDispatcher) {
             episodeDao.updateLastPlayedPosition(mediaId, position)
         }
+    }
+
+    private fun saveCurrentPosition() {
+        val mediaId = currentPlayer.currentMediaItem?.mediaId ?: return
+        val position = currentPlayer.currentPosition
+        saveCurrentPosition(mediaId, position)
     }
 
     private fun setupLoudnessEnhancer(audioSessionId: Int) {
@@ -547,14 +611,16 @@ class PlaybackService : MediaLibraryService() {
             loudnessEnhancer?.release()
 
             serviceScope.launch(mainDispatcher) {
-                val enabled = settingsRepository.isVolumeBoostEnabled()
-                withContext(mainDispatcher) {
+                try {
+                    val enabled = settingsRepository.isVolumeBoostEnabled()
                     if (currentAudioSessionId == audioSessionId) {
                         loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(audioSessionId).apply {
                             setTargetGain(if (enabled) Constants.VOLUME_BOOST_GAIN_MB else 0)
                             setEnabled(true)
                         }
                     }
+                } catch (e: Exception) {
+                    logManager.e("PlaybackService", "Failed to setup LoudnessEnhancer inside coroutine", mapOf("error" to e.message.toString()))
                 }
             }
         } catch (e: Exception) {

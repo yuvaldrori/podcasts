@@ -59,6 +59,7 @@ object DatabaseModule {
             }
         })
         .addMigrations(MIGRATION_5_6)
+        .fallbackToDestructiveMigration(true)
         
         if (com.yuval.podcasts.BuildConfig.DEBUG) {
             builder.setQueryCallback({ sqlQuery, bindArgs ->

@@ -18,6 +18,19 @@ class SettingsRepository @Inject constructor(
         val SKIP_SILENCE = booleanPreferencesKey("skip_silence")
         val CLEANUP_SCHEDULED = booleanPreferencesKey("cleanup_scheduled")
         val VOLUME_BOOST = booleanPreferencesKey("volume_boost")
+        val LAST_PLAYED_EPISODE_ID = stringPreferencesKey("last_played_episode_id")
+    }
+
+    suspend fun getLastPlayedEpisodeId(): String? = dataStore.data.first()[PreferencesKeys.LAST_PLAYED_EPISODE_ID]
+
+    suspend fun saveLastPlayedEpisodeId(episodeId: String?) {
+        dataStore.edit { preferences ->
+            if (episodeId == null) {
+                preferences.remove(PreferencesKeys.LAST_PLAYED_EPISODE_ID)
+            } else {
+                preferences[PreferencesKeys.LAST_PLAYED_EPISODE_ID] = episodeId
+            }
+        }
     }
 
     // Default values

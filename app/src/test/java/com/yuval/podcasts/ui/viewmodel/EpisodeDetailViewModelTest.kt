@@ -40,7 +40,7 @@ class EpisodeDetailViewModelTest {
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
     fun init_loadsEpisodeState() = runTest {
-        val episode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
+        val episode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null)
         val podcast = Podcast("url", "podTitle", "podDesc", "img", "web")
         val episodeWithPodcast = EpisodeWithPodcast(episode, podcast)
 
@@ -65,7 +65,7 @@ class EpisodeDetailViewModelTest {
 
     @Test
     fun addToQueue_callsRepository() = runTest {
-        val episode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
+        val episode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null)
         coEvery { enqueueEpisodeUseCase(episode) } returns Unit
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(null)
         every { repository.listeningQueue } returns flowOf(emptyList())
@@ -85,7 +85,7 @@ class EpisodeDetailViewModelTest {
 
     @Test
     fun isInQueue_isTrueWhenEpisodeIsInQueue() = runTest {
-        val episode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
+        val episode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null)
         val podcast = Podcast("url", "podTitle", "podDesc", "img", "web")
         val episodeWithPodcast = EpisodeWithPodcast(episode, podcast)
 
@@ -109,9 +109,9 @@ class EpisodeDetailViewModelTest {
 
     @Test
     fun isInQueue_isFalseWhenEpisodeIsNotInQueue() = runTest {
-        val episodeInQueue = Episode("ep2", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
+        val episodeInQueue = Episode("ep2", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null)
         val podcast = Podcast("url", "podTitle", "podDesc", "img", "web")
-        val activeEpisode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
+        val activeEpisode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null)
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(EpisodeWithPodcast(activeEpisode, podcast))
         every { repository.listeningQueue } returns flowOf(listOf(EpisodeWithPodcast(episodeInQueue, podcast)))
         every { repository.getChapters(any()) } returns flowOf(emptyList())

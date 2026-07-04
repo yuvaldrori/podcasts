@@ -68,8 +68,7 @@ class PlaybackServiceTest {
             localFilePath = null,
             isPlayed = false,
             lastPlayedPosition = lastPosition,
-            completedAt = null,
-            localId = 1
+            completedAt = null
         )
 
         val player = mockk<Player>(relaxed = true)

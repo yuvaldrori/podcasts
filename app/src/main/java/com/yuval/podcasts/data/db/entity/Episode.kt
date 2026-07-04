@@ -18,8 +18,8 @@ enum class DownloadStatus(val value: Int) {
 
 @Entity(
     tableName = "episodes",
+    primaryKeys = ["id", "podcastFeedUrl"],
     indices = [
-        Index(value = ["id"], unique = true),
         Index(value = ["isPlayed", "pubDate"]),
         Index(value = ["podcastFeedUrl"])
     ]
@@ -43,9 +43,7 @@ data class Episode(
     @ColumnInfo(defaultValue = "0")
     val lastPlayedPosition: Long = 0L,
     @ColumnInfo(defaultValue = "NULL")
-    val completedAt: Long? = null,
-    @PrimaryKey(autoGenerate = true)
-    val localId: Long = 0
+    val completedAt: Long? = null
 ) {
     val isLocal: Boolean
         get() = podcastFeedUrl == com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL ||

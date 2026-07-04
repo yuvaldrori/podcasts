@@ -76,7 +76,7 @@ class QueueViewModelTimeTest {
         val episode = Episode(
             id = "e1", podcastFeedUrl = "p1", title = "Title", description = "desc", audioUrl = "url",
             imageUrl = null, episodeWebLink = null, pubDate = 0L, duration = 4800L, downloadStatus = 0,
-            localFilePath = null, isPlayed = false, lastPlayedPosition = 0L, completedAt = null, localId = 0L
+            localFilePath = null, isPlayed = false, lastPlayedPosition = 0L, completedAt = null
         )
         queueFlow.value = listOf(EpisodeWithPodcast(episode, podcast))
         currentMediaIdFlow.value = "e1"
@@ -126,8 +126,7 @@ class QueueViewModelTimeTest {
             localFilePath = null, 
             isPlayed = false, 
             lastPlayedPosition = 3300000L,
-            completedAt = null,
-            localId = 0L
+            completedAt = null
         )
         queueFlow.value = listOf(EpisodeWithPodcast(episode, podcast))
         

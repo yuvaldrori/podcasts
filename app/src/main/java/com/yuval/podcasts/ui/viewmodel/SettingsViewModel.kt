@@ -23,6 +23,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.yuval.podcasts.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 
 data class SettingsUiState(
@@ -43,7 +46,8 @@ class SettingsViewModel @Inject constructor(
     private val exportOpmlUseCase: ExportOpmlUseCase,
     private val importLocalFileUseCase: ImportLocalFileUseCase,
     private val logManager: LogManager,
-    private val messageDelegate: MessageDelegate
+    private val messageDelegate: MessageDelegate,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel(), MessageDelegate by messageDelegate {
 
     private val _successMessage = MutableStateFlow<UiText?>(null)
@@ -86,8 +90,10 @@ class SettingsViewModel @Inject constructor(
     fun exportLogs(uri: Uri) {
         viewModelScope.launch {
             try {
-                context.contentResolver.openOutputStream(uri)?.use { stream ->
-                    logManager.exportLogsToStream(stream)
+                withContext(ioDispatcher) {
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        logManager.exportLogsToStream(stream)
+                    }
                 }
                 _successMessage.update { UiText.StringResource(R.string.logs_downloaded_success, context.getString(R.string.default_logs_filename)) }
             } catch (e: Exception) {
@@ -110,6 +116,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun importOpml(uri: Uri) {
+        try {
+            val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, flags)
+        } catch (e: SecurityException) {
+            logManager.w("SettingsViewModel", "Failed to take persistable URI permission for OPML import", mapOf("error" to e.message.toString()))
+        }
+
         val inputData = Data.Builder()
             .putString(OpmlImportWorker.KEY_URI, uri.toString())
             .build()
@@ -133,8 +146,10 @@ class SettingsViewModel @Inject constructor(
     fun exportOpml(uri: Uri) {
         viewModelScope.launch {
             try {
-                context.contentResolver.openOutputStream(uri)?.use { stream ->
-                    exportOpmlUseCase(stream)
+                withContext(ioDispatcher) {
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        exportOpmlUseCase(stream)
+                    }
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e

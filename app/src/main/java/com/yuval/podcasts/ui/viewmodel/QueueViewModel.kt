@@ -70,10 +70,11 @@ class QueueViewModel @Inject constructor(
         val currentPos = args[4] as Long
         val currentDur = args[5] as Long
 
-        // While reordering, or with a non-positive speed, don't compute a remaining time.
-        if (manualQueue != null || speed <= 0f) return@combine 0L
+        // If speed is non-positive, don't compute remaining time.
+        if (speed <= 0f) return@combine 0L
 
-        val totalMsRemaining = queue.sumOf { item ->
+        val activeQueue = manualQueue ?: queue
+        val totalMsRemaining = activeQueue.sumOf { item ->
             if (item.episode.id == currentId && currentDur > 0) {
                 (currentDur - currentPos).coerceAtLeast(0L)
             } else {
@@ -86,7 +87,8 @@ class QueueViewModel @Inject constructor(
 
     fun moveItem(fromIndex: Int, toIndex: Int) {
         val currentSuccess = uiState.value as? QueueUiState.Success ?: return
-        val newList = currentSuccess.queue.toMutableList().apply {
+        val currentList = _manualQueue.value ?: currentSuccess.queue
+        val newList = currentList.toMutableList().apply {
             add(toIndex, removeAt(fromIndex))
         }.toImmutableList()
         _manualQueue.value = newList
@@ -111,7 +113,7 @@ class QueueViewModel @Inject constructor(
         viewModelScope.launch {
             val isPlayingDismissed = playerManager.currentMediaId.value == episodeId
             removeEpisodeUseCase(episodeId, markAsPlayed = false)
-            if (isPlayingDismissed) {
+            if (isPlayingDismissed && playerManager.currentMediaId.value == episodeId) {
                 playerManager.seekToNextMediaItem()
             }
         }

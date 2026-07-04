@@ -23,7 +23,7 @@ class OpmlManagerTest {
               </head>
               <body>
                 <outline text="Podcasts">
-                  <outline text="My Favorite Podcast" type="rss" xmlUrl="https://example.com/feed.xml" htmlUrl="https://example.com" />
+                  <outline text="My Favorite Podcast" type="rss" xmlUrl="http://example.com/feed.xml" htmlUrl="http://example.com" />
                   <outline text="Another Podcast" type="rss" xmlUrl="https://test.com/rss" htmlUrl="https://test.com" />
                 </outline>
               </body>

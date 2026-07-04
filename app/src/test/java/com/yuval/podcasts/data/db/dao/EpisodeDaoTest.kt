@@ -46,8 +46,8 @@ class EpisodeDaoTest {
         val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
         podcastDao.insertPodcast(podcast)
 
-        val episode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null, 0L)
-        val episode2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null, 0L)
+        val episode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
+        val episode2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
         
         episodeDao.insertEpisodes(listOf(episode1, episode2))
 
@@ -64,7 +64,7 @@ class EpisodeDaoTest {
         val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
         podcastDao.insertPodcast(podcast)
 
-        val episode = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null, 0L)
+        val episode = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
         episodeDao.syncNetworkEpisodes(listOf(com.yuval.podcasts.data.db.entity.NetworkEpisode(episode.id, episode.podcastFeedUrl, episode.title, episode.description, episode.audioUrl, episode.imageUrl, episode.episodeWebLink, episode.pubDate, episode.duration)))
 
         episodeDao.updatePlaybackStatus("ep1", true, 12345L)
@@ -107,7 +107,7 @@ class EpisodeDaoTest {
         val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
         podcastDao.insertPodcast(podcast)
 
-        val unplayedEpisode = Episode("ep1", "url1", "E1", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null, 0L)
+        val unplayedEpisode = Episode("ep1", "url1", "E1", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
         val playedEpisode = Episode("ep2", "url1", "E2", "D", "A", null, null, 1000L, 0L, 0, null, true, 0L)
         
         episodeDao.insertEpisodes(listOf(unplayedEpisode, playedEpisode))
@@ -124,15 +124,20 @@ class EpisodeDaoTest {
         val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
         podcastDao.insertPodcast(podcast)
 
-        val unplayedEpisode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null, 0L)
-        val unplayedEpisode2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null, 0L)
+        val unplayedEpisode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 2000L, 0L, 0, null, false, 123L, null)
+        val unplayedEpisode2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 1000L, 0L, 0, null, false, 456L, null)
         
         episodeDao.insertEpisodes(listOf(unplayedEpisode1, unplayedEpisode2))
 
-        episodeDao.markAllUnplayedAsPlayed()
+        episodeDao.markAllUnplayedAsPlayed(System.currentTimeMillis())
 
         val unplayed = episodeDao.getUnplayedEpisodesWithPodcast().first()
         assertEquals(0, unplayed.size)
+
+        val ep1 = episodeDao.getEpisodeById("ep1")
+        assertEquals(true, ep1?.isPlayed)
+        assertEquals(0L, ep1?.lastPlayedPosition)
+        assertNotNull(ep1?.completedAt)
     }
 
 
@@ -178,10 +183,10 @@ class EpisodeDaoTest {
         podcastDao.insertPodcast(podcast)
 
         // 1. Set up an episode in DOWNLOADING status (1)
-        val episodeDownloading = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, DownloadStatus.DOWNLOADING.value, null, false, 0L, null, 0L)
+        val episodeDownloading = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, DownloadStatus.DOWNLOADING.value, null, false, 0L, null)
         
         // 2. Set up an episode in NOT_DOWNLOADED status (0)
-        val episodeNotDownloaded = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, DownloadStatus.NOT_DOWNLOADED.value, null, false, 0L, null, 0L)
+        val episodeNotDownloaded = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, DownloadStatus.NOT_DOWNLOADED.value, null, false, 0L, null)
         
         episodeDao.insertEpisodes(listOf(episodeDownloading, episodeNotDownloaded))
 
@@ -199,5 +204,27 @@ class EpisodeDaoTest {
 
         assertEquals(DownloadStatus.NOT_DOWNLOADED.value, fetchedEp2?.downloadStatus)
         assertEquals(null, fetchedEp2?.localFilePath)
+    }
+
+    @Test
+    fun syncNetworkEpisodes_withCollidingGUIDs_savesBoth() = runBlocking {
+        val podcast1 = Podcast("url1", "P1", "D1", "I1", "W1")
+        val podcast2 = Podcast("url2", "P2", "D2", "I2", "W2")
+        podcastDao.insertPodcast(podcast1)
+        podcastDao.insertPodcast(podcast2)
+
+        val netEp1 = com.yuval.podcasts.data.db.entity.NetworkEpisode("colliding_id", "url1", "Title1", "Desc", "audio1", null, null, 1000L, 100L)
+        val netEp2 = com.yuval.podcasts.data.db.entity.NetworkEpisode("colliding_id", "url2", "Title2", "Desc", "audio2", null, null, 2000L, 100L)
+
+        episodeDao.syncNetworkEpisodes(listOf(netEp1))
+        episodeDao.syncNetworkEpisodes(listOf(netEp2))
+
+        val episodes1 = episodeDao.getEpisodesForPodcastSync("url1")
+        val episodes2 = episodeDao.getEpisodesForPodcastSync("url2")
+
+        assertEquals(1, episodes1.size)
+        assertEquals(1, episodes2.size)
+        assertEquals("Title1", episodes1[0].title)
+        assertEquals("Title2", episodes2[0].title)
     }
 }

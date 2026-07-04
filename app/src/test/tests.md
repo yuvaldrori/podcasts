@@ -23,6 +23,7 @@ These tests ensure the app can talk to the internet and understand the podcast d
 *   **`PodcastRemoteDataSourceTest`**: Verifies that the remote data source correctly orchestrates the network fetch and RSS parsing into clean data models.
 *   **`RssParserTest`**: Feeds fake XML files (RSS feeds) to the parser to ensure it correctly extracts the podcast title, episode names, audio links, publication dates, and artwork. It specifically verifies the robust handling of CDATA sections, HTML entities, and schemeless URLs (e.g., adding "https:" to "//example.com").
 *   **`RssParserCrashTest`**: A safety test that feeds broken, corrupted, or badly formatted XML to the parser to ensure the app doesn't crash, but instead handles the error gracefully by throwing a managed exception.
+*   **`DateParserTest`**: Verifies that `DateParser` correctly parses RSS publication dates in multiple standard and non-standard formats (such as single-digit day representation, legacy timezone name replacements like EST, and ISO-8601 string fallbacks) to prevent dates from being zeroed out.
 
 ## 📁 Repository Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/data/repository/`*

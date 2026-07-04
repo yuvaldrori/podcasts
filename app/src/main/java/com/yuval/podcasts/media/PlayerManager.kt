@@ -85,7 +85,12 @@ class PlayerManager @Inject constructor(
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
     private suspend fun awaitController(): MediaBrowser? {
-        return controller ?: controllerFuture?.await()
+        return try {
+            controller ?: controllerFuture?.await()
+        } catch (e: Exception) {
+            logManager.e("PlayerManager", "Failed to await MediaBrowser controller", mapOf("error" to e.message.toString()))
+            null
+        }
     }
 
     init {

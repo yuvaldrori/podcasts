@@ -38,7 +38,6 @@ object NetworkModule {
             .connectTimeout(Constants.NETWORK_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
             .readTimeout(Constants.NETWORK_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
             .writeTimeout(Constants.NETWORK_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
-            .callTimeout(Constants.NETWORK_CALL_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
             .build()
     }
 

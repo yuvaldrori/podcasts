@@ -37,8 +37,7 @@ class PlaybackServiceResumeTest {
             localFilePath = null,
             isPlayed = false,
             lastPlayedPosition = lastPosition,
-            completedAt = null,
-            localId = 1
+            completedAt = null
         )
 
         coEvery { episodeDao.getEpisodeById(episodeId) } returns dummyEpisode

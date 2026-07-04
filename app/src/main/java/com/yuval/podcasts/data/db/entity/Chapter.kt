@@ -7,14 +7,6 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "chapters",
-    foreignKeys = [
-        ForeignKey(
-            entity = Episode::class,
-            parentColumns = ["id"],
-            childColumns = ["episodeId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
     indices = [
         Index(value = ["episodeId"])
     ]

@@ -42,9 +42,9 @@ class ChapterDaoTest {
     @Test
     fun deleteChaptersBulk_deletesOnlyTargetedEpisodes() = runBlocking {
         // Setup episodes (required for foreign key)
-        val ep1 = Episode("ep1", "f", "T1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
-        val ep2 = Episode("ep2", "f", "T2", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
-        val ep3 = Episode("ep3", "f", "T3", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
+        val ep1 = Episode("ep1", "f", "T1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null)
+        val ep2 = Episode("ep2", "f", "T2", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null)
+        val ep3 = Episode("ep3", "f", "T3", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null)
         episodeDao.insertEpisodes(listOf(ep1, ep2, ep3))
 
         // Setup chapters
@@ -64,7 +64,7 @@ class ChapterDaoTest {
 
     @Test
     fun updateChaptersBulk_replacesChaptersEfficiently() = runBlocking {
-        val ep1 = Episode("ep1", "f", "T1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null, 0L)
+        val ep1 = Episode("ep1", "f", "T1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null)
         episodeDao.insertEpisodes(listOf(ep1))
 
         // Initial chapters

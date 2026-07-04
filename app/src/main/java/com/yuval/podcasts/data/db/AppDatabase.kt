@@ -14,7 +14,7 @@ import com.yuval.podcasts.data.db.dao.ChapterDao
 
 @Database(
     entities = [Podcast::class, Episode::class, QueueState::class, Chapter::class],
-    version = 8,
+    version = 9,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 4, to = 5),

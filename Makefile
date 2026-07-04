@@ -1,4 +1,4 @@
-.PHONY: init build build-release test clean verify emulator stop-emulator install run help describe layout screenshot
+.PHONY: init build build-release test clean verify emulator stop-emulator install run help describe layout screenshot check-updates
 
 # Default target
 all: verify
@@ -12,6 +12,7 @@ help:
 	@echo "  make lint	    - Run Android Lint (strict mode)"
 	@echo "  make clean	    - Clean build artifacts"
 	@echo "  make verify	    - Run clean, lint, test, and debug build"
+	@echo "  make check-updates - Check for library and component updates"
 	@echo "  make emulator      - Start the Android emulator"
 	@echo "  make stop-emulator - Stop the running emulator"
 	@echo "  make run	    - Build, install and launch the app"
@@ -25,7 +26,7 @@ init:
 	android init
 	# The app targets minSdk/compileSdk/targetSdk = API 37, so provision the API 37
 	# platform, build tools, and emulator system image (the app won't install on older).
-	android sdk install platforms/android-37.0 build-tools/37.0.0 emulator platform-tools system-images/android-37.0/google_apis_playstore_ps16k/x86_64
+	android sdk install platforms/android-37.0 build-tools/37.0.0 emulator platform-tools system-images/android-37.0/google_apis_ps16k/x86_64
 
 build:
 	./gradlew :app:assembleDebug
@@ -46,14 +47,21 @@ verify: clean lint test build
 	@echo "Verification complete. Running layout check..."
 	@make layout || echo "Layout check skipped (no device connected)"
 
-AVD_NAME := podcasts_api37
-SYS_IMG_37 := system-images;android-37.0;google_apis_playstore_ps16k;x86_64
+check-updates:
+	./gradlew dependencyUpdates --no-configuration-cache --no-parallel
+
+AVD_NAME := medium_phone
+SYS_IMG_37 := system-images;android-37.0;google_apis_ps16k;x86_64
 
 emulator:
-	@echo "Starting API 37 emulator ($(AVD_NAME))..."
+	@echo "Starting emulator ($(AVD_NAME))..."
 	@if ! android emulator list | grep -qx "$(AVD_NAME)"; then \
-		printf 'no\n' | "$$ANDROID_HOME/cmdline-tools/bin/avdmanager" create avd -n $(AVD_NAME) -k "$(SYS_IMG_37)" -d pixel_8 --force; \
-		sed -i 's#^image.sysdir.1=Android/system-images#image.sysdir.1=system-images#' "$$HOME/.android/avd/$(AVD_NAME).avd/config.ini"; \
+		echo "no" | /home/yuval/Android/Sdk/cmdline-tools/latest/bin/avdmanager create avd -n $(AVD_NAME) -k "$(SYS_IMG_37)" -d "pixel_5" --force; \
+		if [ -d "$$HOME/.config/.android/avd/$(AVD_NAME).avd" ]; then \
+			rm -rf "$$HOME/.android/avd/$(AVD_NAME).avd" "$$HOME/.android/avd/$(AVD_NAME).ini"; \
+			ln -s "$$HOME/.config/.android/avd/$(AVD_NAME).avd" "$$HOME/.android/avd/$(AVD_NAME).avd"; \
+			ln -s "$$HOME/.config/.android/avd/$(AVD_NAME).ini" "$$HOME/.android/avd/$(AVD_NAME).ini"; \
+		fi; \
 	fi
 	android emulator start $(AVD_NAME)
 
