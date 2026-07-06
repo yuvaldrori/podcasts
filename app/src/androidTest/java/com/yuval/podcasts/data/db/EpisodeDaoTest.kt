@@ -55,8 +55,7 @@ class EpisodeDaoTest {
                 localFilePath = null,
                 isPlayed = false,
                 lastPlayedPosition = 0L,
-                completedAt = null,
-                localId = 0L
+                completedAt = null
             )
         }
         episodeDao.insertEpisodes(episodes)

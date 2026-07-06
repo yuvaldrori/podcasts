@@ -42,8 +42,7 @@ class NewEpisodesScreenTest {
                     localFilePath = null,
                     isPlayed = false,
                     lastPlayedPosition = 0L,
-                    completedAt = null,
-                    localId = 0L
+                    completedAt = null
                 ),
                 podcast = Podcast("feed", "Podcast", "Desc", "url", "web")
             )
@@ -89,5 +88,80 @@ class NewEpisodesScreenTest {
         // check that the node still exists and hasn't crashed. 
         // A more robust check would involve checking the offset or background color if possible.
         composeTestRule.onNodeWithText("Episode 1").assertIsDisplayed()
+    }
+
+    @Test
+    fun testPullToRefreshTriggers_whenListIsNotEmpty() {
+        val episodes = kotlinx.collections.immutable.persistentListOf(
+            EpisodeWithPodcast(
+                episode = Episode(
+                    id = "ep1",
+                    podcastFeedUrl = "feed",
+                    title = "Episode 1",
+                    description = "Desc",
+                    audioUrl = "url",
+                    imageUrl = null,
+                    episodeWebLink = null,
+                    pubDate = 1000L,
+                    duration = 300L,
+                    downloadStatus = 0,
+                    localFilePath = null,
+                    isPlayed = false,
+                    lastPlayedPosition = 0L,
+                    completedAt = null
+                ),
+                podcast = Podcast("feed", "Podcast", "Desc", "url", "web")
+            )
+        )
+        val uiState = FeedsUiState.Success(unplayedEpisodes = episodes)
+        var refreshCalled = false
+
+        composeTestRule.setContent {
+            androidx.compose.material3.MaterialTheme {
+                NewEpisodesScreen(
+                    uiState = uiState,
+                    onEpisodeClick = {},
+                    onRefreshAll = { refreshCalled = true },
+                    onDismissAll = {},
+                    onDismissEpisode = {},
+                    onAddToQueue = {},
+                    onClearError = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("episode_list")
+            .performTouchInput {
+                swipeDown()
+            }
+
+        org.junit.Assert.assertTrue("onRefreshAll should be called when non-empty list is pulled down", refreshCalled)
+    }
+
+    @Test
+    fun testPullToRefreshTriggers_whenListIsEmpty() {
+        val uiState = FeedsUiState.Success(unplayedEpisodes = kotlinx.collections.immutable.persistentListOf())
+        var refreshCalled = false
+
+        composeTestRule.setContent {
+            androidx.compose.material3.MaterialTheme {
+                NewEpisodesScreen(
+                    uiState = uiState,
+                    onEpisodeClick = {},
+                    onRefreshAll = { refreshCalled = true },
+                    onDismissAll = {},
+                    onDismissEpisode = {},
+                    onAddToQueue = {},
+                    onClearError = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("episode_list")
+            .performTouchInput {
+                swipeDown()
+            }
+
+        org.junit.Assert.assertTrue("onRefreshAll should be called when empty list is pulled down", refreshCalled)
     }
 }

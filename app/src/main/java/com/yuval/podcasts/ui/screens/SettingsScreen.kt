@@ -21,6 +21,8 @@ import com.yuval.podcasts.ui.viewmodel.SettingsUiState
 import androidx.compose.ui.focus.onFocusChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -30,13 +32,14 @@ fun SettingsScreen(
     onAddPodcast: (String) -> Unit,
     onImportOpml: (Uri) -> Unit,
     onExportOpml: (Uri) -> Unit,
-    onToggleSkipSilence: (Boolean) -> Unit,
-    onToggleVolumeBoost: (Boolean) -> Unit,
     onImportLocalAudio: (Uri) -> Unit,
     onLogNoteChanged: (String) -> Unit,
     onSaveLogNote: () -> Unit,
     onDownloadLogs: (Uri) -> Unit,
     onClearError: () -> Unit,
+    isRefreshing: Boolean = false,
+    refreshProgress: Pair<Int, Int>? = null,
+    onRefreshAll: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     var rssUrl by remember { mutableStateOf("") }
@@ -99,17 +102,46 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        Column(
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefreshAll,
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    top = padding.calculateTopPadding(),
-                    bottom = padding.calculateBottomPadding() + contentPadding.calculateBottomPadding()
-                )
-                .imePadding()
-                .verticalScroll(scrollState)
-                .padding(16.dp)
+                .padding(padding),
+            indicator = {}
         ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (refreshProgress != null) {
+                    val (current, total) = refreshProgress
+                    LinearProgressIndicator(
+                        progress = { if (total > 0) current.toFloat() / total.toFloat() else 0f },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    )
+                } else if (isRefreshing) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    )
+                }
+                
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                        .padding(bottom = contentPadding.calculateBottomPadding())
+                        .imePadding()
+                        .verticalScroll(scrollState)
+                        .padding(16.dp)
+                ) {
             Text(text = stringResource(R.string.add_podcast), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
@@ -182,47 +214,7 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = stringResource(R.string.smart_silence_title), style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        text = stringResource(R.string.smart_silence_desc), 
-                        style = MaterialTheme.typography.bodyMedium, 
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = uiState.skipSilenceEnabled,
-                    onCheckedChange = onToggleSkipSilence
-                )
-            }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = stringResource(R.string.volume_boost_title), style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        text = stringResource(R.string.volume_boost_desc), 
-                        style = MaterialTheme.typography.bodyMedium, 
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = uiState.volumeBoostEnabled,
-                    onCheckedChange = onToggleVolumeBoost
-                )
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
             Text(text = stringResource(R.string.import_local_audio_title), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
@@ -278,6 +270,8 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
+            }
         }
     }
+}
 }

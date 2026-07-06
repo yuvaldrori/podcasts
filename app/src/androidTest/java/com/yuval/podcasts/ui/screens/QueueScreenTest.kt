@@ -22,8 +22,8 @@ class QueueScreenTest {
     val composeTestRule = createComposeRule()
 
     private val dummyPodcast = Podcast("feed", "Podcast Title", "Desc", "url", "web")
-    private val ep1 = Episode("ep1", "feed", "Ep 1", "Desc", "url", null, null, 0L, 1000, 0, null, false, 0, null, 1)
-    private val ep2 = Episode("ep2", "feed", "Ep 2", "Desc", "url", null, null, 0L, 1000, 0, null, false, 0, null, 2)
+    private val ep1 = Episode("ep1", "feed", "Ep 1", "Desc", "url", null, null, 0L, 1000, 0, null, false, 0, null)
+    private val ep2 = Episode("ep2", "feed", "Ep 2", "Desc", "url", null, null, 0L, 1000, 0, null, false, 0, null)
 
     @Test
     fun playButtonShowsWhenNotPlaying() {
@@ -99,13 +99,11 @@ class QueueScreenTest {
             }
         }
 
-        // Wait until handles are displayed
-        composeTestRule.waitUntil(10000) {
-            composeTestRule.onAllNodesWithTag("reorder_handle_ep1").fetchSemanticsNodes().isNotEmpty()
-        }
+        // Assert handles are displayed
+        composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true).assertExists()
 
         // Rapidly perform multiple reorder actions
-        val handle1 = composeTestRule.onNodeWithTag("reorder_handle_ep1")
+        val handle1 = composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true)
         
         repeat(3) {
             handle1.performTouchInput {
@@ -143,12 +141,11 @@ class QueueScreenTest {
             }
         }
 
-        composeTestRule.waitUntil(10000) {
-            composeTestRule.onAllNodesWithTag("reorder_handle_ep1").fetchSemanticsNodes().isNotEmpty()
-        }
+        // Assert handles are displayed
+        composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true).assertExists()
 
         // Drag ep1 down
-        composeTestRule.onNodeWithTag("reorder_handle_ep1").performTouchInput {
+        composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true).performTouchInput {
             down(center)
             moveBy(androidx.compose.ui.geometry.Offset(0f, 300f))
             up()
@@ -157,6 +154,70 @@ class QueueScreenTest {
         // Simulate process death and restoration
         restorationTester.emulateSavedInstanceStateRestore()
 
-        composeTestRule.onNodeWithTag("reorder_handle_ep1").assertExists()
+        composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun testPullToRefreshTriggers_whenQueueIsNotEmpty() {
+        val state = QueueUiState.Success(persistentListOf(EpisodeWithPodcast(ep1, dummyPodcast)))
+        var refreshCalled = false
+
+        composeTestRule.setContent {
+            PodcastsTheme {
+                QueueScreen(
+                    uiState = state,
+                    queueTimeRemaining = 1000,
+                    isPlaying = false,
+                    currentMediaId = null,
+                    isRefreshing = false,
+                    onRefreshAll = { refreshCalled = true },
+                    onEpisodeClick = {},
+                    onRemoveFromQueue = {},
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = {},
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("queue_list")
+            .performTouchInput {
+                swipeDown()
+            }
+
+        org.junit.Assert.assertTrue("onRefreshAll should be called when non-empty queue is pulled down", refreshCalled)
+    }
+
+    @Test
+    fun testPullToRefreshTriggers_whenQueueIsEmpty() {
+        val state = QueueUiState.Success(persistentListOf())
+        var refreshCalled = false
+
+        composeTestRule.setContent {
+            PodcastsTheme {
+                QueueScreen(
+                    uiState = state,
+                    queueTimeRemaining = 0,
+                    isPlaying = false,
+                    currentMediaId = null,
+                    isRefreshing = false,
+                    onRefreshAll = { refreshCalled = true },
+                    onEpisodeClick = {},
+                    onRemoveFromQueue = {},
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = {},
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("queue_list")
+            .performTouchInput {
+                swipeDown()
+            }
+
+        org.junit.Assert.assertTrue("onRefreshAll should be called when empty queue is pulled down", refreshCalled)
     }
 }

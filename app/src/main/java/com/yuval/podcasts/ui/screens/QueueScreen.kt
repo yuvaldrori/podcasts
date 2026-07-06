@@ -13,6 +13,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material3.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +40,9 @@ fun QueueScreen(
     queueTimeRemaining: Long,
     isPlaying: Boolean,
     currentMediaId: String?,
+    isRefreshing: Boolean = false,
+    refreshProgress: Pair<Int, Int>? = null,
+    onRefreshAll: () -> Unit = {},
     onEpisodeClick: (String) -> Unit,
     onRemoveFromQueue: (String) -> Unit,
     onMoveItem: (Int, Int) -> Unit,
@@ -77,27 +84,43 @@ fun QueueScreen(
             )
         }
     ) { padding ->
-        Box(
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefreshAll,
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .testTag("queue_list")
+                .padding(padding),
+            indicator = {}
         ) {
-            if (queue.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.empty_queue_message),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(32.dp)
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (refreshProgress != null) {
+                    val (current, total) = refreshProgress
+                    LinearProgressIndicator(
+                        progress = { if (total > 0) current.toFloat() / total.toFloat() else 0f },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    )
+                } else if (isRefreshing) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                     )
                 }
-            } else {
+                
                 LazyColumn(
                     state = lazyListState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                        .testTag("queue_list"),
                     contentPadding = PaddingValues(
                         top = 16.dp,
                         bottom = contentPadding.calculateBottomPadding() + 16.dp,
@@ -105,6 +128,25 @@ fun QueueScreen(
                         end = 16.dp
                     )
                 ) {
+                if (queue.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillParentMaxHeight()
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.empty_queue_message),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(32.dp)
+                            )
+                        }
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(1.dp))
+                    }
+                } else {
                     itemsIndexed(queue, key = { _, item -> item.episode.id }) { index, episodeWithPodcast ->
                         val episode = episodeWithPodcast.episode
                         val isDragging = dragDropState.draggedItemIndex == index
@@ -171,4 +213,5 @@ fun QueueScreen(
             }
         }
     }
+}
 }

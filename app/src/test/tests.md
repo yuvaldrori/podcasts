@@ -99,8 +99,8 @@ ViewModels prepare data for the screen. These tests check that the data is corre
 These tests actually boot up the UI on an Android device to "click" buttons and check the screen.
 
 *   **`EpisodeDetailScreenShareTest`**: Opens the Episode Detail screen and clicks the "Share" button. It verifies that for internet podcasts, it shares the website link. But for *local* files (like an imported voice memo), it just shares the text "Listening to [Name] via Podcasts App" since there is no link to share.
-*   **`NewEpisodesScreenTest`**: Opens the "New Episodes" feed, simulates pulling down from the top of the screen to refresh, and checks that the loading spinner appears and disappears correctly.
-*   **`QueueScreenTest`**: Specifically tests the "Up Next" queue. It verifies that the Play/Pause buttons update their icons correctly when an episode starts playing. It also contains stress tests for the drag-and-drop gesture to ensure it doesn't crash or "snap" during rapid reordering.
+*   **`NewEpisodesScreenTest`**: Opens the "New Episodes" feed and verifies that pulling down to refresh triggers a background check for new episodes both when the list is populated and when it is empty. It also checks that refresh error states display the appropriate snackbar messages.
+*   **`QueueScreenTest`**: Tests the queue screen functionality. Verifies playback control state updates, empty and non-empty pull-to-refresh gesture propagation, and reordering. Includes drag-and-drop and state restoration tests that query the unmerged semantics tree to reliably interact with reorder handles under modern Compose semantics.
 
 ## 📱 AppFunctions Integration Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/appfunctions/` and `app/src/androidTest/java/com/yuval/podcasts/appfunctions/`*

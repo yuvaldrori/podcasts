@@ -2,6 +2,8 @@ package com.yuval.podcasts.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -84,15 +86,14 @@ fun NewEpisodesScreen(
         val isRefreshing = successState?.isRefreshing ?: false
         val refreshProgress = successState?.refreshProgress
 
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefreshAll,
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .pullToRefresh(
-                    isRefreshing = isRefreshing,
-                    state = pullToRefreshState,
-                    onRefresh = onRefreshAll
-                )
+                .padding(padding),
+            indicator = {}
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 if (refreshProgress != null) {
@@ -105,22 +106,16 @@ fun NewEpisodesScreen(
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                     )
+                } else if (isRefreshing) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    )
                 }
                 
-                if (episodesData.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.empty_new_episodes_message),
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
-                } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -132,37 +127,57 @@ fun NewEpisodesScreen(
                         end = 16.dp
                     )
                 ) {
-                    items(
-                        items = episodesData,
-                        key = { it.episode.id }
-                    ) { episodeWithPodcast ->
-                        val episode = episodeWithPodcast.episode
-                        val podcast = episodeWithPodcast.podcast
+                    if (episodesData.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillParentMaxHeight()
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.empty_new_episodes_message),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                        item {
+                            Spacer(modifier = Modifier.height(1.dp))
+                        }
+                    } else {
+                        items(
+                            items = episodesData,
+                            key = { it.episode.id }
+                        ) { episodeWithPodcast ->
+                            val episode = episodeWithPodcast.episode
+                            val podcast = episodeWithPodcast.podcast
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .animateItem()
-                        ) {
-                            val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
-                            EpisodeItem(
-                                episode = episode,
-                                modifier = Modifier.clickable(onClick = clickHandler),
-                                imageUrl = podcast.imageUrl,
-                                trailingContent = {
-                                    Row {
-                                        IconButton(onClick = { onDismissEpisode(episode) }) {
-                                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.dismiss))
-                                        }
-                                        IconButton(onClick = { onAddToQueue(episode) }) {
-                                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItem()
+                            ) {
+                                val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
+                                EpisodeItem(
+                                    episode = episode,
+                                    modifier = Modifier.clickable(onClick = clickHandler),
+                                    imageUrl = podcast.imageUrl,
+                                    trailingContent = {
+                                        Row {
+                                            IconButton(onClick = { onDismissEpisode(episode) }) {
+                                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.dismiss))
+                                            }
+                                            IconButton(onClick = { onAddToQueue(episode) }) {
+                                                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
+                                            }
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
-                }
                 }
             }
         }

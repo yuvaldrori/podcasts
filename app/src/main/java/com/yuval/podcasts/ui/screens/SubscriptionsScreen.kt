@@ -14,6 +14,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.ui.components.PodcastItem
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 
 import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
@@ -26,6 +30,9 @@ fun SubscriptionsScreen(
     podcasts: ImmutableList<Podcast>,
     onPodcastClick: (String) -> Unit,
     onUnsubscribe: (String) -> Unit,
+    isRefreshing: Boolean = false,
+    refreshProgress: Pair<Int, Int>? = null,
+    onRefreshAll: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     Scaffold(
@@ -35,65 +42,105 @@ fun SubscriptionsScreen(
             )
         }
     ) { padding ->
-        if (podcasts.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(R.string.empty_subscriptions_message),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding() + 16.dp,
-                    bottom = contentPadding.calculateBottomPadding() + 16.dp,
-                    start = 16.dp,
-                    end = 16.dp
-                )
-            ) {
-                items(
-                    items = podcasts,
-                    key = { it.feedUrl }
-                ) { podcast ->
-                    var expanded by remember { mutableStateOf(false) }
-                    val handlePodcastClick = remember(podcast.feedUrl) { { onPodcastClick(podcast.feedUrl) } }
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefreshAll,
+            state = pullToRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            indicator = {}
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (refreshProgress != null) {
+                    val (current, total) = refreshProgress
+                    LinearProgressIndicator(
+                        progress = { if (total > 0) current.toFloat() / total.toFloat() else 0f },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    )
+                } else if (isRefreshing) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    )
+                }
+                
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentPadding = PaddingValues(
+                        top = 16.dp,
+                        bottom = contentPadding.calculateBottomPadding() + 16.dp,
+                        start = 16.dp,
+                        end = 16.dp
+                    )
+                ) {
+                if (podcasts.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillParentMaxHeight()
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.empty_subscriptions_message),
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(1.dp))
+                    }
+                } else {
+                    items(
+                        items = podcasts,
+                        key = { it.feedUrl }
+                    ) { podcast ->
+                        var expanded by remember { mutableStateOf(false) }
+                        val handlePodcastClick = remember(podcast.feedUrl) { { onPodcastClick(podcast.feedUrl) } }
 
-                    PodcastItem(
-                        podcast = podcast,
-                        onClick = handlePodcastClick,
-                        trailingContent = {
-                            Box {
-                                IconButton(onClick = { expanded = true }) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options), modifier = Modifier.size(24.dp))
-                                }
-                                DropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.unsubscribe)) },
-                                        onClick = {
-                                            expanded = false
-                                            onUnsubscribe(podcast.feedUrl)
-                                        },
-                                        leadingIcon = {
-                                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.unsubscribe))
-                                        }
-                                    )
+                        PodcastItem(
+                            podcast = podcast,
+                            onClick = handlePodcastClick,
+                            trailingContent = {
+                                Box {
+                                    IconButton(onClick = { expanded = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options), modifier = Modifier.size(24.dp))
+                                    }
+                                    DropdownMenu(
+                                        expanded = expanded,
+                                        onDismissRequest = { expanded = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.unsubscribe)) },
+                                            onClick = {
+                                                expanded = false
+                                                onUnsubscribe(podcast.feedUrl)
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.unsubscribe))
+                                            }
+                                        )
+                                    }
                                 }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
     }
+}
 }

@@ -39,8 +39,7 @@
     <string name="episode_not_found">Episode not found</string>
     <string name="description_label">Description</string>
     <string name="chapters_label">Chapters</string>
-    <string name="smart_silence_title">Smart Silence Trimming</string>
-    <string name="smart_silence_desc">Automatically skip periods of silence in podcasts</string>
+
     <string name="local_files_title">Local Files</string>
     <string name="local_files_desc">Manually imported audio files</string>
     <string name="playback_speed_format">%1$sx</string>
@@ -71,6 +70,5 @@
     <string name="notification_channel_sync">Library Sync</string>
     <string name="notification_syncing_title">Syncing Podcasts</string>
     <string name="notification_syncing_progress">Refreshing %1$d of %2$d</string>
-    <string name="volume_boost_title">Volume Boost</string>
-    <string name="volume_boost_desc">Boost dialogue loudness for car and noisy environments</string>
+
 </resources>

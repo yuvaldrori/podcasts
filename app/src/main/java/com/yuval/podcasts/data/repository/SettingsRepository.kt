@@ -35,8 +35,8 @@ class SettingsRepository @Inject constructor(
 
     // Default values
     private val DEFAULT_PLAYBACK_SPEED = Constants.DEFAULT_PLAYBACK_SPEED
-    private val DEFAULT_SKIP_SILENCE = false
-    private val DEFAULT_VOLUME_BOOST = false
+    private val DEFAULT_SKIP_SILENCE = true
+    private val DEFAULT_VOLUME_BOOST = true
 
     suspend fun isCleanupScheduled(): Boolean = dataStore.data.first()[PreferencesKeys.CLEANUP_SCHEDULED] ?: false
 

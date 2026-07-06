@@ -57,20 +57,20 @@ class SettingsRepositoryTest {
     @Test
     fun isSkipSilenceEnabled_returnsDefault() = runTest {
         val enabled = settingsRepository.isSkipSilenceEnabled()
-        assertEquals(false, enabled)
+        assertEquals(true, enabled)
     }
 
     @Test
     fun saveSkipSilenceEnabled_savesValue() = runTest {
-        settingsRepository.saveSkipSilenceEnabled(true)
+        settingsRepository.saveSkipSilenceEnabled(false)
         val enabled = settingsRepository.isSkipSilenceEnabled()
-        assertEquals(true, enabled)
+        assertEquals(false, enabled)
     }
 
     @Test
     fun skipSilenceFlow_emitsInitialValue() = runTest {
         val enabled = settingsRepository.skipSilenceFlow.first()
-        assertEquals(false, enabled)
+        assertEquals(true, enabled)
     }
 
     @Test
@@ -80,9 +80,9 @@ class SettingsRepositoryTest {
             settingsRepository.skipSilenceFlow.collect { values.add(it) }
         }
         
-        settingsRepository.saveSkipSilenceEnabled(true)
+        settingsRepository.saveSkipSilenceEnabled(false)
         
-        assertEquals(listOf(false, true), values)
+        assertEquals(listOf(true, false), values)
         job.cancel()
     }
 }

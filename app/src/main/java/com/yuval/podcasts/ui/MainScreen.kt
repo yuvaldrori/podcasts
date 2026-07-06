@@ -51,6 +51,12 @@ fun MainScreen(
     val navBadgeViewModel: NavBadgeViewModel = hiltViewModel()
     val queueCount by navBadgeViewModel.queueCount.collectAsStateWithLifecycle()
     val newEpisodeCount by navBadgeViewModel.newEpisodeCount.collectAsStateWithLifecycle()
+    
+    val feedsViewModel: FeedsViewModel = hiltViewModel()
+    val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
+    val isRefreshing = (feedsUiState as? FeedsUiState.Success)?.isRefreshing ?: false
+    val refreshProgress = (feedsUiState as? FeedsUiState.Success)?.refreshProgress
+    val onRefreshAll = { feedsViewModel.refreshAll() }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -144,6 +150,9 @@ fun MainScreen(
                     queueTimeRemaining = queueTimeRemaining,
                     isPlaying = uiState.isPlaying,
                     currentMediaId = uiState.currentEpisode?.id,
+                    isRefreshing = isRefreshing,
+                    refreshProgress = refreshProgress,
+                    onRefreshAll = onRefreshAll,
                     onEpisodeClick = { episodeId -> 
                         navController.navigate(EpisodeDetailScreenRoute(episodeId))
                     },
@@ -158,15 +167,12 @@ fun MainScreen(
                 ) 
             }
             composable<NewEpisodesScreenRoute> { 
-                val feedsViewModel: FeedsViewModel = hiltViewModel()
-                val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
-                
                 NewEpisodesScreen(
                     uiState = feedsUiState,
                     onEpisodeClick = { episodeId -> 
                         navController.navigate(EpisodeDetailScreenRoute(episodeId))
                     },
-                    onRefreshAll = { feedsViewModel.refreshAll() },
+                    onRefreshAll = onRefreshAll,
                     onDismissAll = { feedsViewModel.dismissAll() },
                     onDismissEpisode = { episode -> feedsViewModel.dismissEpisode(episode) },
                     onAddToQueue = { episode -> feedsViewModel.addToQueue(episode) },
@@ -175,15 +181,15 @@ fun MainScreen(
                 ) 
             }
             composable<SubscriptionsScreenRoute> {
-                val feedsViewModel: FeedsViewModel = hiltViewModel()
-                val feedsUiState by feedsViewModel.uiState.collectAsStateWithLifecycle()
-                
                 SubscriptionsScreen(
                     podcasts = (feedsUiState as? FeedsUiState.Success)?.podcasts ?: persistentListOf(),
                     onPodcastClick = { feedUrl ->
                         navController.navigate(PodcastDetailScreenRoute(feedUrl))
                     },
                     onUnsubscribe = { feedUrl -> feedsViewModel.unsubscribePodcast(feedUrl) },
+                    isRefreshing = isRefreshing,
+                    refreshProgress = refreshProgress,
+                    onRefreshAll = onRefreshAll,
                     contentPadding = innerPadding
                 )
             }
@@ -196,13 +202,14 @@ fun MainScreen(
                     onAddPodcast = { url -> settingsViewModel.addPodcast(url) },
                     onImportOpml = { uri -> settingsViewModel.importOpml(uri) },
                     onExportOpml = { uri -> settingsViewModel.exportOpml(uri) },
-                    onToggleSkipSilence = { enabled -> settingsViewModel.toggleSkipSilence(enabled) },
-                    onToggleVolumeBoost = { enabled -> settingsViewModel.toggleVolumeBoost(enabled) },
                     onImportLocalAudio = { uri -> settingsViewModel.importLocalAudio(uri) },
                     onLogNoteChanged = { note -> settingsViewModel.onLogNoteChanged(note) },
                     onSaveLogNote = { settingsViewModel.saveLogNote() },
                     onDownloadLogs = { uri -> settingsViewModel.exportLogs(uri) },
                     onClearError = { settingsViewModel.clearMessages() },
+                    isRefreshing = isRefreshing,
+                    refreshProgress = refreshProgress,
+                    onRefreshAll = onRefreshAll,
                     contentPadding = innerPadding
                 )
             }
