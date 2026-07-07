@@ -83,12 +83,12 @@ fun UnifiedPlayer(
                     IconButton(
                         onClick = actions.onSeekBackward,
                         enabled = uiState.isConnected,
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(Constants.PLAYER_CONTROL_BUTTON_SIZE_DP.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.FastRewind, 
                             contentDescription = stringResource(R.string.fast_rewind), 
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(Constants.PLAYER_CONTROL_ICON_SIZE_DP.dp),
                             tint = themeColor
                         )
                     }
@@ -107,12 +107,12 @@ fun UnifiedPlayer(
                     IconButton(
                         onClick = actions.onSeekForward,
                         enabled = uiState.isConnected,
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(Constants.PLAYER_CONTROL_BUTTON_SIZE_DP.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.FastForward, 
                             contentDescription = stringResource(R.string.fast_forward), 
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(Constants.PLAYER_CONTROL_ICON_SIZE_DP.dp),
                             tint = themeColor
                         )
                     }

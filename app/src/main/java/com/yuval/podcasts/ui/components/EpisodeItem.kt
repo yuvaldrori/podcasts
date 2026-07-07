@@ -16,6 +16,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import kotlin.time.Duration.Companion.seconds
@@ -84,7 +85,7 @@ fun EpisodeItem(
                     if (status == DownloadStatus.DOWNLOADING) {
                         CircularProgressIndicator(
                             modifier = Modifier
-                                .size(14.dp)
+                                .size(Constants.DOWNLOAD_STATUS_ICON_SIZE_DP.dp)
                                 .semantics { contentDescription = downloadDesc },
                             strokeWidth = 2.dp,
                             color = downloadColor
@@ -93,7 +94,7 @@ fun EpisodeItem(
                         Icon(
                             imageVector = downloadIcon,
                             contentDescription = downloadDesc,
-                            modifier = Modifier.size(14.dp),
+                            modifier = Modifier.size(Constants.DOWNLOAD_STATUS_ICON_SIZE_DP.dp),
                             tint = downloadColor
                         )
                     }

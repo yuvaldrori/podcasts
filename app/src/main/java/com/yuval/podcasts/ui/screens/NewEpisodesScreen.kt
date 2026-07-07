@@ -1,9 +1,6 @@
 package com.yuval.podcasts.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,25 +11,22 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 
-import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.yuval.podcasts.R
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
-import com.yuval.podcasts.ui.viewmodel.FeedsUiState
-
-import androidx.compose.ui.res.stringResource
-import com.yuval.podcasts.R
-
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalDensity
-
 import com.yuval.podcasts.ui.components.LoadingBox
+import com.yuval.podcasts.ui.components.RefreshProgressIndicator
+import com.yuval.podcasts.ui.viewmodel.FeedsUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +47,7 @@ fun NewEpisodesScreen(
 
     val pullToRefreshState = rememberPullToRefreshState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
 
     // State hoisting for swipe-to-dismiss
     val episodesData = (uiState as? FeedsUiState.Success)?.unplayedEpisodes ?: emptyList()
@@ -96,25 +90,7 @@ fun NewEpisodesScreen(
             indicator = {}
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (refreshProgress != null) {
-                    val (current, total) = refreshProgress
-                    LinearProgressIndicator(
-                        progress = { if (total > 0) current.toFloat() / total.toFloat() else 0f },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    )
-                } else if (isRefreshing) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    )
-                }
+                RefreshProgressIndicator(isRefreshing = isRefreshing, refreshProgress = refreshProgress)
                 
                 LazyColumn(
                     modifier = Modifier
@@ -139,7 +115,7 @@ fun NewEpisodesScreen(
                                 Text(
                                     text = stringResource(R.string.empty_new_episodes_message),
                                     style = MaterialTheme.typography.bodyLarge,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }

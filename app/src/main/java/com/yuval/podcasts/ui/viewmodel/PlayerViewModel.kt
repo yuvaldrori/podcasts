@@ -32,7 +32,6 @@ data class PlayerUiState(
 class PlayerViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val playerManager: PlayerManager,
-    private val networkMonitor: NetworkMonitor,
     private val enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase,
     @param:com.yuval.podcasts.di.IoDispatcher private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher
 ) : ViewModel() {

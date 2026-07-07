@@ -2,7 +2,6 @@ package com.yuval.podcasts.ui.viewmodel
 
 import androidx.lifecycle.asFlow
 import com.yuval.podcasts.ui.utils.UiText
-import kotlinx.coroutines.flow.update
 import com.yuval.podcasts.R
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
@@ -24,8 +23,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.delay
 import com.yuval.podcasts.utils.LogManager
 import androidx.work.WorkInfo
 
@@ -47,7 +44,6 @@ class FeedsViewModel @Inject constructor(
     private val enqueueEpisodeUseCase: EnqueueEpisodeUseCase,
     private val refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase,
     private val workManager: androidx.work.WorkManager,
-    private val logManager: LogManager,
     messageDelegate: MessageDelegate
 ) : ViewModel(), MessageDelegate by messageDelegate {
 
@@ -58,8 +54,8 @@ class FeedsViewModel @Inject constructor(
         errorMessage
     ) { podcasts, episodes, workInfos, error ->
         val activeWorkInfo = workInfos.find { 
-            it.state == androidx.work.WorkInfo.State.RUNNING || 
-            it.state == androidx.work.WorkInfo.State.ENQUEUED 
+            it.state == WorkInfo.State.RUNNING || 
+            it.state == WorkInfo.State.ENQUEUED 
         }
         val isRefreshing = activeWorkInfo != null
         

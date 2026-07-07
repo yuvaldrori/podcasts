@@ -14,8 +14,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.ui.components.PodcastItem
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 
@@ -23,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import com.yuval.podcasts.R
 
 import kotlinx.collections.immutable.ImmutableList
+import com.yuval.podcasts.ui.components.RefreshProgressIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,29 +52,11 @@ fun SubscriptionsScreen(
             indicator = {}
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (refreshProgress != null) {
-                    val (current, total) = refreshProgress
-                    LinearProgressIndicator(
-                        progress = { if (total > 0) current.toFloat() / total.toFloat() else 0f },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    )
-                } else if (isRefreshing) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    )
-                }
+                RefreshProgressIndicator(isRefreshing = isRefreshing, refreshProgress = refreshProgress)
                 
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .weight(1f),
                     contentPadding = PaddingValues(
                         top = 16.dp,

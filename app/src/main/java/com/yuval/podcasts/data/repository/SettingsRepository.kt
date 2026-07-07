@@ -56,11 +56,7 @@ class SettingsRepository @Inject constructor(
 
     suspend fun isSkipSilenceEnabled(): Boolean = dataStore.data.first()[PreferencesKeys.SKIP_SILENCE] ?: DEFAULT_SKIP_SILENCE
 
-    suspend fun saveSkipSilenceEnabled(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SKIP_SILENCE] = enabled
-        }
-    }
+
 
     val skipSilenceFlow: Flow<Boolean> = dataStore.data
         .map { preferences ->
@@ -74,11 +70,7 @@ class SettingsRepository @Inject constructor(
 
     suspend fun isVolumeBoostEnabled(): Boolean = dataStore.data.first()[PreferencesKeys.VOLUME_BOOST] ?: DEFAULT_VOLUME_BOOST
 
-    suspend fun saveVolumeBoostEnabled(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.VOLUME_BOOST] = enabled
-        }
-    }
+
 
     val volumeBoostFlow: Flow<Boolean> = dataStore.data
         .map { preferences ->

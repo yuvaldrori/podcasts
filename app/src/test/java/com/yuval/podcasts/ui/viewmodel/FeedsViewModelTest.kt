@@ -58,7 +58,6 @@ class FeedsViewModelTest {
             enqueueEpisodeUseCase,
             refreshAllPodcastsUseCase,
             workManager,
-            mockk(relaxed = true), // logManager
             DefaultMessageDelegate()
         )
     }

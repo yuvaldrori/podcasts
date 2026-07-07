@@ -87,6 +87,9 @@ interface EpisodeDao {
     @Query("UPDATE episodes SET isPlayed = 1, completedAt = :completedAt, lastPlayedPosition = 0 WHERE isPlayed = 0 AND id NOT IN (SELECT episodeId FROM queue)")
     suspend fun markAllUnplayedAsPlayed(completedAt: Long)
 
-    @Query("SELECT * FROM episodes WHERE downloadStatus IN (1, 2)")
-    suspend fun getDownloadedOrDownloadingEpisodes(): List<Episode>
+    @Query("SELECT * FROM episodes WHERE downloadStatus IN (:downloading, :downloaded)")
+    suspend fun getDownloadedOrDownloadingEpisodes(
+        downloading: Int = DownloadStatus.DOWNLOADING.value,
+        downloaded: Int = DownloadStatus.DOWNLOADED.value
+    ): List<Episode>
 }

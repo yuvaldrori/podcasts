@@ -32,7 +32,7 @@ class LocalMediaDataSource @Inject constructor(
             // 1. Copy the file to internal storage
             val rawFileName = getFileName(uri) ?: "imported_audio_${System.currentTimeMillis()}.mp3"
             val sanitizedFileName = rawFileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
-            val destDir = File(context.filesDir, "local_podcasts").apply { mkdirs() }
+            val destDir = File(context.filesDir, Constants.LOCAL_UPLOAD_DIR_NAME).apply { mkdirs() }
             val destFile = File(destDir, sanitizedFileName)
             
             // Ensure the destination is actually inside the expected directory (path traversal check)

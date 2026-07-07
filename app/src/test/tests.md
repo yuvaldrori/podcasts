@@ -33,7 +33,7 @@ Repositories are the "managers" that decide whether to get data from the databas
 *   **`PodcastRepositoryTest`**: The main test for the repository. It checks that when you subscribe to a podcast, it fetches the data from the internet and saves it to the database. It also ensures long tasks run on background threads.
 *   **`LocalMediaDataSourceTest`**: Verifies that when importing local files, the app correctly sanitizes filenames to prevent "Path Traversal" security vulnerabilities (keeping files safely inside the app's folder).
 *   **`AddLocalFileIntegrationTest`**: Tests the feature that lets users import their own local MP3 files. It checks if the app can read the MP3's metadata (title, artist, duration) and fake a "podcast episode" in the database.
-*   **`SettingsRepositoryTest`**: Checks that user preferences (like the default playback speed) are saved and loaded correctly from device storage.
+*   **`SettingsRepositoryTest`**: Checks that user preferences (like the default playback speed, default Smart Silence, and default Volume Boost) are loaded correctly from device storage.
 
 ## 💼 Domain Logic (Use Cases)
 *Located in: `app/src/test/java/com/yuval/podcasts/domain/usecase/`*
@@ -43,7 +43,6 @@ Use Cases handle specific business rules.
 *   **`EnqueueEpisodeUseCaseTest`**: Verifies the logic for adding a new episode to the queue. If it's a brand new episode, it gets added to the front. If it's older, it gets added to the back. It checks that downloading starts when a remote, un-downloaded item is queued, and verifies that background downloads are skipped for local episodes or already downloaded episodes (provided their physical file exists). It also verifies that if a downloaded episode's physical file is missing from storage, the usecase schedules a fresh background download.
 *   **`RemoveEpisodeUseCaseTest`**: Checks that when an episode is removed from the queue, its downloaded audio file is deleted from the phone to free up storage space.
 *   **`ExportOpmlUseCaseTest`**: Confirms that we can export our podcast subscription list to an OPML backup file.
-*   **`ImportOpmlUseCaseTest`**: Confirms that given an OPML backup file, we can correctly extract the feed URLs and trigger new subscriptions for each.
 *   **`ImportLocalFileUseCaseTest`**: Verifies that importing a local audio file parses its metadata (using metadata extractor) and correctly triggers insertion into the local media database.
 *   **`ReorderSubscriptionInQueueUseCaseTest`**: Confirms the business rules for moving all episodes belonging to a specific podcast subscription to the bottom of the playback queue.
 *   **`RefreshAllPodcastsUseCaseTest`**: Verifies that the global refresh command correctly schedules a background worker to sync all subscriptions.
@@ -70,7 +69,7 @@ These tests verify the audio player, background playback, and media buttons.
 *   **`PlaybackServiceMetadataSyncTest`**: Verifies that if an episode's metadata (like title or artwork) changes in the database, the player's current item is updated seamlessly using `replaceMediaItem` without interrupting playback.
 *   **`PlaybackServiceCustomCommandTest`**: Verifies custom control commands executed via the MediaSession (such as custom rewind/fast-forward buttons from notification or lock screens).
 *   **`PlaybackServiceResumeTest`**: Ensures that playback resumption via external controllers properly restores the player state and initiates the ExoPlayer instance correctly.
-*   **`PlaybackServiceSilenceToggleTest`**: Tests toggling of skip-silence features inside the active media session and underlying sound processors.
+*   **`PlaybackServiceSilenceToggleTest`**: Tests skip-silence state observation and propagation to ExoPlayer.
 *   **`MediaSessionCallbackTest`**: Tests the logic that "resolves" media IDs into playable items. This ensures that when external controllers (like Android Auto) request a track, the app correctly finds the URI and metadata from the database.
 *   **`MediaLibraryCallbackTest`**: Tests the media library service's browse callbacks (like `onGetLibraryRoot` and `onGetChildren`) used by Android Auto, ensuring they return the correct folder structure and queue episodes.
 *   **`MediaButtonRemappingTest`**: Ensures that pressing the "Fast Forward" or "Rewind" buttons on Bluetooth headphones correctly skips forward/backward by 30/10 seconds instead of skipping to the next episode.
@@ -91,7 +90,7 @@ ViewModels prepare data for the screen. These tests check that the data is corre
 *   **`QueueViewModelTest`**: Checks the "Up Next" queue logic. Makes sure that removing an item from the queue tells the player to skip if that item was currently playing.
 *   **`QueueViewModelTimeTest`**: Verifies the math that calculates "Total Queue Time Remaining". If you have 3 hours of podcasts but you listen at 2x speed, it correctly tells you there is 1.5 hours remaining.
 *   **`EpisodeDetailViewModelTest`**: Ensures the episode details screen loads the correct episode and knows whether that episode is already in your queue or not.
-*   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files works, and verifying that toggling settings like Smart Silence and Volume Boost propagates changes to the repository and UI state correctly.
+*   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files works, and logs can be downloaded correctly.
 
 ## 🤖 Android UI Tests (Instrumented)
 *Located in: `app/src/androidTest/java/com/yuval/podcasts/ui/screens/`*

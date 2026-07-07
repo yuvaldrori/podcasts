@@ -31,8 +31,6 @@ import javax.inject.Inject
 data class SettingsUiState(
     val importWorkInfo: WorkInfo? = null,
     val errorMessage: UiText? = null,
-    val skipSilenceEnabled: Boolean = false,
-    val volumeBoostEnabled: Boolean = false,
     val logNote: String = "",
     val successMessage: UiText? = null
 )
@@ -41,7 +39,6 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: PodcastRepository,
-    private val settingsRepository: SettingsRepository,
     private val workManager: WorkManager,
     private val exportOpmlUseCase: ExportOpmlUseCase,
     private val importLocalFileUseCase: ImportLocalFileUseCase,
@@ -57,17 +54,13 @@ class SettingsViewModel @Inject constructor(
         workManager.getWorkInfosForUniqueWorkLiveData(Constants.WORK_NAME_OPML_IMPORT).asFlow().map { it.firstOrNull() },
         errorMessage,
         _successMessage,
-        _logNote,
-        settingsRepository.skipSilenceFlow,
-        settingsRepository.volumeBoostFlow
-    ) { array ->
+        _logNote
+    ) { importWorkInfo, errorMsg, successMsg, note ->
         SettingsUiState(
-            importWorkInfo = array[0] as WorkInfo?,
-            errorMessage = array[1] as UiText?,
-            successMessage = array[2] as UiText?,
-            logNote = array[3] as String,
-            skipSilenceEnabled = array[4] as Boolean,
-            volumeBoostEnabled = array[5] as Boolean
+            importWorkInfo = importWorkInfo,
+            errorMessage = errorMsg,
+            successMessage = successMsg,
+            logNote = note
         )
     }.stateIn(
         scope = viewModelScope,
@@ -159,17 +152,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun toggleSkipSilence(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.saveSkipSilenceEnabled(enabled)
-        }
-    }
 
-    fun toggleVolumeBoost(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.saveVolumeBoostEnabled(enabled)
-        }
-    }
 
     fun clearMessages() {
         messageDelegate.clearError()

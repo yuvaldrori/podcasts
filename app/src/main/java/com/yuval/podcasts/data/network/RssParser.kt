@@ -19,7 +19,6 @@ import kotlin.time.Duration.Companion.seconds
 
 @Singleton
 class RssParser @Inject constructor() {
-    private val dateFormatter = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
 
     fun parse(inputStream: InputStream, feedUrl: String): ParsedPodcast = try {
         val factory = XmlPullParserFactory.newInstance()

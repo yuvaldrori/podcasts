@@ -6,8 +6,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,11 +17,14 @@ import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.viewmodel.SettingsUiState
 import androidx.compose.ui.focus.onFocusChanged
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.yuval.podcasts.ui.components.RefreshProgressIndicator
 
+
+private const val KEYBOARD_ANIMATION_DELAY_PART1_MS = 150L
+private const val KEYBOARD_ANIMATION_DELAY_PART2_MS = 200L
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -46,7 +47,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
 
     var isLogNoteFocused by remember { mutableStateOf(false) }
     val isImeVisible = WindowInsets.isImeVisible
@@ -55,9 +55,9 @@ fun SettingsScreen(
             // Animate scroll to bottom as layout updates and keyboard slides up.
             // We run this at two intervals (150ms and 350ms) to ensure it reaches the true
             // settled maximum scroll value since the keyboard animation takes some time.
-            delay(150)
+            delay(KEYBOARD_ANIMATION_DELAY_PART1_MS)
             scrollState.animateScrollTo(scrollState.maxValue)
-            delay(200)
+            delay(KEYBOARD_ANIMATION_DELAY_PART2_MS)
             scrollState.animateScrollTo(scrollState.maxValue)
         }
     }
@@ -113,25 +113,7 @@ fun SettingsScreen(
             indicator = {}
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (refreshProgress != null) {
-                    val (current, total) = refreshProgress
-                    LinearProgressIndicator(
-                        progress = { if (total > 0) current.toFloat() / total.toFloat() else 0f },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    )
-                } else if (isRefreshing) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    )
-                }
+                RefreshProgressIndicator(isRefreshing = isRefreshing, refreshProgress = refreshProgress)
                 
                 Column(
                     modifier = Modifier

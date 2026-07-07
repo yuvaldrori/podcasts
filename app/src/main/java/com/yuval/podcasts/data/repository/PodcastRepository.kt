@@ -66,7 +66,6 @@ class DefaultPodcastRepository @Inject constructor(
     private val queueDao: QueueDao,
     private val chapterDao: com.yuval.podcasts.data.db.dao.ChapterDao,
     private val workManager: WorkManager,
-    private val localMediaDataSource: LocalMediaDataSource,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val logManager: LogManager
 ) : PodcastRepository {

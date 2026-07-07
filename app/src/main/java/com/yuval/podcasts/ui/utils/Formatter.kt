@@ -21,13 +21,7 @@ object Formatter {
     fun formatDurationShort(seconds: Long): String {
         if (seconds <= 0) return ""
         val duration = seconds.seconds
-        val hours = duration.inWholeHours
-        val minutes = duration.inWholeMinutes % 60
-        return if (hours > 0) {
-            "${hours}h ${minutes}m"
-        } else {
-            "${minutes}m"
-        }
+        return formatHoursMinutes(duration.inWholeHours, duration.inWholeMinutes % 60)
     }
 
     /**
@@ -49,9 +43,12 @@ object Formatter {
      * Formats remaining queue time in milliseconds.
      */
     fun formatRemainingTime(ms: Long): String {
+        if (ms <= 0) return ""
         val duration = ms.milliseconds
-        val hours = duration.inWholeHours
-        val minutes = duration.inWholeMinutes % 60
+        return formatHoursMinutes(duration.inWholeHours, duration.inWholeMinutes % 60)
+    }
+
+    private fun formatHoursMinutes(hours: Long, minutes: Long): String {
         return if (hours > 0) {
             "${hours}h ${minutes}m"
         } else {

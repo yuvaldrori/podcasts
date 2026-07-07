@@ -208,25 +208,21 @@ class PlayerManager @Inject constructor(
     }
 
     fun prepareQueue(episodes: List<com.yuval.podcasts.data.db.entity.Episode>, startIndex: Int, startPositionMs: Long = 0L) {
-        if (episodes.isEmpty() || startIndex !in episodes.indices) return
-        val currentEp = episodes[startIndex]
-        _currentMediaId.update { currentEp.id }
-        _currentPosition.update { startPositionMs }
-
-        scope.launch {
-            val browser = awaitController()
-            browser?.let {
-                val mediaItems = mapEpisodesToMediaItems(episodes)
-                it.setMediaItems(mediaItems, startIndex, startPositionMs)
-                it.prepare()
-            }
-        }
+        setupQueueInternal(episodes, startIndex, startPositionMs, playWhenReady = false)
     }
 
     fun playQueue(episodes: List<com.yuval.podcasts.data.db.entity.Episode>, startIndex: Int, startPositionMs: Long = 0L) {
+        setupQueueInternal(episodes, startIndex, startPositionMs, playWhenReady = true)
+    }
+
+    private fun setupQueueInternal(
+        episodes: List<com.yuval.podcasts.data.db.entity.Episode>,
+        startIndex: Int,
+        startPositionMs: Long,
+        playWhenReady: Boolean
+    ) {
         if (episodes.isEmpty() || startIndex !in episodes.indices) return
         val currentEp = episodes[startIndex]
-
         _currentMediaId.update { currentEp.id }
         _currentPosition.update { startPositionMs }
 
@@ -236,8 +232,10 @@ class PlayerManager @Inject constructor(
                 val mediaItems = mapEpisodesToMediaItems(episodes)
                 it.setMediaItems(mediaItems, startIndex, startPositionMs)
                 it.prepare()
-                logManager.i("PlayerManager", "Starting queue playback at $startIndex")
-                it.play()
+                if (playWhenReady) {
+                    logManager.i("PlayerManager", "Starting queue playback at $startIndex")
+                    it.play()
+                }
             }
         }
     }

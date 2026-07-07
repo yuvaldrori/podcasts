@@ -6,6 +6,18 @@ import java.time.format.DateTimeFormatterBuilder
 import java.util.Locale
 
 object DateParser {
+    private val TIMEZONE_OFFSETS = mapOf(
+        "EST" to "-0500",
+        "EDT" to "-0400",
+        "CST" to "-0600",
+        "CDT" to "-0500",
+        "MST" to "-0700",
+        "MDT" to "-0600",
+        "PST" to "-0800",
+        "PDT" to "-0700",
+        "UT" to "GMT"
+    )
+
     private val formatters = listOf(
         DateTimeFormatter.RFC_1123_DATE_TIME,
         
@@ -30,15 +42,9 @@ object DateParser {
         val trimmed = dateStr.trim()
         
         var sanitized = trimmed
-            .replace("EST", "-0500")
-            .replace("EDT", "-0400")
-            .replace("CST", "-0600")
-            .replace("CDT", "-0500")
-            .replace("MST", "-0700")
-            .replace("MDT", "-0600")
-            .replace("PST", "-0800")
-            .replace("PDT", "-0700")
-            .replace("UT", "GMT")
+        for ((abbrev, offset) in TIMEZONE_OFFSETS) {
+            sanitized = sanitized.replace(abbrev, offset)
+        }
 
         for (formatter in formatters) {
             try {

@@ -61,28 +61,20 @@ class SettingsRepositoryTest {
     }
 
     @Test
-    fun saveSkipSilenceEnabled_savesValue() = runTest {
-        settingsRepository.saveSkipSilenceEnabled(false)
-        val enabled = settingsRepository.isSkipSilenceEnabled()
-        assertEquals(false, enabled)
-    }
-
-    @Test
     fun skipSilenceFlow_emitsInitialValue() = runTest {
         val enabled = settingsRepository.skipSilenceFlow.first()
         assertEquals(true, enabled)
     }
 
     @Test
-    fun skipSilenceFlow_emitsNewValueOnSave() = runTest {
-        val values = mutableListOf<Boolean>()
-        val job = launch(testDispatcher) {
-            settingsRepository.skipSilenceFlow.collect { values.add(it) }
-        }
-        
-        settingsRepository.saveSkipSilenceEnabled(false)
-        
-        assertEquals(listOf(true, false), values)
-        job.cancel()
+    fun isVolumeBoostEnabled_returnsDefault() = runTest {
+        val enabled = settingsRepository.isVolumeBoostEnabled()
+        assertEquals(true, enabled)
+    }
+
+    @Test
+    fun volumeBoostFlow_emitsInitialValue() = runTest {
+        val enabled = settingsRepository.volumeBoostFlow.first()
+        assertEquals(true, enabled)
     }
 }

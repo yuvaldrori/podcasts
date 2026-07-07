@@ -1,28 +1,21 @@
 package com.yuval.podcasts.ui
 
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -32,9 +25,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
+import com.yuval.podcasts.ui.components.PlayerActions
 import com.yuval.podcasts.ui.components.UnifiedPlayer
 import com.yuval.podcasts.ui.navigation.*
 import com.yuval.podcasts.ui.screens.*
@@ -117,7 +110,7 @@ fun MainScreen(
         Scaffold(
             bottomBar = {
                 val actions = remember(playerViewModel) {
-                    com.yuval.podcasts.ui.components.PlayerActions(
+                    PlayerActions(
                         onToggleSpeed = { playerViewModel.toggleSpeed() },
                         onSeekBackward = { playerViewModel.seekBackward() },
                         onPlayPause = { playerViewModel.playPause() },
@@ -135,10 +128,10 @@ fun MainScreen(
             navController = navController, 
             startDestination = QueueScreenRoute,
             modifier = Modifier.fillMaxSize(),
-            enterTransition = { fadeIn(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) },
-            exitTransition = { fadeOut(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) },
-            popEnterTransition = { fadeIn(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) },
-            popExitTransition = { fadeOut(animationSpec = androidx.compose.animation.core.tween(Constants.NAVIGATION_ANIMATION_MS)) }
+            enterTransition = { fadeIn(animationSpec = tween(Constants.NAVIGATION_ANIMATION_MS)) },
+            exitTransition = { fadeOut(animationSpec = tween(Constants.NAVIGATION_ANIMATION_MS)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(Constants.NAVIGATION_ANIMATION_MS)) },
+            popExitTransition = { fadeOut(animationSpec = tween(Constants.NAVIGATION_ANIMATION_MS)) }
         ) {
             composable<QueueScreenRoute> { 
                 val queueViewModel: QueueViewModel = hiltViewModel()
@@ -238,7 +231,7 @@ fun MainScreen(
                         episodeViewModel.addToQueue(episode)
                     },
                     onChapterClick = { chapter ->
-                        (episodeUiState as? com.yuval.podcasts.ui.viewmodel.EpisodeDetailUiState.Success)?.let { state ->
+                        (episodeUiState as? EpisodeDetailUiState.Success)?.let { state ->
                             playerViewModel.seekToChapter(state.episodeWithPodcast.episode, chapter)
                         }
                     },

@@ -33,6 +33,9 @@ object Constants {
     const val MINI_PLAYER_HEIGHT_DP = 56
     const val PLAYER_ART_SIZE_DP = 40
     const val PLAYER_BUTTON_MIN_SIZE_DP = 36
+    const val PLAYER_CONTROL_BUTTON_SIZE_DP = 44
+    const val PLAYER_CONTROL_ICON_SIZE_DP = 28
+    const val DOWNLOAD_STATUS_ICON_SIZE_DP = 14
     
     // Animation Durations
     const val NAVIGATION_ANIMATION_MS = 0
@@ -62,6 +65,7 @@ object Constants {
     
     // Storage
     const val DOWNLOAD_DIR_NAME = "podcasts"
+    const val LOCAL_UPLOAD_DIR_NAME = "local_podcasts"
     const val SYNC_RETRY_COUNT = 3
     const val PERIODIC_CLEANUP_INTERVAL_HOURS = 24L
     const val BYTES_PER_KB = 1024L
@@ -77,6 +81,9 @@ object Constants {
     const val MAX_PARALLEL_REFRESHES = 3
 
     // Logging
+    const val LOG_DIR_NAME = "logs"
+    const val LOG_FILE_ACTIVE = "app_log_active.jsonl"
+    const val LOG_FILE_PREVIOUS = "app_log_previous.jsonl"
     const val LOG_BUFFER_LIMIT = 50
     val LOG_FLUSH_INTERVAL_MS = 2.seconds.inWholeMilliseconds
     val MAX_LOG_FILE_SIZE = 10 * BYTES_PER_MB

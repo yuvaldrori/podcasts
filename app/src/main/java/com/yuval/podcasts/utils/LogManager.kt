@@ -31,9 +31,9 @@ class LogManager @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val logDir = File(context.filesDir, "logs").apply { if (!exists()) mkdirs() }
-    private val activeLogFile = File(logDir, "app_log_active.jsonl")
-    private val previousLogFile = File(logDir, "app_log_previous.jsonl")
+    private val logDir = File(context.filesDir, Constants.LOG_DIR_NAME).apply { if (!exists()) mkdirs() }
+    private val activeLogFile = File(logDir, Constants.LOG_FILE_ACTIVE)
+    private val previousLogFile = File(logDir, Constants.LOG_FILE_PREVIOUS)
     private val maxFileSize = Constants.MAX_LOG_FILE_SIZE
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
@@ -86,15 +86,7 @@ class LogManager @Inject constructor(
         }
         
         scope.launch {
-            val entry = LogEntry(
-                timestamp = dateFormat.format(Date()),
-                level = level,
-                tag = tag,
-                message = message,
-                metadata = metadata
-            )
-            val jsonLine = Json.encodeToString(entry)
-            
+            val jsonLine = createLogLine(tag, message, level, metadata)
             synchronized(logBuffer) {
                 logBuffer.add(jsonLine)
                 if (logBuffer.size >= bufferLimit) {
@@ -104,13 +96,21 @@ class LogManager @Inject constructor(
         }
     }
 
-    private fun flushBuffer() {
-        val toWrite = synchronized(logBuffer) {
-            if (logBuffer.isEmpty()) return
-            val copy = logBuffer.toList()
-            logBuffer.clear()
-            copy
+    private fun getBufferItemsToFlush(): List<String> {
+        return synchronized(logBuffer) {
+            if (logBuffer.isEmpty()) {
+                emptyList()
+            } else {
+                val copy = logBuffer.toList()
+                logBuffer.clear()
+                copy
+            }
         }
+    }
+
+    private fun flushBuffer() {
+        val toWrite = getBufferItemsToFlush()
+        if (toWrite.isEmpty()) return
         
         try {
             checkRotation()
@@ -121,12 +121,8 @@ class LogManager @Inject constructor(
     }
 
     private fun flushBufferSync() {
-        val toWrite = synchronized(logBuffer) {
-            if (logBuffer.isEmpty()) return
-            val copy = logBuffer.toList()
-            logBuffer.clear()
-            copy
-        }
+        val toWrite = getBufferItemsToFlush()
+        if (toWrite.isEmpty()) return
         try {
             activeLogFile.appendText(toWrite.joinToString("\n", postfix = "\n"))
         } catch (e: Exception) {
@@ -140,18 +136,22 @@ class LogManager @Inject constructor(
         if (levelInt < Constants.MIN_LOG_LEVEL) return
 
         try {
-            val entry = LogEntry(
-                timestamp = dateFormat.format(Date()),
-                level = level,
-                tag = tag,
-                message = message,
-                metadata = metadata
-            )
-            val jsonLine = Json.encodeToString(entry) + "\n"
+            val jsonLine = createLogLine(tag, message, level, metadata) + "\n"
             activeLogFile.appendText(jsonLine)
         } catch (e: Exception) {
             Log.e("LogManager", "Failed to write log", e)
         }
+    }
+
+    private fun createLogLine(tag: String, message: String, level: String, metadata: Map<String, String>?): String {
+        val entry = LogEntry(
+            timestamp = dateFormat.format(Date()),
+            level = level,
+            tag = tag,
+            message = message,
+            metadata = metadata
+        )
+        return Json.encodeToString(entry)
     }
 
     private fun checkRotation() {

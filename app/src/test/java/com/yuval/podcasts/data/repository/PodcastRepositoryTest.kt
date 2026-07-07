@@ -73,7 +73,6 @@ class PodcastRepositoryTest {
             queueDao = queueDao,
             chapterDao = chapterDao,
             workManager = workManager,
-            localMediaDataSource = mockk(relaxed = true),
             ioDispatcher = Dispatchers.Unconfined,
             logManager = logManager
         )
