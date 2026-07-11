@@ -220,4 +220,52 @@ class QueueScreenTest {
 
         org.junit.Assert.assertTrue("onRefreshAll should be called when empty queue is pulled down", refreshCalled)
     }
+
+    @Test
+    fun listeningTimeHidesWhenQueueIsEmpty() {
+        val state = QueueUiState.Success(persistentListOf())
+
+        composeTestRule.setContent {
+            PodcastsTheme {
+                QueueScreen(
+                    uiState = state,
+                    queueTimeRemaining = 120_000L, // 2 minutes
+                    isPlaying = false,
+                    currentMediaId = null,
+                    onEpisodeClick = {},
+                    onRemoveFromQueue = {},
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = {},
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("2m of queue listening time").assertDoesNotExist()
+    }
+
+    @Test
+    fun listeningTimeShowsWhenQueueIsNotEmpty() {
+        val state = QueueUiState.Success(persistentListOf(EpisodeWithPodcast(ep1, dummyPodcast)))
+
+        composeTestRule.setContent {
+            PodcastsTheme {
+                QueueScreen(
+                    uiState = state,
+                    queueTimeRemaining = 120_000L, // 2 minutes
+                    isPlaying = false,
+                    currentMediaId = null,
+                    onEpisodeClick = {},
+                    onRemoveFromQueue = {},
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = {},
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("2m of queue listening time").assertIsDisplayed()
+    }
 }

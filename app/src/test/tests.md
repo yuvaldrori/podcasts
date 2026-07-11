@@ -97,7 +97,7 @@ These tests actually boot up the UI on an Android device to "click" buttons and 
 
 *   **`EpisodeDetailScreenShareTest`**: Opens the Episode Detail screen and clicks the "Share" button. It verifies that for internet podcasts, it shares the website link. But for *local* files (like an imported voice memo), it just shares the text "Listening to [Name] via Podcasts App" since there is no link to share.
 *   **`NewEpisodesScreenTest`**: Opens the "New Episodes" feed and verifies that pulling down to refresh triggers a background check for new episodes both when the list is populated and when it is empty. It also checks that refresh error states display the appropriate snackbar messages.
-*   **`QueueScreenTest`**: Tests the queue screen functionality. Verifies playback control state updates, empty and non-empty pull-to-refresh gesture propagation, and reordering. Includes drag-and-drop and state restoration tests that query the unmerged semantics tree to reliably interact with reorder handles under modern Compose semantics.
+*   **`QueueScreenTest`**: Tests the queue screen functionality. Verifies playback control state updates, empty and non-empty pull-to-refresh gesture propagation, reordering, and top-bar listening time visibility constraints (ensuring it shows only when the queue has items). Includes drag-and-drop and state restoration tests that query the unmerged semantics tree to reliably interact with reorder handles under modern Compose semantics.
 
 ## 📱 AppFunctions Integration Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/appfunctions/` and `app/src/androidTest/java/com/yuval/podcasts/appfunctions/`*

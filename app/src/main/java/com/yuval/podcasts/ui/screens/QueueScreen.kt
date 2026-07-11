@@ -78,12 +78,14 @@ fun QueueScreen(
                     Text(stringResource(R.string.queue_title))
                 },
                 actions = {
-                    Text(
-                        text = stringResource(R.string.queue_listening_time, Formatter.formatRemainingTime(queueTimeRemaining)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 16.dp)
-                    )
+                    if (queue.isNotEmpty()) {
+                        Text(
+                            text = stringResource(R.string.queue_listening_time, Formatter.formatRemainingTime(queueTimeRemaining)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 16.dp)
+                        )
+                    }
                 }
             )
         }
