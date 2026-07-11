@@ -31,7 +31,6 @@ class PodcastDetailViewModel @Inject constructor(
 
     private val feedUrl = savedStateHandle.toRoute<PodcastDetailScreenRoute>().feedUrl
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val episodes: StateFlow<ImmutableList<Episode>> = repository.getEpisodes(feedUrl)
         .map { it.toImmutableList() }
         .stateIn(

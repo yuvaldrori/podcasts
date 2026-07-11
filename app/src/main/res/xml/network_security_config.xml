@@ -5,12 +5,5 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <!-- Podcast RSS feeds often use HTTP -->
-    <domain-config cleartextTrafficPermitted="true">
-        <!-- We allow cleartext for common podcast hosts if known, but since 
-             podcasts can come from anywhere, we might need a broader allowlist 
-             or stick to a global flag if we can't narrow it down. 
-             However, a config is still better than the manifest flag. -->
-        <domain includeSubdomains="true">httpbin.org</domain>
-    </domain-config>
 </network-security-config>
+

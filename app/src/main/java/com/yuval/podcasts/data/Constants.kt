@@ -26,6 +26,7 @@ object Constants {
     val FLOW_STOP_TIMEOUT_MS = 5.seconds.inWholeMilliseconds
     const val UNPLAYED_EPISODES_LIMIT = 150
     const val DYNAMIC_THEME_DEBOUNCE_MS = 200L
+    const val QUEUE_REORDER_COMMIT_DELAY_MS = 100L
     
     // UI Sizes
     const val COVER_SIZE_LIST_DP = 48
@@ -76,6 +77,15 @@ object Constants {
     const val NOTIFICATION_ID_DOWNLOAD = 1
     const val NOTIFICATION_ID_IMPORT = 2
     const val NOTIFICATION_ID_SYNC = 3
+
+    // Notification Channel IDs
+    const val NOTIFICATION_CHANNEL_ID_DOWNLOAD = "download_channel"
+    const val NOTIFICATION_CHANNEL_ID_SYNC = "sync_channel"
+    const val NOTIFICATION_CHANNEL_ID_IMPORT = "import_channel"
+
+    // Media Library Root IDs
+    const val MEDIA_LIBRARY_ROOT_ID = "root"
+    const val MEDIA_LIBRARY_QUEUE_ID = "queue"
 
     // Performance & Concurrency
     const val MAX_PARALLEL_REFRESHES = 3

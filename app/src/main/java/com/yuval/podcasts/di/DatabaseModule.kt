@@ -53,11 +53,6 @@ object DatabaseModule {
             Constants.DATABASE_NAME
         )
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addCallback(object : RoomDatabase.Callback() {
-            override fun onOpen(db: SupportSQLiteDatabase) {
-                super.onOpen(db)
-            }
-        })
         .addMigrations(MIGRATION_5_6)
         .fallbackToDestructiveMigration(true)
         

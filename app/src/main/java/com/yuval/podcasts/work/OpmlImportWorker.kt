@@ -1,10 +1,6 @@
 package com.yuval.podcasts.work
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.ServiceInfo
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.hilt.work.HiltWorker
@@ -22,12 +18,6 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 
@@ -58,8 +48,6 @@ class OpmlImportWorker @AssistedInject constructor(
                 return@withContext Result.success()
             }
 
-            val completedCount = AtomicInteger(0)
-            val semaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
             val lastForegroundUpdate = AtomicLong(0L)
 
             var isForegroundAllowed = true
@@ -75,38 +63,24 @@ class OpmlImportWorker @AssistedInject constructor(
                 logManager.w("OpmlImportWorker", "Failed to set initial foreground status", mapOf("error" to e.message.toString()))
             }
             
-            coroutineScope {
-                urls.map { url ->
-                    async {
-                        semaphore.withPermit {
-                            try {
-                                repository.fetchAndStorePodcast(url)
-                            } catch (e: Exception) {
-                                if (e is kotlinx.coroutines.CancellationException) throw e
-                                logManager.e("OpmlImportWorker", "Failed to import podcast: $url", mapOf("error" to e.message.toString()))
-                            } finally {
-                                val current = completedCount.incrementAndGet()
-                                try {
-                                    setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
-                                } catch (e: Exception) {
-                                    logManager.w("OpmlImportWorker", "Failed to set progress", mapOf("error" to e.message.toString()))
-                                }
-                                
-                                val currentTime = System.currentTimeMillis()
-                                val lastUpdate = lastForegroundUpdate.get()
-                                if (isForegroundAllowed && (current == total || currentTime - lastUpdate > Constants.OPML_IMPORT_PROGRESS_NOTIFICATION_THROTTLE_MS)) {
-                                    lastForegroundUpdate.set(currentTime)
-                                    try {
-                                        setForeground(createForegroundInfo(current, total))
-                                    } catch (e: Exception) {
-                                        isForegroundAllowed = false
-                                        logManager.w("OpmlImportWorker", "Failed to set foreground status progress", mapOf("error" to e.message.toString()))
-                                    }
-                                }
-                            }
-                        }
+            repository.refreshPodcasts(urls) { current, totalCount ->
+                try {
+                    setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to totalCount))
+                } catch (e: Exception) {
+                    logManager.w("OpmlImportWorker", "Failed to set progress", mapOf("error" to e.message.toString()))
+                }
+                
+                val currentTime = System.currentTimeMillis()
+                val lastUpdate = lastForegroundUpdate.get()
+                if (isForegroundAllowed && (current == totalCount || currentTime - lastUpdate > Constants.OPML_IMPORT_PROGRESS_NOTIFICATION_THROTTLE_MS)) {
+                    lastForegroundUpdate.set(currentTime)
+                    try {
+                        setForeground(createForegroundInfo(current, totalCount))
+                    } catch (e: Exception) {
+                        isForegroundAllowed = false
+                        logManager.w("OpmlImportWorker", "Failed to set foreground status progress", mapOf("error" to e.message.toString()))
                     }
-                }.awaitAll()
+                }
             }
 
             logManager.i("OpmlImportWorker", "OPML import completed: $total podcasts processed")
@@ -119,26 +93,16 @@ class OpmlImportWorker @AssistedInject constructor(
     }
 
     private fun createForegroundInfo(progress: Int, total: Int): ForegroundInfo {
-        val notificationId = Constants.NOTIFICATION_ID_IMPORT
-        val channelId = "import_channel"
-        
-        val channel = NotificationChannel(
-            channelId,
-            appContext.getString(R.string.notification_channel_imports),
-            NotificationManager.IMPORTANCE_LOW
+        return com.yuval.podcasts.utils.WorkerNotificationHelper.createForegroundInfo(
+            context = appContext,
+            notificationId = Constants.NOTIFICATION_ID_IMPORT,
+            channelId = Constants.NOTIFICATION_CHANNEL_ID_IMPORT,
+            channelName = appContext.getString(R.string.notification_channel_imports),
+            title = appContext.getString(R.string.notification_importing_title),
+            contentText = appContext.getString(R.string.notification_importing_progress, progress, total),
+            progress = progress,
+            maxProgress = total
         )
-        val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
-
-        val notification = Notification.Builder(appContext, channelId)
-            .setContentTitle(appContext.getString(R.string.notification_importing_title))
-            .setContentText(appContext.getString(R.string.notification_importing_progress, progress, total))
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setProgress(total, progress, total == 0)
-            .setOngoing(true)
-            .build()
-
-        return ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     }
 
     companion object {

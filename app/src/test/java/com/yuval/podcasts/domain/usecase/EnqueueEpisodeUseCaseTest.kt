@@ -7,6 +7,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Before
 import org.junit.Test
 
@@ -21,7 +22,7 @@ class EnqueueEpisodeUseCaseTest {
         repository = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
         
-        enqueueEpisodeUseCase = EnqueueEpisodeUseCase(repository, workManager)
+        enqueueEpisodeUseCase = EnqueueEpisodeUseCase(repository, workManager, UnconfinedTestDispatcher())
     }
 
     @Test

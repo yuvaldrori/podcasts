@@ -1,4 +1,4 @@
-.PHONY: init build build-release test clean verify emulator stop-emulator install run help describe layout screenshot check-updates
+.PHONY: init build build-release test lint clean verify emulator stop-emulator run help describe layout screenshot check-updates benchmark-run
 
 # Default target
 all: verify
@@ -19,6 +19,7 @@ help:
 	@echo "  make describe      - Show project structure and build targets"
 	@echo "  make layout        - Inspect the UI layout of the running app"
 	@echo "  make screenshot    - Capture a screenshot of the device"
+	@echo "  make benchmark-run - Run macrobenchmark tests on the connected device"
 
 init:
 	@echo "Initializing Android environment..."

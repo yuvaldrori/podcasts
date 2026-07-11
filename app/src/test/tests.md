@@ -42,11 +42,9 @@ Use Cases handle specific business rules.
 
 *   **`EnqueueEpisodeUseCaseTest`**: Verifies the logic for adding a new episode to the queue. If it's a brand new episode, it gets added to the front. If it's older, it gets added to the back. It checks that downloading starts when a remote, un-downloaded item is queued, and verifies that background downloads are skipped for local episodes or already downloaded episodes (provided their physical file exists). It also verifies that if a downloaded episode's physical file is missing from storage, the usecase schedules a fresh background download.
 *   **`RemoveEpisodeUseCaseTest`**: Checks that when an episode is removed from the queue, its downloaded audio file is deleted from the phone to free up storage space.
-*   **`ExportOpmlUseCaseTest`**: Confirms that we can export our podcast subscription list to an OPML backup file.
 *   **`ImportLocalFileUseCaseTest`**: Verifies that importing a local audio file parses its metadata (using metadata extractor) and correctly triggers insertion into the local media database.
 *   **`ReorderSubscriptionInQueueUseCaseTest`**: Confirms the business rules for moving all episodes belonging to a specific podcast subscription to the bottom of the playback queue.
-*   **`RefreshAllPodcastsUseCaseTest`**: Verifies that the global refresh command correctly schedules a background worker to sync all subscriptions.
-*   **`RefreshAllPodcastsSyncUseCaseTest`**: Verifies that the synchronous refresh command used by AppFunctions correctly fetches podcast data, uses a Semaphore to limit the number of parallel fetches to avoid network overload, logs errors with simple class names under the `RefreshAllSync` tag, and returns the correct total count of newly added episodes.
+*   **`RefreshAllPodcastsSyncUseCaseTest`**: Verifies that the synchronous refresh command used by AppFunctions delegates the refresh logic to the repository and returns the correct total count of newly added episodes.
 
 ## 🛠️ Utility & Mapping Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/ui/utils/` and `app/src/test/java/com/yuval/podcasts/media/`*
@@ -108,6 +106,14 @@ These tests ensure that system-exposed capabilities (like Google Assistant or Ge
 
 *   **`PodcastAppFunctionsTest`**: A local unit test confirming that system voice commands (like resume queue, pause, skip forward/backward, and moving subscription episodes to the bottom of the queue) map to the correct PlayerManager actions using the app's predefined seek duration constants, and that subscription feed resolving uses the optimized Elvis chain fallback hierarchy.
 *   **`PodcastAppFunctionsIntegrationTest`**: An on-device instrumented test running on the emulator. It obtains the real Hilt-injected `PodcastAppFunctions` instance from the `PodcastApplication` context and verifies that all exposed functions (such as `resumeQueue`, `stopPlayback`, `skipForward`, `skipBackward`, `nextEpisode`, `refreshNewEpisodes`, `addDebugLog`, and `moveSubscriptionToBottom`) execute their operations successfully in the real application context without mock dependencies.
+
+## ⚡ Macrobenchmark Tests
+*Located in: `benchmark/src/main/java/com/yuval/podcasts/benchmark/`*
+
+These tests measure the app's performance in real-world scenarios, including startup and scrolling responsiveness, on an Android device or emulator.
+
+*   **`StartupBenchmark`**: Measures the cold startup time of the application (`MainActivity` launch and creation) to ensure startup times remain optimal and there are no regression blockages on the main thread.
+*   **`ScrollBenchmark`**: Measures the scrolling performance (`FrameTimingMetric`) on the "New Episodes" list using hot startup mode to ensure smooth, stutter-free scrolling (avoiding frame drops and jank).
 
 ---
 *Note: We also have OpmlManagerTest (checks OPML XML parsing/generation for backup files), OpmlImportWorkerTest (verifies background worker that downloads, extracts, and imports subscriptions from an OPML feed), DownloadWorkerRequestTest (verifies that DownloadWorker.createWorkRequest correctly maps inputs, constraints, and expedited flags to the WorkManager request), and MediaSessionIntegrationTest (instrumented integration test verifying PlaybackService custom commands and play/pause controls), and MediaBrowserIntegrationTest (instrumented integration test verifying PlaybackService catalog root and browse capability for Android Auto).*

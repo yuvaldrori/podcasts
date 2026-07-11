@@ -229,7 +229,7 @@ class RssParser @Inject constructor() {
         if (durationStr.isNullOrBlank()) return 0L
         return try {
             val parts = durationStr.split(":")
-            if (parts.size > 3) return 0L // Invalid format
+            if (parts.size > MAX_DURATION_PARTS) return 0L // Invalid format
             
             var totalDuration = Duration.ZERO
             for (part in parts) {
@@ -240,5 +240,9 @@ class RssParser @Inject constructor() {
         } catch (e: Exception) {
             0L
         }
+    }
+
+    companion object {
+        private const val MAX_DURATION_PARTS = 3
     }
 }

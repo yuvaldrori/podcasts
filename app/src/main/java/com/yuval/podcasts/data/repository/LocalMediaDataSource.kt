@@ -36,7 +36,7 @@ class LocalMediaDataSource @Inject constructor(
             val destFile = File(destDir, sanitizedFileName)
             
             // Ensure the destination is actually inside the expected directory (path traversal check)
-            if (!destFile.canonicalPath.startsWith(destDir.canonicalPath)) {
+            if (destFile.parentFile?.canonicalPath != destDir.canonicalPath) {
                 throw SecurityException("Invalid filename: $sanitizedFileName")
             }
 

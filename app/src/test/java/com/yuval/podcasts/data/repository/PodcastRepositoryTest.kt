@@ -20,6 +20,9 @@ import com.yuval.podcasts.utils.LogManager
 import io.mockk.*
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import com.yuval.podcasts.data.network.PodcastApi
+import com.yuval.podcasts.data.network.RssParser
+import java.io.InputStream
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -30,7 +33,8 @@ class PodcastRepositoryTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var database: AppDatabase
-    private lateinit var remoteDataSource: com.yuval.podcasts.data.network.PodcastRemoteDataSource
+    private lateinit var podcastApi: PodcastApi
+    private lateinit var rssParser: RssParser
     private lateinit var podcastDao: PodcastDao
     private lateinit var episodeDao: EpisodeDao
     private lateinit var queueDao: QueueDao
@@ -42,7 +46,8 @@ class PodcastRepositoryTest {
     @Before
     fun setup() {
         database = mockk(relaxed = true)
-        remoteDataSource = mockk()
+        podcastApi = mockk()
+        rssParser = mockk()
         podcastDao = mockk(relaxed = true)
         episodeDao = mockk(relaxed = true)
         queueDao = mockk(relaxed = true)
@@ -67,7 +72,8 @@ class PodcastRepositoryTest {
 
         repository = DefaultPodcastRepository(
             database = database,
-            remoteDataSource = remoteDataSource,
+            podcastApi = podcastApi,
+            rssParser = rssParser,
             podcastDao = podcastDao,
             episodeDao = episodeDao,
             queueDao = queueDao,
@@ -83,7 +89,7 @@ class PodcastRepositoryTest {
         val feedUrl = "http://example.com/feed"
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
         val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
-        coEvery { remoteDataSource.fetchPodcastData(feedUrl) } returns ParsedPodcast(podcast, episodes)
+        stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, episodes))
 
         repository.fetchAndStorePodcast(feedUrl)
 
@@ -102,7 +108,7 @@ class PodcastRepositoryTest {
             NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()),
             NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep2", feedUrl, "Ep2", "Desc", "audio", null, null, 0L, 0L), emptyList())
         )
-        coEvery { remoteDataSource.fetchPodcastData(feedUrl) } returns ParsedPodcast(podcast, episodes)
+        stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, episodes))
 
         repository.fetchAndStorePodcast(feedUrl)
 
@@ -119,7 +125,7 @@ class PodcastRepositoryTest {
         val feedUrl = "http://test.com/feed"
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
         val networkEpisodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
-        coEvery { remoteDataSource.fetchPodcastData(feedUrl) } returns ParsedPodcast(podcast, networkEpisodes)
+        stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, networkEpisodes))
 
         repository.fetchAndStorePodcast(feedUrl)
 
@@ -134,11 +140,11 @@ class PodcastRepositoryTest {
         val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
         val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
         
-        coEvery { remoteDataSource.fetchPodcastData(feedUrl) } returns ParsedPodcast(podcast, episodes)
+        stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, episodes))
 
         repository.fetchAndStorePodcast(feedUrl)
 
-        coVerify { remoteDataSource.fetchPodcastData(feedUrl) }
+        coVerify { podcastApi.withRssStream(feedUrl, any()) }
     }
 
     @Test
@@ -275,5 +281,14 @@ class PodcastRepositoryTest {
         }
         
         tempFile.delete()
+    }
+
+    private fun stubFetchPodcastData(feedUrl: String, parsed: ParsedPodcast) {
+        val mockInputStream = mockk<InputStream>(relaxed = true)
+        coEvery { podcastApi.withRssStream(feedUrl, any<(InputStream) -> ParsedPodcast>()) } answers {
+            val block = secondArg<(InputStream) -> ParsedPodcast>()
+            block(mockInputStream)
+        }
+        every { rssParser.parse(mockInputStream, feedUrl) } returns parsed
     }
 }

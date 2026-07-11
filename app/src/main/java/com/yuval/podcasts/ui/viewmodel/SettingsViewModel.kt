@@ -14,7 +14,7 @@ import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.data.repository.SettingsRepository
-import com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
+import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.domain.usecase.ImportLocalFileUseCase
 import com.yuval.podcasts.ui.utils.UiText
 import com.yuval.podcasts.utils.LogManager
@@ -40,7 +40,7 @@ class SettingsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: PodcastRepository,
     private val workManager: WorkManager,
-    private val exportOpmlUseCase: ExportOpmlUseCase,
+    private val opmlManager: OpmlManager,
     private val importLocalFileUseCase: ImportLocalFileUseCase,
     private val logManager: LogManager,
     private val messageDelegate: MessageDelegate,
@@ -141,7 +141,8 @@ class SettingsViewModel @Inject constructor(
             try {
                 withContext(ioDispatcher) {
                     context.contentResolver.openOutputStream(uri)?.use { stream ->
-                        exportOpmlUseCase(stream)
+                        val podcasts = repository.allPodcasts.first()
+                        opmlManager.export(podcasts, stream)
                     }
                 }
             } catch (e: Exception) {

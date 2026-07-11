@@ -202,7 +202,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.media3.test.utils)
-    androidTestImplementation(libs.mockk)
+    androidTestImplementation(libs.mockk.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

@@ -62,9 +62,5 @@ class MainActivity : AppCompatActivity() {
                 MainScreen()
             }
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-    }
+     }
 }

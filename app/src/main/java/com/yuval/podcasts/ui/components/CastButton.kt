@@ -8,9 +8,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.mediarouter.app.MediaRouteButton
 import com.google.android.gms.cast.framework.CastButtonFactory
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.core.graphics.drawable.DrawableCompat
 import com.yuval.podcasts.R
 
 /**
@@ -21,8 +18,7 @@ import com.yuval.podcasts.R
  */
 @Composable
 fun CastButton(
-    modifier: Modifier = Modifier,
-    tint: Color? = null
+    modifier: Modifier = Modifier
 ) {
     AndroidView(
         factory = { context ->

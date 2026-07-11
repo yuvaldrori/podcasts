@@ -25,8 +25,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.yuval.podcasts.data.repository.SettingsRepository
-import com.yuval.podcasts.domain.usecase.ExportOpmlUseCase
+import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.domain.usecase.ImportLocalFileUseCase
+import kotlinx.coroutines.flow.flowOf
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -47,7 +48,7 @@ class SettingsViewModelTest {
     private lateinit var uri: Uri
     private lateinit var inputStream: InputStream
     private lateinit var outputStream: OutputStream
-    private lateinit var exportOpmlUseCase: ExportOpmlUseCase
+    private lateinit var opmlManager: OpmlManager
     private lateinit var importLocalFileUseCase: ImportLocalFileUseCase
     private lateinit var logManager: com.yuval.podcasts.utils.LogManager
     private lateinit var viewModel: SettingsViewModel
@@ -57,7 +58,7 @@ class SettingsViewModelTest {
         repository = mockk()
         settingsRepository = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
-        exportOpmlUseCase = mockk()
+        opmlManager = mockk()
         importLocalFileUseCase = mockk()
         logManager = mockk(relaxed = true)
         context = mockk()
@@ -77,7 +78,7 @@ class SettingsViewModelTest {
             context = context,
             repository = repository,
             workManager = workManager,
-            exportOpmlUseCase = exportOpmlUseCase,
+            opmlManager = opmlManager,
             importLocalFileUseCase = importLocalFileUseCase,
             logManager = logManager,
             messageDelegate = DefaultMessageDelegate(),
@@ -141,15 +142,16 @@ class SettingsViewModelTest {
 
     @Test
     fun exportOpml_success() = runTest {
+        every { repository.allPodcasts } returns flowOf(emptyList())
         every { contentResolver.openOutputStream(uri) } returns outputStream
         every { outputStream.close() } returns Unit
-        coEvery { exportOpmlUseCase(outputStream) } returns Unit
+        every { opmlManager.export(any(), outputStream) } returns Unit
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.exportOpml(uri)
         advanceUntilIdle()
 
-        coVerify { exportOpmlUseCase(outputStream) }
+        verify { opmlManager.export(any(), outputStream) }
         assertNull(viewModel.uiState.value.errorMessage)
         job.cancel()
     }

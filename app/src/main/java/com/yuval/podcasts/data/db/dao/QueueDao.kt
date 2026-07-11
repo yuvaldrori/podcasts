@@ -35,16 +35,7 @@ interface QueueDao {
     """)
     suspend fun getQueueEpisodesSync(): List<Episode>
 
-    @Query("SELECT * FROM queue ORDER BY position ASC")
-    fun getQueue(): Flow<List<QueueState>>
 
-    @Query("""
-        SELECT episodes.* FROM episodes 
-        INNER JOIN queue ON episodes.id = queue.episodeId 
-        ORDER BY queue.position ASC 
-        LIMIT 1
-    """)
-    suspend fun getNextEpisode(): Episode?
 
     @Transaction
     suspend fun updateQueue(queue: List<QueueState>) {
@@ -64,8 +55,7 @@ interface QueueDao {
     @Query("DELETE FROM queue WHERE episodeId IN (:episodeIds)")
     suspend fun removeFromQueueBulk(episodeIds: List<String>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertQueueItem(queueState: QueueState)
+
 
     @Query("""
         SELECT episodes.* FROM episodes 

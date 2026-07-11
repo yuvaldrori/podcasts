@@ -13,7 +13,8 @@ import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.data.db.entity.Chapter
-import com.yuval.podcasts.data.network.PodcastRemoteDataSource
+import com.yuval.podcasts.data.network.PodcastApi
+import com.yuval.podcasts.data.network.RssParser
 import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.work.DownloadWorker
 import kotlinx.coroutines.coroutineScope
@@ -27,6 +28,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.room.withTransaction
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -56,11 +60,16 @@ interface PodcastRepository {
     suspend fun reorderQueue(newOrderIds: List<String>)
     suspend fun requeueEpisode(episode: Episode)
     suspend fun requeueMissingDownloads()
+    suspend fun refreshPodcasts(
+        urls: List<String>,
+        onProgress: suspend (current: Int, total: Int) -> Unit
+    ): Int
 }
 @Singleton
 class DefaultPodcastRepository @Inject constructor(
     private val database: AppDatabase,
-    private val remoteDataSource: PodcastRemoteDataSource,
+    private val podcastApi: PodcastApi,
+    private val rssParser: RssParser,
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
     private val queueDao: QueueDao,
@@ -99,8 +108,9 @@ class DefaultPodcastRepository @Inject constructor(
     }
 
     override suspend fun fetchAndStorePodcast(feedUrl: String): Int {
-        // Fetch is already dispatched to IO via remoteDataSource
-        val parsed = remoteDataSource.fetchPodcastData(feedUrl)
+        val parsed = podcastApi.withRssStream(feedUrl) { inputStream ->
+            rssParser.parse(inputStream, feedUrl)
+        }
 
         val newEpisodesCount = database.withTransaction {
             podcastDao.insertPodcast(parsed.podcast)
@@ -156,12 +166,7 @@ class DefaultPodcastRepository @Inject constructor(
         workManager.cancelUniqueWork("${Constants.WORK_TAG_DOWNLOAD_PREFIX}$episodeId")
 
         // Blocking file I/O runs on ioDispatcher (this whole function), not the caller's thread.
-        episode?.localFilePath?.let { path ->
-            val file = File(path)
-            if (file.exists() && !file.delete()) {
-                logManager.w("PodcastRepository", "Failed to delete file for episode $episodeId: $path")
-            }
-        }
+        episode?.localFilePath?.let { deleteLocalFile(episodeId, it) }
     }
 
     override suspend fun updateQueue(queue: List<QueueState>) {
@@ -201,15 +206,7 @@ class DefaultPodcastRepository @Inject constructor(
         coroutineScope {
             episodes.map { episode ->
                 async {
-                    episode.localFilePath?.let { path ->
-                        val file = File(path)
-                        if (file.exists()) {
-                            val deleted = file.delete()
-                            if (!deleted) {
-                                logManager.w("PodcastRepository", "Failed to delete file for episode ${episode.id}: $path")
-                            }
-                        }
-                    }
+                    episode.localFilePath?.let { deleteLocalFile(episode.id, it) }
                 }
             }.awaitAll()
         }
@@ -241,6 +238,41 @@ class DefaultPodcastRepository @Inject constructor(
                     downloadWorkRequest
                 )
             }
+        }
+    }
+
+    override suspend fun refreshPodcasts(
+        urls: List<String>,
+        onProgress: suspend (current: Int, total: Int) -> Unit
+    ): Int = coroutineScope {
+        if (urls.isEmpty()) return@coroutineScope 0
+        val semaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
+        val completedCount = AtomicInteger(0)
+        val total = urls.size
+
+        val deferreds = urls.map { url ->
+            async {
+                semaphore.withPermit {
+                    try {
+                        fetchAndStorePodcast(url)
+                    } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        logManager.e("PodcastRepository", "Failed to refresh podcast: $url", mapOf("error" to (e.javaClass.simpleName + ": " + e.message)))
+                        0
+                    } finally {
+                        val current = completedCount.incrementAndGet()
+                        onProgress(current, total)
+                    }
+                }
+            }
+        }
+        deferreds.awaitAll().sum()
+    }
+
+    private fun deleteLocalFile(episodeId: String, path: String) {
+        val file = File(path)
+        if (file.exists() && !file.delete()) {
+            logManager.w("PodcastRepository", "Failed to delete file for episode $episodeId: $path")
         }
     }
 }

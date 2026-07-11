@@ -1,10 +1,6 @@
 package com.yuval.podcasts.work
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.ServiceInfo
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -114,7 +110,7 @@ class DownloadWorker @AssistedInject constructor(
                                         currentTime - lastProgressUpdateTime > Constants.DOWNLOAD_PROGRESS_WORKER_THROTTLE_MS
                                     ) {
                                         try {
-                                            setProgress(androidx.work.workDataOf("progress" to progress))
+                                            setProgress(androidx.work.workDataOf(Constants.WORK_KEY_PROGRESS to progress))
                                         } catch (e: Exception) {
                                             logManager.w("DownloadWorker", "Failed to set progress", mapOf("error" to e.message.toString()))
                                         }
@@ -162,8 +158,8 @@ class DownloadWorker @AssistedInject constructor(
             // Distinguish between transient and permanent errors
             return@withContext when (e) {
                 is IOException -> {
-                    if (runAttemptCount >= 3) {
-                        logManager.e("DownloadWorker", "Download failed after 3 attempts", mapOf("error" to e.message.toString()))
+                    if (runAttemptCount >= MAX_RETRY_COUNT) {
+                        logManager.e("DownloadWorker", "Download failed after $MAX_RETRY_COUNT attempts", mapOf("error" to e.message.toString()))
                         Result.failure()
                     } else {
                         Result.retry()
@@ -180,32 +176,27 @@ class DownloadWorker @AssistedInject constructor(
 
     @androidx.annotation.VisibleForTesting
     internal fun createForegroundInfo(episodeId: String, title: String, progress: Int): ForegroundInfo {
-        val channelId = "download_channel"
-        val channel = NotificationChannel(
-            channelId,
-            appContext.getString(R.string.notification_channel_downloads),
-            NotificationManager.IMPORTANCE_LOW
+        val notificationId = Constants.NOTIFICATION_ID_DOWNLOAD + (episodeId.hashCode() and NOTIFICATION_ID_HASH_MASK)
+        return com.yuval.podcasts.utils.WorkerNotificationHelper.createForegroundInfo(
+            context = appContext,
+            notificationId = notificationId,
+            channelId = Constants.NOTIFICATION_CHANNEL_ID_DOWNLOAD,
+            channelName = appContext.getString(R.string.notification_channel_downloads),
+            title = appContext.getString(R.string.notification_downloading_title),
+            contentText = title,
+            progress = progress,
+            maxProgress = NOTIFICATION_PROGRESS_MAX
         )
-        val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
-
-        val notification = Notification.Builder(appContext, channelId)
-            .setContentTitle(appContext.getString(R.string.notification_downloading_title))
-            .setContentText(title)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setProgress(100, progress, progress == 0)
-            .setOngoing(true)
-            .build()
-
-        val notificationId = Constants.NOTIFICATION_ID_DOWNLOAD + (episodeId.hashCode() and 0x00ffffff)
-
-        return ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     }
 
     companion object {
         const val KEY_EPISODE_ID = "episode_id"
         const val KEY_AUDIO_URL = "audio_url"
         const val KEY_EPISODE_TITLE = "episode_title"
+
+        private const val MAX_RETRY_COUNT = 3
+        private const val NOTIFICATION_ID_HASH_MASK = 0x00ffffff
+        private const val NOTIFICATION_PROGRESS_MAX = 100
 
         fun createWorkRequest(
             episodeId: String,

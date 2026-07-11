@@ -11,11 +11,11 @@ import com.yuval.podcasts.R
 import kotlinx.serialization.Serializable
 
 // Bottom Navigation items
-sealed class BottomNavItem(val route: Any, @get:StringRes val titleRes: Int, val icon: ImageVector) {
-    object Queue : BottomNavItem(QueueScreenRoute, R.string.queue_title, Icons.AutoMirrored.Filled.List)
-    object NewEpisodes : BottomNavItem(NewEpisodesScreenRoute, R.string.new_episodes_title, Icons.Default.Notifications)
-    object Subscriptions : BottomNavItem(SubscriptionsScreenRoute, R.string.episodes_title, Icons.Default.Subscriptions)
-    object Settings : BottomNavItem(SettingsScreenRoute, R.string.settings_title, Icons.Default.Settings)
+sealed class BottomNavItem(val route: Any, @get:StringRes val titleRes: Int, val icon: ImageVector, val tag: String) {
+    object Queue : BottomNavItem(QueueScreenRoute, R.string.queue_title, Icons.AutoMirrored.Filled.List, "queue")
+    object NewEpisodes : BottomNavItem(NewEpisodesScreenRoute, R.string.new_episodes_title, Icons.Default.Notifications, "new_episodes")
+    object Subscriptions : BottomNavItem(SubscriptionsScreenRoute, R.string.episodes_title, Icons.Default.Subscriptions, "subscriptions")
+    object Settings : BottomNavItem(SettingsScreenRoute, R.string.settings_title, Icons.Default.Settings, "settings")
 }
 
 val bottomNavItems = listOf(

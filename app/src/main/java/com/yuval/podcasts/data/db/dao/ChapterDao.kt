@@ -16,9 +16,6 @@ interface ChapterDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChapters(chapters: List<Chapter>)
 
-    @Query("DELETE FROM chapters WHERE episodeId = :episodeId")
-    suspend fun deleteChaptersForEpisode(episodeId: String)
-
     @Query("DELETE FROM chapters WHERE episodeId IN (:episodeIds)")
     suspend fun deleteChaptersBulk(episodeIds: List<String>)
 

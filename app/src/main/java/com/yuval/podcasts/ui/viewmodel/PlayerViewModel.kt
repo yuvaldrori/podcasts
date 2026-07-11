@@ -6,7 +6,6 @@ import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.media.PlayerManager
-import com.yuval.podcasts.utils.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlin.time.Duration.Companion.seconds
@@ -79,34 +79,32 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun play(episode: Episode, startPositionMs: Long = episode.lastPlayedPosition) {
-        val uri = episode.playableUri
-        // The File.exists() check is blocking filesystem I/O; run it off the main thread
-        // so the playback hot path never risks jank/ANR.
-        if (episode.localFilePath != null) {
-            viewModelScope.launch(ioDispatcher) {
-                if (!java.io.File(episode.localFilePath).exists()) {
-                    enqueueEpisodeUseCase(episode)
-                }
+        viewModelScope.launch(ioDispatcher) {
+            val uri = episode.playableUri
+            if (episode.localFilePath != null) {
+                verifyAndEnqueueLocalFile(episode)
+            }
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                playerManager.play(
+                    mediaId = episode.id,
+                    uri = uri,
+                    title = episode.title,
+                    imageUrl = episode.imageUrl,
+                    startPositionMs = startPositionMs
+                )
             }
         }
-        playerManager.play(
-            mediaId = episode.id,
-            uri = uri,
-            title = episode.title,
-            imageUrl = episode.imageUrl,
-            startPositionMs = startPositionMs
-        )
     }
 
     fun playQueue(episodes: List<Episode>, startIndex: Int, startPositionMs: Long = 0L) {
         viewModelScope.launch(ioDispatcher) {
             episodes.forEach { episode ->
-                if (episode.localFilePath != null && !java.io.File(episode.localFilePath).exists()) {
-                    enqueueEpisodeUseCase(episode)
-                }
+                verifyAndEnqueueLocalFile(episode)
+            }
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                playerManager.playQueue(episodes, startIndex, startPositionMs)
             }
         }
-        playerManager.playQueue(episodes, startIndex, startPositionMs)
     }
 
     fun seekTo(position: Long) {
@@ -119,7 +117,7 @@ class PlayerViewModel @Inject constructor(
 
     fun toggleSpeed() {
         val currentSpeed = playerManager.playbackSpeed.value
-        val newSpeed = if (currentSpeed >= 2f) 1f else 2f
+        val newSpeed = if (currentSpeed >= PLAYBACK_SPEED_FAST) PLAYBACK_SPEED_NORMAL else PLAYBACK_SPEED_FAST
         setSpeed(newSpeed)
     }
 
@@ -140,5 +138,16 @@ class PlayerViewModel @Inject constructor(
         } else {
             play(episode, startPositionMs = chapter.startTimeMs)
         }
+    }
+
+    private suspend fun verifyAndEnqueueLocalFile(episode: Episode) {
+        if (episode.localFilePath != null && !java.io.File(episode.localFilePath).exists()) {
+            enqueueEpisodeUseCase(episode)
+        }
+    }
+
+    companion object {
+        private const val PLAYBACK_SPEED_NORMAL = 1.0f
+        private const val PLAYBACK_SPEED_FAST = 2.0f
     }
 }

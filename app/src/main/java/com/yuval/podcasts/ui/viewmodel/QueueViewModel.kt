@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.seconds
 
@@ -98,6 +99,7 @@ class QueueViewModel @Inject constructor(
         val manual = _manualQueue.value ?: return
         viewModelScope.launch {
             repository.reorderQueue(manual.map { item -> item.episode.id })
+            delay(Constants.QUEUE_REORDER_COMMIT_DELAY_MS)
             _manualQueue.value = null
         }
     }
@@ -105,6 +107,7 @@ class QueueViewModel @Inject constructor(
     fun reorderQueue(newOrderIds: List<String>) {
         viewModelScope.launch {
             repository.reorderQueue(newOrderIds)
+            delay(Constants.QUEUE_REORDER_COMMIT_DELAY_MS)
             _manualQueue.value = null
         }
     }

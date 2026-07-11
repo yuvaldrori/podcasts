@@ -14,19 +14,23 @@ import com.yuval.podcasts.work.DownloadWorker
 import javax.inject.Inject
 
 import kotlinx.coroutines.flow.first
+import com.yuval.podcasts.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 class EnqueueEpisodeUseCase @Inject constructor(
     private val repository: PodcastRepository,
-    private val workManager: WorkManager
+    private val workManager: WorkManager,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    suspend operator fun invoke(episode: Episode) {
+    suspend operator fun invoke(episode: Episode) = withContext(ioDispatcher) {
         // Consolidated DB operation (Queue update + Playback status update)
         repository.requeueEpisode(episode)
 
         // Do not schedule background download if episode is local or already downloaded and physical file exists
         val fileExists = episode.localFilePath?.let { java.io.File(it).exists() } == true
         if (episode.isLocal || (episode.downloadStatus == DownloadStatus.DOWNLOADED.value && fileExists)) {
-            return
+            return@withContext
         }
 
         // Trigger background download

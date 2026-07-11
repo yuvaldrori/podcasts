@@ -2,7 +2,6 @@ package com.yuval.podcasts.ui.viewmodel
 
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.media.PlayerManager
-import com.yuval.podcasts.utils.NetworkMonitor
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -26,7 +25,6 @@ class PlayerViewModelTest {
 
     private lateinit var repository: PodcastRepository
     private lateinit var playerManager: PlayerManager
-    private lateinit var networkMonitor: NetworkMonitor
     private lateinit var enqueueEpisodeUseCase: EnqueueEpisodeUseCase
     private lateinit var viewModel: PlayerViewModel
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -37,13 +35,11 @@ class PlayerViewModelTest {
         
         repository = mockk(relaxed = true)
         playerManager = mockk(relaxed = true)
-        networkMonitor = mockk(relaxed = true)
         enqueueEpisodeUseCase = mockk(relaxed = true)
         
         every { playerManager.isPlaying } returns MutableStateFlow(false)
         every { playerManager.isInitialized } returns MutableStateFlow(true)
         every { playerManager.currentPosition } returns MutableStateFlow(0L)
-        every { networkMonitor.isOnline } returns MutableStateFlow(true)
         
         every { repository.listeningQueue } returns flowOf(emptyList())
 
@@ -84,12 +80,13 @@ class PlayerViewModelTest {
 
         vm.play(episode)
 
-        // Playback starts synchronously; the filesystem-bound work has not run yet.
-        verify { playerManager.play(any(), any(), any(), any(), any()) }
+        // Since the entire play flow runs on the io dispatcher, playback and file check have not started yet.
+        verify(exactly = 0) { playerManager.play(any(), any(), any(), any(), any()) }
         coVerify(exactly = 0) { enqueueEpisodeUseCase(episode) }
 
-        // Draining the IO dispatcher runs the deferred check, which re-enqueues the missing file.
+        // Draining the IO dispatcher runs the deferred check (re-enqueueing the missing file) + starts playback.
         advanceUntilIdle()
+        verify { playerManager.play(any(), any(), any(), any(), any()) }
         coVerify { enqueueEpisodeUseCase(episode) }
     }
 

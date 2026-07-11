@@ -33,6 +33,7 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.components.LoadingBox
 import com.yuval.podcasts.ui.components.RefreshProgressIndicator
+import com.yuval.podcasts.ui.components.emptyStateItem
 import com.yuval.podcasts.ui.utils.Formatter
 import com.yuval.podcasts.ui.viewmodel.QueueUiState
 
@@ -114,23 +115,7 @@ fun QueueScreen(
                     )
                 ) {
                 if (queue.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillParentMaxHeight()
-                                .fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.empty_queue_message),
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(32.dp)
-                            )
-                        }
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(1.dp))
-                    }
+                    emptyStateItem(R.string.empty_queue_message)
                 } else {
                     itemsIndexed(queue, key = { _, item -> item.episode.id }) { index, episodeWithPodcast ->
                         val episode = episodeWithPodcast.episode

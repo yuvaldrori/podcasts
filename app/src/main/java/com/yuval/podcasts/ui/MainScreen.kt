@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -33,6 +34,8 @@ import com.yuval.podcasts.ui.navigation.*
 import com.yuval.podcasts.ui.screens.*
 import com.yuval.podcasts.ui.viewmodel.*
 import kotlinx.collections.immutable.persistentListOf
+
+private const val BADGE_OVERFLOW_LIMIT = 99
 
 @Composable
 fun MainScreen(
@@ -67,6 +70,7 @@ fun MainScreen(
                 }
                 item(
                     selected = selected,
+                    modifier = Modifier.testTag("tab_${screen.tag}"),
                     onClick = {
                         if (selected) {
                             navController.popBackStack(screen.route, inclusive = false, saveState = true)
@@ -94,7 +98,7 @@ fun MainScreen(
                                         containerColor = MaterialTheme.colorScheme.primary,
                                         contentColor = MaterialTheme.colorScheme.onPrimary
                                     ) {
-                                        Text(if (badgeCount > 99) "99+" else badgeCount.toString())
+                                        Text(if (badgeCount > BADGE_OVERFLOW_LIMIT) "$BADGE_OVERFLOW_LIMIT+" else badgeCount.toString())
                                     }
                                 }
                             }

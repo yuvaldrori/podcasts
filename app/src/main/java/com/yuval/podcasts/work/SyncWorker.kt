@@ -11,18 +11,8 @@ import dagger.assisted.AssistedInject
 import androidx.work.workDataOf
 import com.yuval.podcasts.data.Constants
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.pm.ServiceInfo
 import androidx.work.ForegroundInfo
 import com.yuval.podcasts.R
 
@@ -58,40 +48,24 @@ class SyncWorker @AssistedInject constructor(
                 logManager.w("SyncWorker", "Failed to set initial progress", mapOf("error" to e.message.toString()))
             }
             
-            val completedCount = AtomicInteger(0)
-            val semaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
             val lastForegroundUpdate = AtomicLong(0L)
 
-            coroutineScope {
-                podcasts.map { podcast ->
-                    async {
-                        semaphore.withPermit {
-                            try {
-                                repository.fetchAndStorePodcast(podcast.feedUrl)
-                            } catch (e: Exception) {
-                                if (e is kotlinx.coroutines.CancellationException) throw e
-                                logManager.e("SyncWorker", "Failed to refresh podcast: ${podcast.feedUrl}", mapOf("error" to (e.javaClass.simpleName + ": " + e.message)))
-                            } finally {
-                                val current = completedCount.incrementAndGet()
-                                val currentTime = System.currentTimeMillis()
-                                try {
-                                    setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to total))
-                                    val lastUpdate = lastForegroundUpdate.get()
-                                    if (isForegroundAllowed && (current == total || currentTime - lastUpdate > Constants.SYNC_PROGRESS_NOTIFICATION_THROTTLE_MS)) {
-                                        lastForegroundUpdate.set(currentTime)
-                                        try {
-                                            setForeground(createForegroundInfo(current, total))
-                                        } catch (e: Exception) {
-                                            isForegroundAllowed = false
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    // Ignore failures in setProgress during the loop
-                                }
-                            }
+            repository.refreshPodcasts(podcasts.map { it.feedUrl }) { current, totalCount ->
+                val currentTime = System.currentTimeMillis()
+                try {
+                    setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to totalCount))
+                    val lastUpdate = lastForegroundUpdate.get()
+                    if (isForegroundAllowed && (current == totalCount || currentTime - lastUpdate > Constants.SYNC_PROGRESS_NOTIFICATION_THROTTLE_MS)) {
+                        lastForegroundUpdate.set(currentTime)
+                        try {
+                            setForeground(createForegroundInfo(current, totalCount))
+                        } catch (e: Exception) {
+                            isForegroundAllowed = false
                         }
                     }
-                }.awaitAll()
+                } catch (e: Exception) {
+                    // Ignore failures in setProgress during the loop
+                }
             }
 
             repository.requeueMissingDownloads()
@@ -109,25 +83,15 @@ class SyncWorker @AssistedInject constructor(
     }
 
     private fun createForegroundInfo(progress: Int, total: Int): ForegroundInfo {
-        val notificationId = Constants.NOTIFICATION_ID_SYNC
-        val channelId = "sync_channel"
-        
-        val channel = NotificationChannel(
-            channelId,
-            appContext.getString(R.string.notification_channel_sync),
-            NotificationManager.IMPORTANCE_LOW
+        return com.yuval.podcasts.utils.WorkerNotificationHelper.createForegroundInfo(
+            context = appContext,
+            notificationId = Constants.NOTIFICATION_ID_SYNC,
+            channelId = Constants.NOTIFICATION_CHANNEL_ID_SYNC,
+            channelName = appContext.getString(R.string.notification_channel_sync),
+            title = appContext.getString(R.string.notification_syncing_title),
+            contentText = if (total > 0) appContext.getString(R.string.notification_syncing_progress, progress, total) else "",
+            progress = progress,
+            maxProgress = total
         )
-        val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
-
-        val notification = Notification.Builder(appContext, channelId)
-            .setContentTitle(appContext.getString(R.string.notification_syncing_title))
-            .setContentText(if (total > 0) appContext.getString(R.string.notification_syncing_progress, progress, total) else "")
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setProgress(total, progress, total == 0)
-            .setOngoing(true)
-            .build()
-
-        return ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     }
 }

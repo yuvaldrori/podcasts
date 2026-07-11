@@ -26,6 +26,7 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.components.LoadingBox
 import com.yuval.podcasts.ui.components.RefreshProgressIndicator
+import com.yuval.podcasts.ui.components.emptyStateItem
 import com.yuval.podcasts.ui.viewmodel.FeedsUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,24 +105,7 @@ fun NewEpisodesScreen(
                     )
                 ) {
                     if (episodesData.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillParentMaxHeight()
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.empty_new_episodes_message),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                        item {
-                            Spacer(modifier = Modifier.height(1.dp))
-                        }
+                        emptyStateItem(R.string.empty_new_episodes_message)
                     } else {
                         items(
                             items = episodesData,

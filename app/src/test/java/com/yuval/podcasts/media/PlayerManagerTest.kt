@@ -40,7 +40,7 @@ class PlayerManagerTest {
         coEvery { settingsRepository.getPlaybackSpeed() } returns 1.5f
         every { settingsRepository.playbackSpeedFlow } returns kotlinx.coroutines.flow.flowOf(1.5f)
         
-        playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
+        playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
 
         // Inject mock MediaBrowser via reflection to bypass complex async initialization
         val controllerField: Field = PlayerManager::class.java.getDeclaredField("controller")

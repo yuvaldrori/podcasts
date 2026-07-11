@@ -23,7 +23,7 @@ class PlayerSpeedControllerTest {
         val logManager = mockk<com.yuval.podcasts.utils.LogManager>(relaxed = true)
         io.mockk.coEvery { repo.getPlaybackSpeed() } returns 2.0f
         io.mockk.every { repo.playbackSpeedFlow } returns kotlinx.coroutines.flow.flowOf(2.0f)
-        val manager = PlayerManager(ApplicationProvider.getApplicationContext(), repo, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
+        val manager = PlayerManager(ApplicationProvider.getApplicationContext(), repo, kotlinx.coroutines.Dispatchers.Unconfined, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
         
         val controllerField = PlayerManager::class.java.getDeclaredField("controller")
         controllerField.isAccessible = true

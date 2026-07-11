@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.ListenableWorker
 import androidx.work.testing.TestListenableWorkerBuilder
-import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.utils.LogManager
@@ -31,7 +30,7 @@ class SyncWorkerTest {
     }
 
     @Test
-    fun `doWork calls fetchAndStorePodcast for each podcast`() = runBlocking {
+    fun `doWork calls refreshPodcasts for all podcasts`() = runBlocking {
         val podcasts = listOf(
             Podcast("url1", "T1", "D1", "I1", "W1"),
             Podcast("url2", "T2", "D2", "I2", "W2")
@@ -53,37 +52,7 @@ class SyncWorkerTest {
         val result = worker.doWork()
 
         assertEquals(ListenableWorker.Result.success(), result)
-        coVerify(exactly = 1) { repository.fetchAndStorePodcast("url1") }
-        coVerify(exactly = 1) { repository.fetchAndStorePodcast("url2") }
+        coVerify(exactly = 1) { repository.refreshPodcasts(listOf("url1", "url2"), any()) }
         coVerify(exactly = 1) { repository.requeueMissingDownloads() }
-    }
-
-    @Test
-    fun `doWork handles individual podcast failures and continues`() = runBlocking {
-        val podcasts = listOf(
-            Podcast("url1", "T1", "D1", "I1", "W1"),
-            Podcast("url2", "T2", "D2", "I2", "W2")
-        )
-        every { repository.allPodcasts } returns flowOf(podcasts)
-        coEvery { repository.fetchAndStorePodcast("url1") } throws Exception("Network error")
-        
-        val worker = TestListenableWorkerBuilder<SyncWorker>(context)
-            .setWorkerFactory(object : androidx.work.WorkerFactory() {
-                override fun createWorker(
-                    appContext: Context,
-                    workerClassName: String,
-                    workerParameters: androidx.work.WorkerParameters
-                ): ListenableWorker? {
-                    return SyncWorker(appContext, workerParameters, repository, logManager)
-                }
-            })
-            .build()
-
-        val result = worker.doWork()
-
-        assertEquals(ListenableWorker.Result.success(), result)
-        coVerify(exactly = 1) { repository.fetchAndStorePodcast("url1") }
-        coVerify(exactly = 1) { repository.fetchAndStorePodcast("url2") }
-        verify { logManager.e("SyncWorker", any(), any()) }
     }
 }

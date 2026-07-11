@@ -25,6 +25,11 @@ import javax.inject.Inject
 
 import com.yuval.podcasts.utils.LogManager
 import androidx.work.WorkInfo
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import com.yuval.podcasts.work.SyncWorker
 
 @Immutable
 sealed interface FeedsUiState {
@@ -42,7 +47,6 @@ sealed interface FeedsUiState {
 class FeedsViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val enqueueEpisodeUseCase: EnqueueEpisodeUseCase,
-    private val refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase,
     private val workManager: androidx.work.WorkManager,
     messageDelegate: MessageDelegate
 ) : ViewModel(), MessageDelegate by messageDelegate {
@@ -79,7 +83,19 @@ class FeedsViewModel @Inject constructor(
     )
 
     fun refreshAll() {
-        refreshAllPodcastsUseCase()
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val syncWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        workManager.enqueueUniqueWork(
+            Constants.WORK_NAME_SYNC_ALL,
+            ExistingWorkPolicy.KEEP,
+            syncWorkRequest
+        )
     }
 
     fun addToQueue(episode: Episode) {

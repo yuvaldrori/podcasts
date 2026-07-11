@@ -43,6 +43,21 @@ class QueueDaoTest {
         database.close()
     }
 
+    private fun getQueueDirect(): List<QueueState> {
+        val cursor = database.openHelper.readableDatabase.query("SELECT * FROM queue ORDER BY position ASC")
+        val list = mutableListOf<QueueState>()
+        cursor.use {
+            val idIndex = cursor.getColumnIndex("episodeId")
+            val posIndex = cursor.getColumnIndex("position")
+            while (cursor.moveToNext()) {
+                val episodeId = cursor.getString(idIndex)
+                val position = cursor.getInt(posIndex)
+                list.add(QueueState(episodeId, position))
+            }
+        }
+        return list
+    }
+
     @Test
     fun updateQueue_and_getQueue_returnsOrderedList() = runBlocking {
         val queueItem1 = QueueState("ep1", position = 1)
@@ -50,7 +65,7 @@ class QueueDaoTest {
         
         queueDao.updateQueue(listOf(queueItem1, queueItem2))
 
-        val queue = queueDao.getQueue().first()
+        val queue = getQueueDirect()
 
         assertEquals(2, queue.size)
         assertEquals("ep2", queue[0].episodeId)
@@ -63,7 +78,7 @@ class QueueDaoTest {
         
         queueDao.removeFromQueue("ep1")
 
-        val queue = queueDao.getQueue().first()
+        val queue = getQueueDirect()
         assertEquals(1, queue.size)
         assertEquals("ep2", queue[0].episodeId)
     }

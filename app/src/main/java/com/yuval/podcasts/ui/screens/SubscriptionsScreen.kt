@@ -22,6 +22,7 @@ import com.yuval.podcasts.R
 
 import kotlinx.collections.immutable.ImmutableList
 import com.yuval.podcasts.ui.components.RefreshProgressIndicator
+import com.yuval.podcasts.ui.components.emptyStateItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,24 +67,7 @@ fun SubscriptionsScreen(
                     )
                 ) {
                 if (podcasts.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillParentMaxHeight()
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.empty_subscriptions_message),
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(1.dp))
-                    }
+                    emptyStateItem(R.string.empty_subscriptions_message)
                 } else {
                     items(
                         items = podcasts,

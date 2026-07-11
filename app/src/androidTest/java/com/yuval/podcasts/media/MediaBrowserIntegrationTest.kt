@@ -47,6 +47,7 @@ class MediaBrowserIntegrationTest {
             browser.getLibraryRoot(null).await()
         }
         val rootItem = rootResult.value
+        org.junit.Assert.assertEquals("Expected success result code: ${rootResult.resultCode}", 0, rootResult.resultCode)
         assertNotNull(rootItem)
         assertEquals("root", rootItem?.mediaId)
         assertTrue(rootItem?.mediaMetadata?.isBrowsable == true)
@@ -58,6 +59,7 @@ class MediaBrowserIntegrationTest {
             browser.getChildren("root", 0, 100, null).await()
         }
         val children = childrenResult.value
+        org.junit.Assert.assertEquals("Expected success result code: ${childrenResult.resultCode}", 0, childrenResult.resultCode)
         assertNotNull(children)
         assertTrue(children!!.isNotEmpty())
         assertEquals("queue", children[0].mediaId)

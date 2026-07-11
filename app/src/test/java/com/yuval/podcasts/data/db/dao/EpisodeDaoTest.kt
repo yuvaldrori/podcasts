@@ -130,7 +130,7 @@ class EpisodeDaoTest {
 
         // Queue episode1
         val queueDao = database.queueDao()
-        queueDao.insertQueueItem(com.yuval.podcasts.data.db.entity.QueueState("ep1", 0))
+        queueDao.updateQueue(listOf(com.yuval.podcasts.data.db.entity.QueueState("ep1", 0)))
 
         val unplayed = episodeDao.getUnplayedEpisodesWithPodcast().first()
 

@@ -54,7 +54,8 @@ import com.yuval.podcasts.utils.LogManager
 class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var exoPlayer: ExoPlayer
-    @Inject lateinit var castPlayer: CastPlayer
+    @Inject lateinit var castPlayer: dagger.Lazy<CastPlayer>
+    private var isCastInitialized = false
     private lateinit var currentPlayer: Player
 
     @Inject lateinit var episodeDao: EpisodeDao
@@ -79,7 +80,7 @@ class PlaybackService : MediaLibraryService() {
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
-            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
                 .add(SessionCommand(Constants.COMMAND_REWIND_10, Bundle.EMPTY))
                 .add(SessionCommand(Constants.COMMAND_SKIP_30, Bundle.EMPTY))
                 .build()
@@ -200,7 +201,7 @@ class PlaybackService : MediaLibraryService() {
                 .setIsPlayable(false)
                 .build()
             val rootItem = MediaItem.Builder()
-                .setMediaId("root")
+                .setMediaId(Constants.MEDIA_LIBRARY_ROOT_ID)
                 .setMediaMetadata(rootMetadata)
                 .build()
             return Futures.immediateFuture(LibraryResult.ofItem(rootItem, params))
@@ -216,7 +217,7 @@ class PlaybackService : MediaLibraryService() {
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
             return serviceScope.async(ioDispatcher) {
                 val items = when (parentId) {
-                    "root" -> {
+                    Constants.MEDIA_LIBRARY_ROOT_ID -> {
                         val queueFolderMetadata = MediaMetadata.Builder()
                             .setTitle("Queue")
                             .setIsBrowsable(true)
@@ -224,12 +225,12 @@ class PlaybackService : MediaLibraryService() {
                             .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS)
                             .build()
                         val queueFolder = MediaItem.Builder()
-                            .setMediaId("queue")
+                            .setMediaId(Constants.MEDIA_LIBRARY_QUEUE_ID)
                             .setMediaMetadata(queueFolderMetadata)
                             .build()
                         listOf(queueFolder)
                     }
-                    "queue" -> {
+                    Constants.MEDIA_LIBRARY_QUEUE_ID -> {
                         val episodes = queueDao.getQueueEpisodesSync()
                         episodes.mapNotNull { ep ->
                             MediaItemMapper.fromEpisode(ep)
@@ -264,7 +265,6 @@ class PlaybackService : MediaLibraryService() {
         exoPlayer.setAudioAttributes(audioAttributes, true)
         exoPlayer.setHandleAudioBecomingNoisy(true)
         exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
-        castPlayer.repeatMode = Player.REPEAT_MODE_OFF
         
         serviceScope.launch(ioDispatcher) {
             val speed = settingsRepository.getPlaybackSpeed()
@@ -288,16 +288,6 @@ class PlaybackService : MediaLibraryService() {
         mediaSession = MediaLibrarySession.Builder(this, currentPlayer, mediaSessionCallback)
             .setSessionActivity(pendingIntent)
             .build()
-
-        @Suppress("DEPRECATION")
-        castPlayer.setSessionAvailabilityListener(object : SessionAvailabilityListener {
-            override fun onCastSessionAvailable() {
-                setCurrentPlayer(castPlayer)
-            }
-            override fun onCastSessionUnavailable() {
-                setCurrentPlayer(exoPlayer)
-            }
-        })
 
         var currentlyPlayingId: String? = null
 
@@ -398,7 +388,32 @@ class PlaybackService : MediaLibraryService() {
         }
         
         exoPlayer.addListener(listener)
-        castPlayer.addListener(listener)
+
+        serviceScope.launch {
+            // Delay CastPlayer initialization to allow main thread to remain fully responsive
+            // during app startup and focus processing.
+            kotlinx.coroutines.delay(2000)
+            withContext(mainDispatcher) {
+                try {
+                    val player = castPlayer.get()
+                    player.repeatMode = Player.REPEAT_MODE_OFF
+                    @Suppress("DEPRECATION")
+                    player.setSessionAvailabilityListener(object : SessionAvailabilityListener {
+                        override fun onCastSessionAvailable() {
+                            setCurrentPlayer(player)
+                        }
+                        override fun onCastSessionUnavailable() {
+                            setCurrentPlayer(exoPlayer)
+                        }
+                    })
+                    player.addListener(listener)
+                    isCastInitialized = true
+                    logManager.i("PlaybackService", "CastPlayer lazily initialized")
+                } catch (e: Exception) {
+                    logManager.e("PlaybackService", "Failed to initialize CastPlayer lazily", mapOf("error" to e.message.toString()))
+                }
+            }
+        }
 
         // Live Silence Toggle
         serviceScope.launch(mainDispatcher) {
@@ -635,7 +650,9 @@ class PlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         serviceScope.cancel()
         exoPlayer.release()
-        castPlayer.release()
+        if (isCastInitialized) {
+            castPlayer.get().release()
+        }
         loudnessEnhancer?.release()
         loudnessEnhancer = null
         mediaSession?.run {

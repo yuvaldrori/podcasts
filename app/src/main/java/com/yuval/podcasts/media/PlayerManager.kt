@@ -27,9 +27,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import com.yuval.podcasts.di.MainDispatcher
+import com.yuval.podcasts.di.IoDispatcher
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.CoroutineDispatcher
@@ -45,6 +46,7 @@ class PlayerManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     @param:MainDispatcher private val mainDispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val logManager: LogManager
 ) {
     private val scope = CoroutineScope(mainDispatcher + SupervisorJob())
@@ -64,7 +66,7 @@ class PlayerManager @Inject constructor(
             flow {
                 emit(controller?.currentPosition ?: _currentPosition.value)
                 while (isPlaying) {
-                    delay(1.seconds)
+                    delay(POSITION_POLL_INTERVAL)
                     emit(controller?.currentPosition ?: _currentPosition.value)
                 }
             }
@@ -240,8 +242,8 @@ class PlayerManager @Inject constructor(
         }
     }
 
-    private fun mapEpisodesToMediaItems(episodes: List<com.yuval.podcasts.data.db.entity.Episode>): List<MediaItem> {
-        return episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
+    private suspend fun mapEpisodesToMediaItems(episodes: List<com.yuval.podcasts.data.db.entity.Episode>): List<MediaItem> = withContext(ioDispatcher) {
+        episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
     }
 
     fun play() {
@@ -350,5 +352,9 @@ class PlayerManager @Inject constructor(
         controllerFuture = null
         controller = null
         _isInitialized.update { false }
+    }
+
+    companion object {
+        private val POSITION_POLL_INTERVAL = 1.seconds
     }
 }

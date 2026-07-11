@@ -65,7 +65,7 @@ fun UnifiedPlayer(
                     horizontalArrangement = Arrangement.End
                 ) {
                     val themeColor = MaterialTheme.colorScheme.primary
-                    CastButton(tint = themeColor)
+                    CastButton()
                     
                     val speedLabel = stringResource(R.string.playback_speed)
                     TextButton(

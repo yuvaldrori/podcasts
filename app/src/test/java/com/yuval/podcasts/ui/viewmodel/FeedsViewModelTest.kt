@@ -2,6 +2,8 @@ package com.yuval.podcasts.ui.viewmodel
 
 import androidx.work.WorkManager
 import androidx.work.WorkInfo
+import androidx.work.ExistingWorkPolicy
+import com.yuval.podcasts.data.Constants
 import androidx.lifecycle.asFlow
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
@@ -35,7 +37,6 @@ class FeedsViewModelTest {
 
     private lateinit var repository: PodcastRepository
     private lateinit var enqueueEpisodeUseCase: EnqueueEpisodeUseCase
-    private lateinit var refreshAllPodcastsUseCase: RefreshAllPodcastsUseCase
     private lateinit var workManager: WorkManager
     private lateinit var workInfosLiveData: MutableLiveData<List<WorkInfo>>
     private lateinit var viewModel: FeedsViewModel
@@ -44,7 +45,6 @@ class FeedsViewModelTest {
     fun setup() {
         repository = mockk(relaxed = true)
         enqueueEpisodeUseCase = mockk(relaxed = true)
-        refreshAllPodcastsUseCase = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
         
         every { repository.allPodcasts } returns flowOf(emptyList())
@@ -56,7 +56,6 @@ class FeedsViewModelTest {
         viewModel = FeedsViewModel(
             repository,
             enqueueEpisodeUseCase,
-            refreshAllPodcastsUseCase,
             workManager,
             DefaultMessageDelegate()
         )
@@ -68,9 +67,11 @@ class FeedsViewModelTest {
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
         
-        every { refreshAllPodcastsUseCase.invoke() } returns Unit
-
         viewModel.refreshAll()
+        
+        coVerify(exactly = 1) { 
+            workManager.enqueueUniqueWork(Constants.WORK_NAME_SYNC_ALL, ExistingWorkPolicy.KEEP, any<androidx.work.OneTimeWorkRequest>()) 
+        }
         
         // Simulate WorkManager starting
         val runningWorkInfo = mockk<WorkInfo>()

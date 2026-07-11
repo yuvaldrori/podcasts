@@ -16,7 +16,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.InputStream
 
 @RunWith(RobolectricTestRunner::class)
 class OpmlImportWorkerTest {
@@ -62,17 +61,9 @@ class OpmlImportWorkerTest {
             })
             .build()
 
-        val result = try {
-            worker.doWork()
-        } catch (e: Exception) {
-            println("DOWORK FAILED: ${e.message}")
-            e.printStackTrace()
-            throw e
-        }
+        val result = worker.doWork()
 
-        println("RESULT: $result")
         assertEquals(ListenableWorker.Result.success(), result)
-        coVerify(exactly = 1) { repository.fetchAndStorePodcast("url1") }
-        coVerify(exactly = 1) { repository.fetchAndStorePodcast("url2") }
+        coVerify(exactly = 1) { repository.refreshPodcasts(listOf("url1", "url2"), any()) }
     }
 }

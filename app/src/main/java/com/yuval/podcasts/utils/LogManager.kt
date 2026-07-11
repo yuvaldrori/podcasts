@@ -8,12 +8,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,14 +40,32 @@ class LogManager @Inject constructor(
     private val previousLogFile = File(logDir, Constants.LOG_FILE_PREVIOUS)
     private val maxFileSize = Constants.MAX_LOG_FILE_SIZE
 
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+    private val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+        .withZone(ZoneId.systemDefault())
     private val logBuffer = mutableListOf<String>()
     private val bufferLimit = Constants.LOG_BUFFER_LIMIT
     private val flushIntervalMs = Constants.LOG_FLUSH_INTERVAL_MS
+    private val logChannel = Channel<LogEntry>(capacity = Channel.UNLIMITED)
 
     init {
         setupCrashHandler()
         startBufferTimeout()
+        processLogChannel()
+    }
+
+    private fun processLogChannel() {
+        scope.launch {
+            for (entry in logChannel) {
+                val jsonLine = Json.encodeToString(entry)
+                val shouldFlush = synchronized(logBuffer) {
+                    logBuffer.add(jsonLine)
+                    logBuffer.size >= bufferLimit
+                }
+                if (shouldFlush) {
+                    flushBuffer()
+                }
+            }
+        }
     }
 
     private fun startBufferTimeout() {
@@ -85,15 +107,14 @@ class LogManager @Inject constructor(
             else -> Log.i(tag, message)
         }
         
-        scope.launch {
-            val jsonLine = createLogLine(tag, message, level, metadata)
-            synchronized(logBuffer) {
-                logBuffer.add(jsonLine)
-                if (logBuffer.size >= bufferLimit) {
-                    flushBuffer()
-                }
-            }
-        }
+        val entry = LogEntry(
+            timestamp = dateFormat.format(Instant.now()),
+            level = level,
+            tag = tag,
+            message = message,
+            metadata = metadata
+        )
+        logChannel.trySend(entry)
     }
 
     private fun getBufferItemsToFlush(): List<String> {
@@ -145,7 +166,7 @@ class LogManager @Inject constructor(
 
     private fun createLogLine(tag: String, message: String, level: String, metadata: Map<String, String>?): String {
         val entry = LogEntry(
-            timestamp = dateFormat.format(Date()),
+            timestamp = dateFormat.format(Instant.now()),
             level = level,
             tag = tag,
             message = message,
