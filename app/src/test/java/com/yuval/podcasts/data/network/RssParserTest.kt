@@ -52,9 +52,9 @@ class RssParserTest {
         val inputStream = ByteArrayInputStream(xml.toByteArray())
         val parsed = parser.parse(inputStream, "http://test.com")
         
-        assertEquals("http://test.com/podcast.jpg", parsed.podcast.imageUrl)
+        assertEquals("https://test.com/podcast.jpg", parsed.podcast.imageUrl)
         assertEquals(1, parsed.episodes.size)
-        assertEquals("http://test.com/episode1.jpg", parsed.episodes[0].episode.imageUrl)
+        assertEquals("https://test.com/episode1.jpg", parsed.episodes[0].episode.imageUrl)
     }
 
     @Test
@@ -79,7 +79,7 @@ class RssParserTest {
         val inputStream = ByteArrayInputStream(xml.toByteArray())
         val parsed = parser.parse(inputStream, "http://test.com")
         
-        assertEquals("http://test.com/podcast_std.jpg", parsed.podcast.imageUrl)
+        assertEquals("https://test.com/podcast_std.jpg", parsed.podcast.imageUrl)
     }
 
     @Test
@@ -105,7 +105,7 @@ class RssParserTest {
         val parsed = parser.parse(inputStream, "http://test.com")
         
         // Since itunes:image usually preferred if present
-        assertEquals("http://test.com/itunes.jpg", parsed.podcast.imageUrl)
+        assertEquals("https://test.com/itunes.jpg", parsed.podcast.imageUrl)
     }
 
     @Test
@@ -185,5 +185,55 @@ class RssParserTest {
         assertEquals("Description with & entity", parsed.podcast.description)
         assertEquals("Split CDATA Title", parsed.episodes[0].episode.title)
         assertEquals("Multiple events merged", parsed.episodes[0].episode.description)
+    }
+
+    @Test
+    fun parse_withHttpUrls_upgradesToHttps() {
+        val xml = """
+            <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+                <channel>
+                    <title>HTTP Upgrade Test</title>
+                    <itunes:image href="http://test.com/podcast.jpg" />
+                    <item>
+                        <title>Episode 1</title>
+                        <enclosure url="http://test.com/episode1.mp3" length="1234" type="audio/mpeg" />
+                        <itunes:image href="http://test.com/episode1.jpg" />
+                        <guid>ep1</guid>
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+        
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val parsed = parser.parse(inputStream, "http://test.com")
+        
+        assertEquals("https://test.com/podcast.jpg", parsed.podcast.imageUrl)
+        assertEquals("https://test.com/episode1.mp3", parsed.episodes[0].episode.audioUrl)
+        assertEquals("https://test.com/episode1.jpg", parsed.episodes[0].episode.imageUrl)
+    }
+
+    @Test
+    fun parse_withStandardRssHttpImage_upgradesToHttps() {
+        val xml = """
+            <rss version="2.0">
+                <channel>
+                    <title>Standard Image Test</title>
+                    <image>
+                        <url>http://test.com/podcast_std.jpg</url>
+                        <title>Standard Image Test</title>
+                        <link>http://test.com</link>
+                    </image>
+                    <item>
+                        <title>Episode 1</title>
+                        <guid>ep1</guid>
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+        
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val parsed = parser.parse(inputStream, "http://test.com")
+        
+        assertEquals("https://test.com/podcast_std.jpg", parsed.podcast.imageUrl)
     }
 }

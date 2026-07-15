@@ -57,7 +57,9 @@ class RssParser @Inject constructor() {
                 name == Constants.Rss.IMAGE && ns.isEmpty() -> {
                     // Standard RSS <image><url>...</url></image>
                     val stdUrl = readPodcastImage(parser)
-                    if (podcastImageUrl.isEmpty()) podcastImageUrl = stdUrl
+                    if (podcastImageUrl.isEmpty()) {
+                        podcastImageUrl = sanitizeUrl(stdUrl, feedUrl)
+                    }
                 }
                 name == Constants.Rss.IMAGE && ns?.contains("itunes") == true -> {
                     // <itunes:image href="..." />
@@ -86,7 +88,7 @@ class RssParser @Inject constructor() {
     }
 
     private fun sanitizeUrl(url: String, baseUrl: String): String {
-        return when {
+        val resolved = when {
             url.isBlank() -> ""
             url.startsWith("http") -> url
             url.startsWith("//") -> "https:$url"
@@ -98,6 +100,11 @@ class RssParser @Inject constructor() {
             } catch (e: Exception) {
                 ""
             }
+        }
+        return if (resolved.startsWith("http:")) {
+            "https:" + resolved.substring(5)
+        } else {
+            resolved
         }
     }
 
