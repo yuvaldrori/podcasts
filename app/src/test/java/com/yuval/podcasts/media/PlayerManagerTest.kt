@@ -191,4 +191,17 @@ class PlayerManagerTest {
         verify { mediaController.clearMediaItems() }
         assertEquals(null, playerManager.currentMediaId.value)
     }
+
+    @Test
+    fun stopAndClear_resetsStateAndClearsController() {
+        playerManager.stopAndClear()
+
+        verify { mediaController.stop() }
+        verify { mediaController.clearMediaItems() }
+        assertEquals(null, playerManager.currentMediaId.value)
+        assertEquals(false, playerManager.isPlaying.value)
+        assertEquals(0L, playerManager.currentPosition.value)
+        assertEquals(0L, playerManager.duration.value)
+    }
 }
+

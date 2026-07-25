@@ -3,65 +3,49 @@ package com.yuval.podcasts.media
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.test.core.app.ApplicationProvider
+import com.yuval.podcasts.data.db.entity.Episode
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.junit.Assert.assertEquals
 
 @RunWith(RobolectricTestRunner::class)
-class PlayerReplaceTest {
+class PlaybackServiceQueueSyncTest {
+
+    private fun createEpisode(id: String): Episode {
+        return Episode(
+            id = id, podcastFeedUrl = "feed", title = "Ep $id", description = "desc", audioUrl = "http://$id.com",
+            imageUrl = null, episodeWebLink = null, pubDate = 0L, duration = 1000L, downloadStatus = 0,
+            localFilePath = null, isPlayed = false, lastPlayedPosition = 0L, completedAt = null
+        )
+    }
+
     @Test
     fun testSurgicalObserveQueueLogic() {
         val player = ExoPlayer.Builder(ApplicationProvider.getApplicationContext()).build()
-        
+        val service = PlaybackService()
+
+        val epA = createEpisode("A")
+        val epB = createEpisode("B")
+        val epC = createEpisode("C")
+
         val itemA = MediaItem.Builder().setMediaId("A").setUri("http://a.com").build()
         val itemB = MediaItem.Builder().setMediaId("B").setUri("http://b.com").build()
         val itemC = MediaItem.Builder().setMediaId("C").setUri("http://c.com").build()
-        
-        // Initial ExoPlayer state
+
         player.setMediaItems(listOf(itemA, itemB, itemC), 0, 0L)
         player.prepare()
-        
-        // Simulation: User adds D, E and reorders: [D, E, A, B, C]
-        // Currently playing: A (initially index 0)
-        
+
+        val epD = createEpisode("D")
+        val epE = createEpisode("E")
         val itemD = MediaItem.Builder().setMediaId("D").setUri("http://d.com").build()
         val itemE = MediaItem.Builder().setMediaId("E").setUri("http://e.com").build()
-        
-        val newList = listOf(itemD, itemE, itemA, itemB, itemC)
-        val newIds = newList.map { it.mediaId }
-        val currentMediaId = player.currentMediaItem?.mediaId!!
 
-        // 1. Remove items that are no longer in the new list, EXCEPT the currently playing one
-        for (i in player.mediaItemCount - 1 downTo 0) {
-            val id = player.getMediaItemAt(i).mediaId
-            if (id != currentMediaId && !newIds.contains(id)) {
-                player.removeMediaItem(i)
-            }
-        }
+        val newEpisodes = listOf(epD, epE, epA, epB, epC)
+        val newMediaItems = listOf(itemD, itemE, itemA, itemB, itemC)
 
-        // 2. Add new items
-        val existingIdsInPlayer = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
-        newList.forEachIndexed { index, item ->
-            if (!existingIdsInPlayer.contains(item.mediaId)) {
-                player.addMediaItem(index, item)
-            }
-        }
+        service.updatePlayerFromQueue(player, newEpisodes, newMediaItems)
 
-        // 3. Move items to correct positions
-        for (index in newList.indices) {
-            val expectedId = newList[index].mediaId
-            val actualId = player.getMediaItemAt(index).mediaId
-            if (expectedId != actualId) {
-                for (searchIndex in index + 1 until player.mediaItemCount) {
-                    if (player.getMediaItemAt(searchIndex).mediaId == expectedId) {
-                        player.moveMediaItem(searchIndex, index)
-                        break
-                    }
-                }
-            }
-        }
-        
         assertEquals("A", player.currentMediaItem?.mediaId)
         assertEquals(5, player.mediaItemCount)
         assertEquals("D", player.getMediaItemAt(0).mediaId)
@@ -74,46 +58,23 @@ class PlayerReplaceTest {
     @Test
     fun testRemovePlayingEpisode_transitionsToNextItem() {
         val player = ExoPlayer.Builder(ApplicationProvider.getApplicationContext()).build()
-        
+        val service = PlaybackService()
+
+        val epA = createEpisode("A")
+        val epB = createEpisode("B")
+        val epC = createEpisode("C")
+
         val itemA = MediaItem.Builder().setMediaId("A").setUri("http://a.com").build()
         val itemB = MediaItem.Builder().setMediaId("B").setUri("http://b.com").build()
         val itemC = MediaItem.Builder().setMediaId("C").setUri("http://c.com").build()
-        
+
         player.setMediaItems(listOf(itemA, itemB, itemC), 0, 0L)
         player.prepare()
-        
-        val newList = listOf(itemB, itemC)
-        val newIds = newList.map { it.mediaId }
-        val currentMediaId = player.currentMediaItem?.mediaId!!
-        val currentInNewIndex = newList.indexOfFirst { it.mediaId == currentMediaId }
 
-        // Modeled fixed behavior: transition to next item in queue if available
-        if (currentInNewIndex == -1) {
-            val playerIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
-            val hasQueueItems = playerIds.any { newIds.contains(it) }
-            if (hasQueueItems) {
-                var nextEpisodeId: String? = null
-                val currentIndex = player.currentMediaItemIndex
-                for (i in currentIndex + 1 until player.mediaItemCount) {
-                    val id = player.getMediaItemAt(i).mediaId
-                    if (newIds.contains(id)) {
-                        nextEpisodeId = id
-                        break
-                    }
-                }
-                
-                if (nextEpisodeId != null) {
-                    val nextIndexInNew = newList.indexOfFirst { it.mediaId == nextEpisodeId }
-                    if (nextIndexInNew != -1) {
-                        player.setMediaItems(newList, nextIndexInNew, 0L)
-                        player.prepare()
-                    }
-                }
-            } else {
-                player.stop()
-                player.clearMediaItems()
-            }
-        }
+        val newEpisodes = listOf(epB, epC)
+        val newMediaItems = listOf(itemB, itemC)
+
+        service.updatePlayerFromQueue(player, newEpisodes, newMediaItems)
 
         assertEquals(2, player.mediaItemCount)
         assertEquals("B", player.currentMediaItem?.mediaId)

@@ -7,25 +7,29 @@ import com.yuval.podcasts.data.repository.SettingsRepository
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class PlayerManagerInitializationTest {
 
     @Test
-    fun playerManager_readsInitialPosition_onConnection() {
+    fun playerManager_readsInitialPosition_onConnection() = runTest {
         val context = mockk<Context>(relaxed = true)
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
         val logManager = mockk<com.yuval.podcasts.utils.LogManager>(relaxed = true)
         coEvery { settingsRepository.getPlaybackSpeed() } returns 1.0f
 
-        val playerManager = PlayerManager(context, settingsRepository, kotlinx.coroutines.Dispatchers.Unconfined, kotlinx.coroutines.Dispatchers.Unconfined, logManager)
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        val playerManager = PlayerManager(context, settingsRepository, testDispatcher, testDispatcher, logManager)
 
-        val mediaItem = mockk<MediaItem>(relaxed = true)
-        // MediaItem.mediaId is a val property, so MockK can't always mock it directly without problems if it's final. Let's just use a real MediaItem
         val realMediaItem = MediaItem.Builder().setMediaId("ep_1").build()
 
         val browser = mockk<MediaBrowser>(relaxed = true)
@@ -37,12 +41,17 @@ class PlayerManagerInitializationTest {
         val controllerField = PlayerManager::class.java.getDeclaredField("controller")
         controllerField.isAccessible = true
         controllerField.set(playerManager, browser)
-        
+
         val setupMethod = PlayerManager::class.java.getDeclaredMethod("setupControllerListener")
         setupMethod.isAccessible = true
         setupMethod.invoke(playerManager)
 
-        val position = browser.currentPosition
+        var position = 0L
+        val job = launch(testDispatcher) {
+            playerManager.currentPosition.collect { position = it }
+        }
+
         assertEquals("PlayerManager must actively read the paused currentPosition upon connection.", 45000L, position)
+        job.cancel()
     }
 }

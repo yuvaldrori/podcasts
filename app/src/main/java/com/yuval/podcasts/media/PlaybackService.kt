@@ -33,6 +33,10 @@ import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.di.MainDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
+import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
+import com.yuval.podcasts.utils.LogManager
 import javax.inject.Inject
 import androidx.core.content.IntentCompat
 import androidx.media3.session.SessionCommand
@@ -47,7 +51,6 @@ import kotlinx.coroutines.isActive
 import androidx.media3.common.MediaMetadata
 import com.yuval.podcasts.data.Constants
 import kotlinx.coroutines.guava.asListenableFuture
-import com.yuval.podcasts.utils.LogManager
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @AndroidEntryPoint
@@ -130,18 +133,8 @@ class PlaybackService : MediaLibraryService() {
             controllerInfo: MediaSession.ControllerInfo,
             intent: Intent
         ): Boolean {
-            val keyEvent = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
-            if (keyEvent?.action == KeyEvent.ACTION_DOWN) {
-                when (keyEvent.keyCode) {
-                    KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_NEXT -> {
-                        seekForward()
-                        return true
-                    }
-                    KeyEvent.KEYCODE_MEDIA_REWIND, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
-                        seekBackward()
-                        return true
-                    }
-                }
+            if (handleMediaButtonIntent(intent, { seekForward() }, { seekBackward() })) {
+                return true
             }
             return super.onMediaButtonEvent(session, controllerInfo, intent)
         }
@@ -289,110 +282,31 @@ class PlaybackService : MediaLibraryService() {
             .setSessionActivity(pendingIntent)
             .build()
 
-        var currentlyPlayingId: String? = null
-
-        val listener = object : Player.Listener {
-            override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                setupLoudnessEnhancer(audioSessionId)
-            }
-
-            override fun onPositionDiscontinuity(
-                oldPosition: Player.PositionInfo,
-                newPosition: Player.PositionInfo,
-                reason: Int
-            ) {
-                val oldMediaId = oldPosition.mediaItem?.mediaId
-                val newMediaId = newPosition.mediaItem?.mediaId
-                if (oldMediaId != null) {
-                    if (oldMediaId != newMediaId) {
-                        saveCurrentPosition(oldMediaId, oldPosition.positionMs)
-                    } else if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                        saveCurrentPosition(oldMediaId, newPosition.positionMs)
-                    }
-                }
-            }
-
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (!isPlaying) {
-                    if (currentPlayer.playbackState != Player.STATE_ENDED) {
-                        saveCurrentPosition()
-                    }
-                }
-            }
-
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) {
-                    val lastId = currentlyPlayingId
-                    logManager.i("PlaybackService", "Playback ended. lastId=$lastId")
-                    if (lastId != null) {
-                        serviceScope.launch(ioDispatcher) {
-                            removeEpisodeUseCase(lastId, markAsPlayed = true)
-                        }
-                        currentlyPlayingId = null
-                    }
-                }
-            }
-            
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                val lastId = currentlyPlayingId
-                logManager.i("PlaybackService", "Media item transition. lastId=$lastId, newMediaId=${mediaItem?.mediaId}, reason=$reason")
-                
-                val isAutoTransition = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
-                val isRepeatTransition = reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
-                
-                // If it's an automatic transition or a repeat transition, remove the previous/finished item from the queue
-                if (lastId != null && (isAutoTransition || isRepeatTransition)) {
-                    if (mediaItem == null || lastId != mediaItem.mediaId || isRepeatTransition) {
-                        serviceScope.launch(ioDispatcher) {
-                            removeEpisodeUseCase(lastId, markAsPlayed = true)
-                        }
-                    }
-                }
-
-                if (mediaItem != null) {
-                    currentlyPlayingId = mediaItem.mediaId
-                    serviceScope.launch(ioDispatcher) {
-                        settingsRepository.saveLastPlayedEpisodeId(mediaItem.mediaId)
-                    }
-                    
-                    // If it's an automatic transition, a skip, or playlist change (initial load), check for saved position to resume
-                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || 
-                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK ||
-                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
-                        if (lastResumedId != mediaItem.mediaId) {
-                            lastResumedId = mediaItem.mediaId
-                            serviceScope.launch(ioDispatcher) {
-                                val episode = episodeDao.getEpisodeById(mediaItem.mediaId)
-                                if (episode != null && episode.lastPlayedPosition > 0) {
-                                    withContext(mainDispatcher) {
-                                        // Only seek if we are at the start (prevent fighting manual seeks)
-                                        if (currentPlayer.currentPosition < Constants.SEEK_POSITION_RESTORATION_THRESHOLD_MS) {
-                                            currentPlayer.seekTo(episode.lastPlayedPosition)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+        val listener = PlaybackServicePlayerListener(
+            removeEpisodeUseCase = removeEpisodeUseCase,
+            episodeDao = episodeDao,
+            settingsRepository = settingsRepository,
+            logManager = logManager,
+            serviceScope = serviceScope,
+            ioDispatcher = ioDispatcher,
+            mainDispatcher = mainDispatcher,
+            getCurrentPlayer = { currentPlayer },
+            setupLoudnessEnhancer = { setupLoudnessEnhancer(it) },
+            onSavePosition = { id, pos ->
+                if (id != null && pos != null) {
+                    saveCurrentPosition(id, pos)
                 } else {
-                    currentlyPlayingId = null
+                    saveCurrentPosition()
                 }
             }
-
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                logManager.e("PlaybackService", "Player error: ${error.message}", mapOf(
-                    "errorCode" to error.errorCodeName,
-                    "mediaId" to (currentPlayer.currentMediaItem?.mediaId ?: "none")
-                ))
-            }
-        }
+        )
         
         exoPlayer.addListener(listener)
 
         serviceScope.launch {
             // Delay CastPlayer initialization to allow main thread to remain fully responsive
             // during app startup and focus processing.
-            kotlinx.coroutines.delay(2000)
+            kotlinx.coroutines.delay(Constants.CAST_INIT_DELAY_MS)
             withContext(mainDispatcher) {
                 try {
                     val player = castPlayer.get()
@@ -480,125 +394,151 @@ class PlaybackService : MediaLibraryService() {
                     episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
                 }
                 withContext(mainDispatcher) {
-                    if (episodes.isEmpty()) {
-                        if (currentPlayer.mediaItemCount > 0) {
-                            currentPlayer.stop()
-                            currentPlayer.clearMediaItems()
-                        }
-                        return@withContext
+                    updatePlayerFromQueue(currentPlayer, episodes, mediaItems, logManager)
+                }
+            }
+        }
+    }
+
+    internal fun handleMediaButtonIntent(
+        intent: Intent,
+        onSeekForward: () -> Unit,
+        onSeekBackward: () -> Unit
+    ): Boolean {
+        val keyEvent = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+        if (keyEvent?.action == KeyEvent.ACTION_DOWN) {
+            when (keyEvent.keyCode) {
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                    onSeekForward()
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_REWIND, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                    onSeekBackward()
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    internal fun observeSkipSilence(
+        scope: CoroutineScope,
+        dispatcher: CoroutineDispatcher,
+        settingsRepository: SettingsRepository,
+        exoPlayer: ExoPlayer
+    ): Job {
+        return scope.launch(dispatcher) {
+            settingsRepository.skipSilenceFlow.collect { enabled ->
+                exoPlayer.skipSilenceEnabled = enabled
+            }
+        }
+    }
+
+    internal fun updatePlayerFromQueue(
+        currentPlayer: Player,
+        episodes: List<Episode>,
+        mediaItems: List<MediaItem>,
+        logManager: LogManager? = null
+    ) {
+        if (episodes.isEmpty()) {
+            if (currentPlayer.mediaItemCount > 0) {
+                currentPlayer.stop()
+                currentPlayer.clearMediaItems()
+            }
+            return
+        }
+
+        val currentMediaId = currentPlayer.currentMediaItem?.mediaId
+
+        if (currentMediaId == null) {
+            currentPlayer.setMediaItems(mediaItems)
+            return
+        }
+
+        val newIds = episodes.map { it.id }
+
+        val currentInNewIndex = episodes.indexOfFirst { it.id == currentMediaId }
+        if (currentInNewIndex == -1) {
+            val playerIds = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
+            val hasQueueItems = playerIds.any { newIds.contains(it) }
+            if (!hasQueueItems) {
+                return
+            }
+
+            var nextEpisodeId: String? = null
+            val currentIndex = currentPlayer.currentMediaItemIndex
+            for (i in currentIndex + 1 until currentPlayer.mediaItemCount) {
+                val id = currentPlayer.getMediaItemAt(i).mediaId
+                if (newIds.contains(id)) {
+                    nextEpisodeId = id
+                    break
+                }
+            }
+
+            if (nextEpisodeId != null) {
+                val nextIndexInNew = episodes.indexOfFirst { it.id == nextEpisodeId }
+                if (nextIndexInNew != -1) {
+                    logManager?.i("PlaybackService", "Current item $currentMediaId removed from queue, transitioning to next item $nextEpisodeId")
+                    currentPlayer.setMediaItems(mediaItems, nextIndexInNew, 0L)
+                    currentPlayer.prepare()
+                    currentPlayer.play()
+                    return
+                }
+            }
+
+            logManager?.i("PlaybackService", "Current item $currentMediaId removed from queue and no next item found, stopping player")
+            currentPlayer.stop()
+            currentPlayer.clearMediaItems()
+            return
+        }
+
+        val currentIds = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
+
+        if (currentIds != newIds) {
+            var i = 0
+            while (i < currentPlayer.mediaItemCount) {
+                val id = currentPlayer.getMediaItemAt(i).mediaId
+                if (id != currentMediaId && !newIds.contains(id)) {
+                    currentPlayer.removeMediaItem(i)
+                } else {
+                    i++
+                }
+            }
+
+            val existingIdsInPlayer = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
+            episodes.forEachIndexed { index, episode ->
+                if (!existingIdsInPlayer.contains(episode.id)) {
+                    val newItem = mediaItems.getOrNull(index)
+                    if (newItem != null) {
+                        currentPlayer.addMediaItem(newItem)
                     }
+                }
+            }
 
-                    val currentMediaId = currentPlayer.currentMediaItem?.mediaId
-                    
-                    if (currentMediaId == null) {
-                        // If nothing is playing, just set the items
-                        currentPlayer.setMediaItems(mediaItems)
-                        return@withContext
-                    }
+            for (index in episodes.indices) {
+                if (index >= currentPlayer.mediaItemCount) break
 
-                    val newIds = episodes.map { it.id }
-
-                    val currentInNewIndex = episodes.indexOfFirst { it.id == currentMediaId }
-                    if (currentInNewIndex == -1) {
-                        val playerIds = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
-                        val hasQueueItems = playerIds.any { newIds.contains(it) }
-                        if (!hasQueueItems) {
-                            // Playing outside the queue, ignore this update
-                            return@withContext
-                        }
-
-                        // Find the next item to play
-                        var nextEpisodeId: String? = null
-                        val currentIndex = currentPlayer.currentMediaItemIndex
-                        for (i in currentIndex + 1 until currentPlayer.mediaItemCount) {
-                            val id = currentPlayer.getMediaItemAt(i).mediaId
-                            if (newIds.contains(id)) {
-                                nextEpisodeId = id
-                                break
-                            }
-                        }
-
-                        if (nextEpisodeId != null) {
-                            val nextIndexInNew = episodes.indexOfFirst { it.id == nextEpisodeId }
-                            if (nextIndexInNew != -1) {
-                                logManager.i("PlaybackService", "Current item $currentMediaId removed from queue, transitioning to next item $nextEpisodeId")
-                                currentPlayer.setMediaItems(mediaItems, nextIndexInNew, 0L)
-                                currentPlayer.prepare()
-                                currentPlayer.play()
-                                return@withContext
-                            }
-                        }
-
-                        logManager.i("PlaybackService", "Current item $currentMediaId removed from queue and no next item found, stopping player")
-                        currentPlayer.stop()
-                        currentPlayer.clearMediaItems()
-                        return@withContext
-                    }
-
-                    val currentIds = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
-                    
-                    if (currentIds != newIds) {
-                        // Surgically update the playlist to avoid restarting playback
-
-                        // 1. Remove items that are no longer in the new list, EXCEPT the currently playing one
-                        var i = 0
-                        while (i < currentPlayer.mediaItemCount) {
-                            val id = currentPlayer.getMediaItemAt(i).mediaId
-                            if (id != currentMediaId && !newIds.contains(id)) {
-                                currentPlayer.removeMediaItem(i)
-                            } else {
-                                i++
-                            }
-                        }
-
-                        // 2. Add new items and reorder to match the new list
-                        // Since we kept the current item, we need to move it to its new position or add everything around it
-                        // Simplest surgical way:
-                        // - Add all items from 'episodes' that aren't in 'currentPlayer' yet
-                        // - Then move items to their correct positions
-                        
-                        val existingIdsInPlayer = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
-                        episodes.forEachIndexed { index, episode ->
-                            if (!existingIdsInPlayer.contains(episode.id)) {
-                                val newItem = mediaItems.getOrNull(index)
-                                if (newItem != null) {
-                                    currentPlayer.addMediaItem(newItem)
-                                }
-                            }
-                        }
-
-                        // 3. Final reorder check (move items if they are at the wrong index)
-                        for (index in episodes.indices) {
-                            if (index >= currentPlayer.mediaItemCount) break
-                            
-                            val expectedId = episodes[index].id
-                            val actualId = currentPlayer.getMediaItemAt(index).mediaId
-                            if (expectedId != actualId) {
-                                // Find where it is and move it
-                                for (searchIndex in index + 1 until currentPlayer.mediaItemCount) {
-                                    if (currentPlayer.getMediaItemAt(searchIndex).mediaId == expectedId) {
-                                        currentPlayer.moveMediaItem(searchIndex, index)
-                                        break
-                                    }
-                                }
-                            }
+                val expectedId = episodes[index].id
+                val actualId = currentPlayer.getMediaItemAt(index).mediaId
+                if (expectedId != actualId) {
+                    for (searchIndex in index + 1 until currentPlayer.mediaItemCount) {
+                        if (currentPlayer.getMediaItemAt(searchIndex).mediaId == expectedId) {
+                            currentPlayer.moveMediaItem(searchIndex, index)
+                            break
                         }
                     }
-                    
-                    // 4. Update metadata of items if needed, but safely
-                    episodes.forEachIndexed { index, episode ->
-                        if (index < currentPlayer.mediaItemCount) {
-                            val itemInPlayer = currentPlayer.getMediaItemAt(index)
-                            if (itemInPlayer.mediaId == episode.id) {
-                                val updatedItem = mediaItems.getOrNull(index)
-                                if (updatedItem != null && (updatedItem.mediaMetadata != itemInPlayer.mediaMetadata || updatedItem.localConfiguration?.uri != itemInPlayer.localConfiguration?.uri)) {
-                                    // Media3's replaceMediaItem on the current index DOES causes a slight pause/restart.
-                                    // We only replace if it's NOT the playing one to avoid playback interruption.
-                                    if (currentPlayer.currentMediaItemIndex != index) {
-                                        currentPlayer.replaceMediaItem(index, updatedItem)
-                                    }
-                                }
-                            }
+                }
+            }
+        }
+
+        episodes.forEachIndexed { index, episode ->
+            if (index < currentPlayer.mediaItemCount) {
+                val itemInPlayer = currentPlayer.getMediaItemAt(index)
+                if (itemInPlayer.mediaId == episode.id) {
+                    val updatedItem = mediaItems.getOrNull(index)
+                    if (updatedItem != null && (updatedItem.mediaMetadata != itemInPlayer.mediaMetadata || updatedItem.localConfiguration?.uri != itemInPlayer.localConfiguration?.uri)) {
+                        if (currentPlayer.currentMediaItemIndex != index) {
+                            currentPlayer.replaceMediaItem(index, updatedItem)
                         }
                     }
                 }

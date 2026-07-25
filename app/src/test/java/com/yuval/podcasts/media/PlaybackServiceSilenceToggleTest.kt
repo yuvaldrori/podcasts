@@ -22,17 +22,12 @@ class PlaybackServiceSilenceToggleTest {
         
         every { settingsRepository.skipSilenceFlow } returns skipSilenceFlow
 
-        val job = launch {
-            settingsRepository.skipSilenceFlow.collect { enabled ->
-                exoPlayer.skipSilenceEnabled = enabled
-            }
-        }
-        advanceUntilIdle()
+        val service = PlaybackService()
+        val job = service.observeSkipSilence(this, kotlinx.coroutines.Dispatchers.Unconfined, settingsRepository, exoPlayer)
 
         verify { exoPlayer.skipSilenceEnabled = true }
 
         skipSilenceFlow.value = false
-        advanceUntilIdle()
         verify { exoPlayer.skipSilenceEnabled = false }
 
         job.cancel()
