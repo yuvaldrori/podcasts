@@ -64,3 +64,6 @@ build_warnings.txt
 .kotlin/
 podcasts_logs.jsonl*
 
+
+# Stray export/log files
+podcasts_logs_latest.jsonl

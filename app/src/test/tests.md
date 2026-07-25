@@ -12,6 +12,8 @@ These tests ensure the local Room database saves, retrieves, and migrates inform
 *   **`PodcastDaoTest`**: Checks that adding and removing Podcast subscriptions works, and ensures that fetching "all podcasts" returns the correct list ordered alphabetically.
 *   **`QueueDaoTest`**: Confirms that adding episodes to the play queue, reordering the queue, and removing items from the queue behaves as expected in the database. Specifically verifies the position-shifting logic for efficient insertions, and confirms the parameterized querying of queued episodes that are not yet downloaded.
 *   **`ChapterDaoTest`**: Verifies that we can bulk delete and update chapters for multiple episodes in a single operation to maintain performance during synchronization.
+*   **`DatabaseSchemaIntegrityTest`**: Verifies that Room database schema versions, entity column definitions, and `AutoMigration` declarations in `AppDatabase.kt` match exported JSON schema files. Ensures any schema modification requires an explicit version bump and migration path to prevent runtime crashes on upgraded devices.
+*   **`DatabaseSchemaMigrationTest`**: Verifies Room database schema migrations (such as version 8 to 9) using `MigrationTestHelper` to ensure primary keys, column types, and indices match entity definitions and preserve existing user data.
 *   **`AppDatabaseMigrationTest`**: Ensures that user data (like episodes and playback positions) is preserved during database updates. It specifically verifies the complex migration from version 5 to 6 where the primary key structure changed.
 
 ## 🌐 Network Tests
@@ -46,6 +48,15 @@ Use Cases handle specific business rules.
 *   **`ReorderSubscriptionInQueueUseCaseTest`**: Confirms the business rules for moving all episodes belonging to a specific podcast subscription to the bottom of the playback queue.
 *   **`RefreshAllPodcastsSyncUseCaseTest`**: Verifies that the synchronous refresh command used by AppFunctions delegates the refresh logic to the repository and returns the correct total count of newly added episodes.
 
+## ⚙️ Background Workers
+*Located in: `app/src/test/java/com/yuval/podcasts/work/`*
+
+These tests verify background tasks managed by WorkManager.
+
+*   **`SyncWorkerTest`**: Verifies smart periodic update execution, ensuring `SyncWorker` calls `refreshPodcasts` with `forceRefresh = false` to leverage ETAG and Last-Modified conditional headers.
+*   **`HardRefreshWorkerTest`**: Verifies forced periodic update execution, ensuring `HardRefreshWorker` calls `refreshPodcasts` with `forceRefresh = true` to bypass ETAG and Last-Modified headers and perform full HTTP 200 re-fetches.
+*   **`CleanupWorkerTest`**: Verifies that the periodic cleanup job identifies and deletes orphaned audio files from disk while preserving active queue and downloaded episodes.
+
 ## 🛠️ Utility & Mapping Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/ui/utils/` and `app/src/test/java/com/yuval/podcasts/media/`*
 
@@ -67,13 +78,14 @@ These tests verify the audio player, background playback, and media buttons.
 *   **`PlaybackServiceMetadataSyncTest`**: Verifies that if an episode's metadata (like title or artwork) changes in the database, the player's current item is updated seamlessly using `replaceMediaItem` without interrupting playback.
 *   **`PlaybackServiceCustomCommandTest`**: Verifies custom control commands executed via the MediaSession (such as custom rewind/fast-forward buttons from notification or lock screens).
 *   **`PlaybackServiceResumeTest`**: Ensures that playback resumption via external controllers properly restores the player state and initiates the ExoPlayer instance correctly.
+*   **`PlaybackServicePositionRestorationTest`**: Verifies that playback position restoration does not seek a newly selected track to the previously played track's position during rapid async track switches.
 *   **`PlaybackServiceSilenceToggleTest`**: Tests skip-silence state observation and propagation to ExoPlayer.
 *   **`MediaSessionCallbackTest`**: Tests the logic that "resolves" media IDs into playable items. This ensures that when external controllers (like Android Auto) request a track, the app correctly finds the URI and metadata from the database.
 *   **`MediaLibraryCallbackTest`**: Tests the media library service's browse callbacks (like `onGetLibraryRoot` and `onGetChildren`) used by Android Auto, ensuring they return the correct folder structure and queue episodes.
 *   **`MediaButtonRemappingTest`**: Ensures that pressing the "Fast Forward" or "Rewind" buttons on Bluetooth headphones correctly skips forward/backward by 30/10 seconds instead of skipping to the next episode.
 *   **`PlayerManagerTest`**: Tests the helper class that the UI uses to talk to the background service. It checks play, pause, and seeking functions.
 *   **`PlayerManagerInitializationTest`**: Checks that the PlayerManager doesn't try to send commands before it has successfully connected to the background audio service.
-*   **`PlayerSpeedTest` / `PlayerSpeedControllerTest`**: Verifies that changing the playback speed (e.g., 1.5x) works and that the speed is saved so the next episode plays at the same speed.
+*   **`PlayerSpeedTest`**: Verifies that changing the playback speed (e.g., 1.5x) works and that the speed is saved so the next episode plays at the same speed.
 *   **`PlayerStopPlayTest`**: Ensures that stopping the player clears the current media and resets everything cleanly.
 *   **`PlayerLastEpisodeTest`**: Verifies that when the last episode in the queue finishes, the player correctly stops and does not restart the playlist from the beginning. It also ensures the repeat mode is always set to OFF.
 *   **`PlaybackResumptionTest`**: Verifies that when the app is cold-started or connected to a car (Bluetooth), the current episode correctly resumes from its last played position instead of starting from the beginning. It tests both the manual initialization and the standard Media3 `onPlaybackResumption` mechanism.
@@ -88,6 +100,7 @@ ViewModels prepare data for the screen. These tests check that the data is corre
 *   **`QueueViewModelTest`**: Checks the "Up Next" queue logic. Makes sure that removing an item from the queue tells the player to skip if that item was currently playing.
 *   **`QueueViewModelTimeTest`**: Verifies the math that calculates "Total Queue Time Remaining". If you have 3 hours of podcasts but you listen at 2x speed, it correctly tells you there is 1.5 hours remaining.
 *   **`EpisodeDetailViewModelTest`**: Ensures the episode details screen loads the correct episode and knows whether that episode is already in your queue or not.
+*   **`PodcastDetailViewModelTest`**: Verifies that the podcast detail screen loads episodes for the specified feed URL and handles adding episodes to the queue.
 *   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files works, and logs can be downloaded correctly.
 
 ## 🤖 Android UI Tests (Instrumented)
@@ -116,4 +129,4 @@ These tests measure the app's performance in real-world scenarios, including sta
 *   **`ScrollBenchmark`**: Measures the scrolling performance (`FrameTimingMetric`) on the "New Episodes" list using hot startup mode to ensure smooth, stutter-free scrolling (avoiding frame drops and jank).
 
 ---
-*Note: We also have OpmlManagerTest (checks OPML XML parsing/generation for backup files), OpmlImportWorkerTest (verifies background worker that downloads, extracts, and imports subscriptions from an OPML feed), DownloadWorkerRequestTest (verifies that DownloadWorker.createWorkRequest correctly maps inputs, constraints, and expedited flags to the WorkManager request), and MediaSessionIntegrationTest (instrumented integration test verifying PlaybackService custom commands and play/pause controls), and MediaBrowserIntegrationTest (instrumented integration test verifying PlaybackService catalog root and browse capability for Android Auto).*
+*Note: We also have OpmlManagerTest (checks OPML XML parsing/generation for backup files), OpmlImportWorkerTest (verifies background worker that downloads, extracts, and imports subscriptions from an OPML feed), DownloadWorkerRequestTest (verifies that DownloadWorker.createWorkRequest correctly maps inputs, constraints, and expedited flags to the WorkManager request), DownloadProgressTrackerTest (verifies real-time percentage tracking and range coercion for active download streams), PodcastApiConditionalTest (verifies HTTP 304 Not Modified conditional requests, ETag/Last-Modified headers, and 200 OK fallbacks), DatabaseSchemaMigrationTest (verifies Room database schema migrations and integrity validation against exported schemas using MigrationTestHelper), CleanupWorkerTest (verifies background cleanup worker that deletes orphaned podcast download files from storage), and MediaSessionIntegrationTest (instrumented integration test verifying PlaybackService custom commands and play/pause controls), and MediaBrowserIntegrationTest (instrumented integration test verifying PlaybackService catalog root and browse capability for Android Auto).*
