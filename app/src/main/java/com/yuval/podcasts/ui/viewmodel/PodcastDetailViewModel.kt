@@ -22,6 +22,8 @@ import javax.inject.Inject
 import androidx.navigation.toRoute
 import com.yuval.podcasts.ui.navigation.PodcastDetailScreenRoute
 
+import com.yuval.podcasts.data.db.entity.Podcast
+
 @HiltViewModel
 class PodcastDetailViewModel @Inject constructor(
     private val repository: PodcastRepository,
@@ -30,6 +32,15 @@ class PodcastDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val feedUrl = savedStateHandle.toRoute<PodcastDetailScreenRoute>().feedUrl
+
+    val podcast: StateFlow<Podcast?> = repository.getPodcastFlow(feedUrl)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS),
+            initialValue = null
+        )
+
+    val downloadProgressMap: StateFlow<Map<String, Int>> = repository.downloadProgressMap
 
     val episodes: StateFlow<ImmutableList<Episode>> = repository.getEpisodes(feedUrl)
         .map { it.toImmutableList() }

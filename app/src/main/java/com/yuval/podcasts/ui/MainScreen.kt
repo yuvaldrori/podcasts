@@ -141,12 +141,14 @@ fun MainScreen(
                 val queueViewModel: QueueViewModel = hiltViewModel()
                 val queueUiState by queueViewModel.uiState.collectAsStateWithLifecycle()
                 val queueTimeRemaining by queueViewModel.queueTimeRemaining.collectAsStateWithLifecycle()
+                val queueDownloadProgressMap by queueViewModel.downloadProgressMap.collectAsStateWithLifecycle()
 
                 QueueScreen(
                     uiState = queueUiState,
                     queueTimeRemaining = queueTimeRemaining,
                     isPlaying = uiState.isPlaying,
                     currentMediaId = uiState.currentEpisode?.id,
+                    downloadProgressMap = queueDownloadProgressMap,
                     isRefreshing = isRefreshing,
                     refreshProgress = refreshProgress,
                     onRefreshAll = onRefreshAll,
@@ -164,8 +166,10 @@ fun MainScreen(
                 ) 
             }
             composable<NewEpisodesScreenRoute> { 
+                val feedsDownloadProgressMap by feedsViewModel.downloadProgressMap.collectAsStateWithLifecycle()
                 NewEpisodesScreen(
                     uiState = feedsUiState,
+                    downloadProgressMap = feedsDownloadProgressMap,
                     onEpisodeClick = { episodeId -> 
                         navController.navigate(EpisodeDetailScreenRoute(episodeId))
                     },
@@ -213,9 +217,13 @@ fun MainScreen(
             composable<PodcastDetailScreenRoute> {
                 val podcastDetailViewModel: PodcastDetailViewModel = hiltViewModel()
                 val episodes by podcastDetailViewModel.episodes.collectAsStateWithLifecycle()
+                val podcast by podcastDetailViewModel.podcast.collectAsStateWithLifecycle()
+                val downloadProgressMap by podcastDetailViewModel.downloadProgressMap.collectAsStateWithLifecycle()
                 
                 PodcastDetailScreen(
                     episodes = episodes,
+                    podcast = podcast,
+                    downloadProgressMap = downloadProgressMap,
                     onBack = { navController.popBackStack() },
                     onEpisodeClick = { episodeId ->
                         navController.navigate(EpisodeDetailScreenRoute(episodeId))

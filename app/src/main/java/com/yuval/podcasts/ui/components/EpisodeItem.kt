@@ -29,6 +29,7 @@ fun EpisodeItem(
     imageUrl: String? = null,
     showProgress: Boolean = false,
     showPlayedMarker: Boolean = false,
+    downloadProgress: Int = 0,
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     trailingContent: (@Composable () -> Unit)? = null
 ) {
@@ -63,6 +64,8 @@ fun EpisodeItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val status = DownloadStatus.fromInt(episode.downloadStatus)
@@ -83,13 +86,25 @@ fun EpisodeItem(
                     }
                     
                     if (status == DownloadStatus.DOWNLOADING) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(Constants.DOWNLOAD_STATUS_ICON_SIZE_DP.dp)
-                                .semantics { contentDescription = downloadDesc },
-                            strokeWidth = 2.dp,
-                            color = downloadColor
-                        )
+                        val progressFloat = (downloadProgress.coerceIn(0, 100)) / 100f
+                        if (progressFloat > 0f) {
+                            CircularProgressIndicator(
+                                progress = { progressFloat },
+                                modifier = Modifier
+                                    .size(Constants.DOWNLOAD_STATUS_ICON_SIZE_DP.dp)
+                                    .semantics { contentDescription = downloadDesc },
+                                strokeWidth = 2.dp,
+                                color = downloadColor
+                            )
+                        } else {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(Constants.DOWNLOAD_STATUS_ICON_SIZE_DP.dp)
+                                    .semantics { contentDescription = downloadDesc },
+                                strokeWidth = 2.dp,
+                                color = downloadColor
+                            )
+                        }
                     } else {
                         Icon(
                             imageVector = downloadIcon,

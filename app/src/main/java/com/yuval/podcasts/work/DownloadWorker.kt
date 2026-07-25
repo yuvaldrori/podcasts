@@ -31,7 +31,8 @@ class DownloadWorker @AssistedInject constructor(
     private val episodeDao: EpisodeDao,
     private val okHttpClient: OkHttpClient,
     private val logManager: LogManager,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val downloadProgressTracker: com.yuval.podcasts.data.repository.DownloadProgressTracker? = null
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -68,6 +69,7 @@ class DownloadWorker @AssistedInject constructor(
                 if (!response.isSuccessful) {
                     logManager.e("DownloadWorker", "Failed to download $episodeId: ${response.code}")
                     updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
+                    downloadProgressTracker?.clearProgress(episodeId)
                     return@withContext if (response.code in 400..499) Result.failure() else Result.retry()
                 }
 
@@ -94,6 +96,7 @@ class DownloadWorker @AssistedInject constructor(
                                     // Revert the DOWNLOADING status set above so the episode
                                     // doesn't stay stuck as "Downloading" after being stopped.
                                     updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
+                                    downloadProgressTracker?.clearProgress(episodeId)
                                     return@withContext Result.failure()
                                 }
                                 outputStream.write(buffer, 0, bytesRead)
@@ -109,6 +112,7 @@ class DownloadWorker @AssistedInject constructor(
                                     if (progress > lastProgressPercent &&
                                         currentTime - lastProgressUpdateTime > Constants.DOWNLOAD_PROGRESS_WORKER_THROTTLE_MS
                                     ) {
+                                        downloadProgressTracker?.updateProgress(episodeId, progress)
                                         try {
                                             setProgress(androidx.work.workDataOf(Constants.WORK_KEY_PROGRESS to progress))
                                         } catch (e: Exception) {
@@ -140,6 +144,7 @@ class DownloadWorker @AssistedInject constructor(
                     logManager.i("DownloadWorker", "Download completed for $episodeId. Saved to ${outputFile.absolutePath}")
                     // Update status to Downloaded with the local path, but only if we haven't been cancelled/removed
                     episodeDao.updateDownloadStatusAfterSuccess(episodeId, DownloadStatus.DOWNLOADED.value, outputFile.absolutePath)
+                    downloadProgressTracker?.clearProgress(episodeId)
                     
                     Result.success()
                 } catch (e: Exception) {
@@ -154,6 +159,7 @@ class DownloadWorker @AssistedInject constructor(
             logManager.e("DownloadWorker", "Download failed for $episodeId", mapOf("error" to e.message.toString()))
             // Revert status on failure
             updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
+            downloadProgressTracker?.clearProgress(episodeId)
             
             // Distinguish between transient and permanent errors
             return@withContext when (e) {

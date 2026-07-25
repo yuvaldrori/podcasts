@@ -51,6 +51,8 @@ class FeedsViewModel @Inject constructor(
     messageDelegate: MessageDelegate
 ) : ViewModel(), MessageDelegate by messageDelegate {
 
+    val downloadProgressMap: StateFlow<Map<String, Int>> = repository.downloadProgressMap
+
     val uiState: StateFlow<FeedsUiState> = combine(
         repository.allPodcasts,
         repository.unplayedEpisodes,

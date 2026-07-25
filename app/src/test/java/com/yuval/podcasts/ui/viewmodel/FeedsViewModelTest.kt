@@ -106,4 +106,19 @@ class FeedsViewModelTest {
         
         job.cancel()
     }
+
+    @Test
+    fun downloadProgressMap_exposesProgressFromRepository() = runTest {
+        val progressMap = mapOf("ep1" to 75)
+        every { repository.downloadProgressMap } returns MutableStateFlow(progressMap)
+
+        val localViewModel = FeedsViewModel(
+            repository,
+            enqueueEpisodeUseCase,
+            workManager,
+            DefaultMessageDelegate()
+        )
+
+        assertEquals(progressMap, localViewModel.downloadProgressMap.value)
+    }
 }

@@ -39,6 +39,8 @@ class QueueViewModel @Inject constructor(
     private val removeEpisodeUseCase: RemoveEpisodeUseCase
 ) : ViewModel() {
 
+    val downloadProgressMap: StateFlow<Map<String, Int>> = repository.downloadProgressMap
+
     private val _manualQueue = MutableStateFlow<ImmutableList<EpisodeWithPodcast>?>(null)
 
     // The effective queue = the in-progress manual reorder, or the persisted queue.

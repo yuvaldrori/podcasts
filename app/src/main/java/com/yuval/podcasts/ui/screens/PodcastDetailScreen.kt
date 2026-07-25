@@ -19,10 +19,14 @@ import com.yuval.podcasts.R
 
 import kotlinx.collections.immutable.ImmutableList
 
+import com.yuval.podcasts.data.db.entity.Podcast
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PodcastDetailScreen(
     episodes: ImmutableList<Episode>,
+    podcast: Podcast? = null,
+    downloadProgressMap: Map<String, Int> = emptyMap(),
     onBack: () -> Unit,
     onEpisodeClick: (String) -> Unit,
     onAddToQueue: (Episode) -> Unit,
@@ -31,7 +35,7 @@ fun PodcastDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.episodes_title)) },
+                title = { Text(podcast?.title ?: stringResource(R.string.episodes_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -57,7 +61,8 @@ fun PodcastDetailScreen(
                 EpisodeItem(
                     episode = episode,
                     modifier = Modifier.clickable(onClick = clickHandler),
-                    imageUrl = episode.imageUrl,
+                    imageUrl = episode.imageUrl ?: podcast?.imageUrl,
+                    downloadProgress = downloadProgressMap[episode.id] ?: 0,
                     showProgress = true,
                     showPlayedMarker = true,
                     trailingContent = {

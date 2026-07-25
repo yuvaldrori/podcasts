@@ -160,4 +160,14 @@ class QueueViewModelTest {
 
         uiStateJob.cancel()
     }
+
+    @Test
+    fun downloadProgressMap_exposesProgressFromRepository() = runTest {
+        val progressMap = mapOf("ep1" to 45)
+        every { repository.downloadProgressMap } returns MutableStateFlow(progressMap)
+
+        val localViewModel = QueueViewModel(repository, playerManager, removeEpisodeUseCase)
+
+        assertEquals(progressMap, localViewModel.downloadProgressMap.value)
+    }
 }

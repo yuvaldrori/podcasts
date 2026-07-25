@@ -44,6 +44,7 @@ fun QueueScreen(
     queueTimeRemaining: Long,
     isPlaying: Boolean,
     currentMediaId: String?,
+    downloadProgressMap: Map<String, Int> = emptyMap(),
     isRefreshing: Boolean = false,
     refreshProgress: Pair<Int, Int>? = null,
     onRefreshAll: () -> Unit = {},
@@ -150,6 +151,7 @@ fun QueueScreen(
                                 episode = episode,
                                 modifier = Modifier.clickable(onClick = clickHandler),
                                 imageUrl = episodeWithPodcast.podcast.imageUrl,
+                                downloadProgress = downloadProgressMap[episode.id] ?: 0,
                                 containerColor = containerColor,
                                 trailingContent = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {

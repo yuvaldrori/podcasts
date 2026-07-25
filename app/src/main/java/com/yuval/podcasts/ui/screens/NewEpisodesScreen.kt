@@ -33,6 +33,7 @@ import com.yuval.podcasts.ui.viewmodel.FeedsUiState
 @Composable
 fun NewEpisodesScreen(
     uiState: FeedsUiState,
+    downloadProgressMap: Map<String, Int> = emptyMap(),
     onEpisodeClick: (String) -> Unit,
     onRefreshAll: () -> Unit,
     onDismissAll: () -> Unit,
@@ -123,7 +124,8 @@ fun NewEpisodesScreen(
                                 EpisodeItem(
                                     episode = episode,
                                     modifier = Modifier.clickable(onClick = clickHandler),
-                                    imageUrl = podcast.imageUrl,
+                                    imageUrl = episode.imageUrl ?: podcast.imageUrl,
+                                    downloadProgress = downloadProgressMap[episode.id] ?: 0,
                                     trailingContent = {
                                         Row {
                                             IconButton(onClick = { onDismissEpisode(episode) }) {
