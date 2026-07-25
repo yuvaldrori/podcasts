@@ -99,6 +99,9 @@ android {
     }
 
     sourceSets {
+        getByName("test") {
+            assets.directories.add("$projectDir/schemas")
+        }
         getByName("androidTest") {
             assets.directories.add("$projectDir/schemas")
         }

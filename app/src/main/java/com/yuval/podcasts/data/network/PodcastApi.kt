@@ -16,23 +16,56 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+sealed interface RssFetchResult {
+    object NotModified : RssFetchResult
+    data class Success(
+        val stream: InputStream,
+        val etag: String?,
+        val lastModified: String?
+    ) : RssFetchResult
+}
+
 @Singleton
 class PodcastApi @Inject constructor(
     private val okHttpClient: OkHttpClient,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    suspend fun <T> withRssStream(urlString: String, block: (InputStream) -> T): T = withContext(ioDispatcher) {
-        val request = Request.Builder()
-            .url(urlString)
-            .build()
+    suspend fun <T> withRssStreamConditional(
+        urlString: String,
+        etag: String? = null,
+        lastModified: String? = null,
+        block: suspend (RssFetchResult) -> T
+    ): T = withContext(ioDispatcher) {
+        val requestBuilder = Request.Builder().url(urlString)
+        if (!etag.isNullOrBlank()) {
+            requestBuilder.header("If-None-Match", etag)
+        }
+        if (!lastModified.isNullOrBlank()) {
+            requestBuilder.header("If-Modified-Since", lastModified)
+        }
 
-        okHttpClient.newCall(request).await().use { response ->
-            if (!response.isSuccessful) {
+        okHttpClient.newCall(requestBuilder.build()).await().use { response ->
+            if (response.code == 304) {
+                block(RssFetchResult.NotModified)
+            } else if (response.isSuccessful) {
+                val newEtag = response.header("ETag")
+                val newLastModified = response.header("Last-Modified")
+                block(RssFetchResult.Success(response.body.byteStream(), newEtag, newLastModified))
+            } else {
                 throw IOException("Unexpected code $response")
             }
-            block(response.body.byteStream())
         }
     }
+
+    suspend fun <T> withRssStream(urlString: String, block: suspend (InputStream) -> T): T =
+        withRssStreamConditional(urlString) { result ->
+            when (result) {
+                is RssFetchResult.Success -> block(result.stream)
+                // This branch should be unreachable: withRssStream sends no conditional headers,
+                // so a server should never respond with 304. Treat it as a programming error.
+                is RssFetchResult.NotModified -> throw IllegalStateException("Received 304 Not Modified on an unconditional request to $urlString")
+            }
+        }
 }
 
 /**

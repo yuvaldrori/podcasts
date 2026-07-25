@@ -20,8 +20,14 @@ interface PodcastDao {
     @Query("SELECT * FROM podcasts WHERE feedUrl = :feedUrl")
     suspend fun getPodcast(feedUrl: String): Podcast?
 
+    @Query("SELECT * FROM podcasts WHERE feedUrl = :feedUrl")
+    fun getPodcastFlow(feedUrl: String): Flow<Podcast?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPodcast(podcast: Podcast)
+
+    @Query("UPDATE podcasts SET etag = :etag, lastModified = :lastModified WHERE feedUrl = :feedUrl")
+    suspend fun updatePodcastHeaders(feedUrl: String, etag: String?, lastModified: String?)
 
     @Query("DELETE FROM podcasts WHERE feedUrl = :feedUrl")
     suspend fun deletePodcast(feedUrl: String)

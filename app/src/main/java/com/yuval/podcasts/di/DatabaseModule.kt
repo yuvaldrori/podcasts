@@ -41,6 +41,24 @@ object DatabaseModule {
         }
     }
 
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `podcasts` ADD COLUMN `etag` TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE `podcasts` ADD COLUMN `lastModified` TEXT DEFAULT NULL")
+
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `episodes_new` (`id` TEXT NOT NULL, `podcastFeedUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `audioUrl` TEXT NOT NULL, `imageUrl` TEXT, `episodeWebLink` TEXT DEFAULT NULL, `pubDate` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `downloadStatus` INTEGER NOT NULL DEFAULT 0, `localFilePath` TEXT, `isPlayed` INTEGER NOT NULL DEFAULT 0, `lastPlayedPosition` INTEGER NOT NULL DEFAULT 0, `completedAt` INTEGER DEFAULT NULL, PRIMARY KEY(`id`, `podcastFeedUrl`))"
+            )
+            db.execSQL(
+                "INSERT INTO `episodes_new` (`id`, `podcastFeedUrl`, `title`, `description`, `audioUrl`, `imageUrl`, `episodeWebLink`, `pubDate`, `duration`, `downloadStatus`, `localFilePath`, `isPlayed`, `lastPlayedPosition`, `completedAt`) SELECT `id`, `podcastFeedUrl`, `title`, `description`, `audioUrl`, `imageUrl`, `episodeWebLink`, `pubDate`, `duration`, `downloadStatus`, `localFilePath`, `isPlayed`, `lastPlayedPosition`, `completedAt` FROM `episodes`"
+            )
+            db.execSQL("DROP TABLE `episodes`")
+            db.execSQL("ALTER TABLE `episodes_new` RENAME TO `episodes`")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isPlayed_pubDate` ON `episodes` (`isPlayed`, `pubDate`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_podcastFeedUrl` ON `episodes` (`podcastFeedUrl`)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(
@@ -53,7 +71,7 @@ object DatabaseModule {
             Constants.DATABASE_NAME
         )
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_5_6)
+        .addMigrations(MIGRATION_5_6, MIGRATION_8_9)
         .fallbackToDestructiveMigration(true)
         
         if (com.yuval.podcasts.BuildConfig.DEBUG) {

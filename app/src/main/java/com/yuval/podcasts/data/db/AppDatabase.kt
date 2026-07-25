@@ -14,12 +14,13 @@ import com.yuval.podcasts.data.db.dao.ChapterDao
 
 @Database(
     entities = [Podcast::class, Episode::class, QueueState::class, Chapter::class],
-    version = 9,
+    version = 10,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 6, to = 7),
-        AutoMigration(from = 7, to = 8)
+        AutoMigration(from = 7, to = 8),
+        AutoMigration(from = 9, to = 10)
     ]
 )
 abstract class AppDatabase : RoomDatabase() {

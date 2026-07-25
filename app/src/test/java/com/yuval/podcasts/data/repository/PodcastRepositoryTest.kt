@@ -23,6 +23,7 @@ import kotlinx.coroutines.test.runTest
 import com.yuval.podcasts.data.network.PodcastApi
 import com.yuval.podcasts.data.network.RssParser
 import java.io.InputStream
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -79,6 +80,7 @@ class PodcastRepositoryTest {
             queueDao = queueDao,
             chapterDao = chapterDao,
             workManager = workManager,
+            downloadProgressTracker = DownloadProgressTracker(),
             ioDispatcher = Dispatchers.Unconfined,
             logManager = logManager
         )
@@ -93,7 +95,7 @@ class PodcastRepositoryTest {
 
         repository.fetchAndStorePodcast(feedUrl)
 
-        coVerify { podcastDao.insertPodcast(podcast) }
+        coVerify { podcastDao.insertPodcast(match { it.feedUrl == feedUrl }) }
         coVerify { episodeDao.syncNetworkEpisodes(match { it.size == 1 && it[0].id == "ep1" }) }
     }
 
@@ -144,7 +146,7 @@ class PodcastRepositoryTest {
 
         repository.fetchAndStorePodcast(feedUrl)
 
-        coVerify { podcastApi.withRssStream(feedUrl, any()) }
+        coVerify { podcastApi.withRssStreamConditional<Int>(eq(feedUrl), any(), any(), any()) }
     }
 
     @Test
@@ -283,11 +285,81 @@ class PodcastRepositoryTest {
         tempFile.delete()
     }
 
-    private fun stubFetchPodcastData(feedUrl: String, parsed: ParsedPodcast) {
+    @Test
+    fun fetchAndStorePodcast_when304NotModified_returnsZeroAndSkipsSync() = runBlocking {
+        val feedUrl = "http://example.com/feed"
+        val existingPodcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web", etag = "\"etag_123\"", lastModified = "lm_123")
+        coEvery { podcastDao.getPodcast(feedUrl) } returns existingPodcast
+
+        coEvery { podcastApi.withRssStreamConditional<Int>(eq(feedUrl), eq("\"etag_123\""), eq("lm_123"), any()) } coAnswers {
+            val block = arg<suspend (com.yuval.podcasts.data.network.RssFetchResult) -> Int>(3)
+            block(com.yuval.podcasts.data.network.RssFetchResult.NotModified)
+        }
+
+        val count = repository.fetchAndStorePodcast(feedUrl)
+
+        assertEquals(0, count)
+        coVerify(exactly = 0) { episodeDao.syncNetworkEpisodes(any()) }
+        coVerify(exactly = 0) { chapterDao.updateChaptersBulk(any(), any()) }
+    }
+
+    @Test
+    fun fetchAndStorePodcast_when200Ok_updatesEtagAndLastModifiedInDb() = runBlocking {
+        val feedUrl = "http://example.com/feed"
+        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web", etag = "\"new_etag\"", lastModified = "new_lm")
+        val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
+        
+        stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, episodes), etag = "\"new_etag\"", lastModified = "new_lm")
+
+        repository.fetchAndStorePodcast(feedUrl)
+
+        coVerify { podcastDao.insertPodcast(match { it.etag == "\"new_etag\"" && it.lastModified == "new_lm" }) }
+        coVerify { episodeDao.syncNetworkEpisodes(any()) }
+    }
+
+    @Test
+    fun fetchAndStorePodcast_whenForceRefreshTrue_bypassesEtagAndLastModified() = runBlocking {
+        val feedUrl = "http://example.com/feed"
+        val existingPodcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web", etag = "\"etag_123\"", lastModified = "lm_123")
+        coEvery { podcastDao.getPodcast(feedUrl) } returns existingPodcast
+
+        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web", etag = "\"new_etag\"", lastModified = "new_lm")
+        val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
+        
+        stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, episodes), etag = "\"new_etag\"", lastModified = "new_lm")
+
+        repository.fetchAndStorePodcast(feedUrl, forceRefresh = true)
+
+        coVerify { podcastApi.withRssStreamConditional<Int>(eq(feedUrl), isNull(), isNull(), any()) }
+    }
+
+    @Test
+    fun fetchAndStorePodcast_when200OkWithNullHeaders_clearsExistingEtagAndLastModified() = runBlocking {
+        val feedUrl = "http://example.com/feed"
+        val existingPodcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web", etag = "\"old_etag\"", lastModified = "old_lm")
+        coEvery { podcastDao.getPodcast(feedUrl) } returns existingPodcast
+
+        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
+        val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
+        
+        // 200 OK with null etag and null lastModified
+        stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, episodes), etag = null, lastModified = null)
+
+        repository.fetchAndStorePodcast(feedUrl)
+
+        // Must insert podcast with etag = null and lastModified = null, not old_etag/old_lm
+        coVerify { podcastDao.insertPodcast(match { it.etag == null && it.lastModified == null }) }
+    }
+
+    private fun stubFetchPodcastData(feedUrl: String, parsed: ParsedPodcast, etag: String? = null, lastModified: String? = null) {
         val mockInputStream = mockk<InputStream>(relaxed = true)
-        coEvery { podcastApi.withRssStream(feedUrl, any<(InputStream) -> ParsedPodcast>()) } answers {
-            val block = secondArg<(InputStream) -> ParsedPodcast>()
+        coEvery { podcastApi.withRssStream<ParsedPodcast>(eq(feedUrl), any()) } coAnswers {
+            val block = secondArg<suspend (InputStream) -> ParsedPodcast>()
             block(mockInputStream)
+        }
+        coEvery { podcastApi.withRssStreamConditional<Int>(eq(feedUrl), any(), any(), any()) } coAnswers {
+            val block = arg<suspend (com.yuval.podcasts.data.network.RssFetchResult) -> Int>(3)
+            block(com.yuval.podcasts.data.network.RssFetchResult.Success(mockInputStream, etag, lastModified))
         }
         every { rssParser.parse(mockInputStream, feedUrl) } returns parsed
     }
