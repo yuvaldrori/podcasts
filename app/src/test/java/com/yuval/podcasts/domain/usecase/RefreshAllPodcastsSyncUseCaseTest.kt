@@ -24,14 +24,14 @@ class RefreshAllPodcastsSyncUseCaseTest {
             createPodcast("https://feed2.com")
         )
         every { repository.allPodcasts } returns flowOf(podcasts)
-        coEvery { repository.refreshPodcasts(listOf("https://feed1.com", "https://feed2.com"), any()) } returns 5
+        coEvery { repository.refreshPodcasts(listOf("https://feed1.com", "https://feed2.com"), forceRefresh = false, any()) } returns 5
 
         // Act
         val result = useCase()
 
         // Assert
         assertEquals(5, result)
-        coVerify(exactly = 1) { repository.refreshPodcasts(listOf("https://feed1.com", "https://feed2.com"), any()) }
+        coVerify(exactly = 1) { repository.refreshPodcasts(listOf("https://feed1.com", "https://feed2.com"), forceRefresh = false, any()) }
     }
 
     private fun createPodcast(feedUrl: String) = Podcast(

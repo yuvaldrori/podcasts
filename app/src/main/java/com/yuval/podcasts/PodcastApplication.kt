@@ -10,6 +10,7 @@ import androidx.work.WorkManager
 import androidx.appfunctions.service.AppFunctionConfiguration
 import com.yuval.podcasts.appfunctions.PodcastAppFunctions
 import com.yuval.podcasts.work.CleanupWorker
+import com.yuval.podcasts.work.HardRefreshWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -43,10 +44,8 @@ class PodcastApplication : Application(), Configuration.Provider, AppFunctionCon
     override fun onCreate() {
         super.onCreate()
         applicationScope.launch {
-            if (!settingsRepository.isCleanupScheduled()) {
-                scheduleCleanup()
-                settingsRepository.setCleanupScheduled(true)
-            }
+            scheduleCleanup()
+            scheduleHardRefresh()
         }
     }
 
@@ -67,6 +66,26 @@ class PodcastApplication : Application(), Configuration.Provider, AppFunctionCon
             com.yuval.podcasts.data.Constants.WORK_NAME_CLEANUP,
             ExistingPeriodicWorkPolicy.KEEP,
             cleanupRequest
+        )
+    }
+
+    private fun scheduleHardRefresh() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
+            .build()
+
+        val hardRefreshRequest = PeriodicWorkRequestBuilder<HardRefreshWorker>(
+            com.yuval.podcasts.data.Constants.PERIODIC_HARD_REFRESH_INTERVAL_DAYS,
+            TimeUnit.DAYS
+        )
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            com.yuval.podcasts.data.Constants.WORK_NAME_HARD_REFRESH_ALL,
+            ExistingPeriodicWorkPolicy.KEEP,
+            hardRefreshRequest
         )
     }
 

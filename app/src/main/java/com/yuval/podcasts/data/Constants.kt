@@ -15,6 +15,7 @@ object Constants {
     val NETWORK_TIMEOUT_MS = 30.seconds.inWholeMilliseconds.toInt()
     val NETWORK_CALL_TIMEOUT_MS = 60.seconds.inWholeMilliseconds.toInt()
     const val SEEK_POSITION_RESTORATION_THRESHOLD_MS = 2000L
+    const val CAST_INIT_DELAY_MS = 2000L
     
     const val COMMAND_REWIND_10 = "REWIND_10"
     const val COMMAND_SKIP_30 = "SKIP_30"
@@ -51,6 +52,7 @@ object Constants {
     // WorkManager Names
     const val WORK_NAME_CLEANUP = "cleanup_orphaned_files"
     const val WORK_NAME_SYNC_ALL = "sync_all_podcasts"
+    const val WORK_NAME_HARD_REFRESH_ALL = "hard_refresh_all_podcasts"
     const val WORK_NAME_OPML_IMPORT = "opml_import"
     const val WORK_TAG_DOWNLOAD_PREFIX = "download_"
     
@@ -69,6 +71,7 @@ object Constants {
     const val LOCAL_UPLOAD_DIR_NAME = "local_podcasts"
     const val SYNC_RETRY_COUNT = 3
     const val PERIODIC_CLEANUP_INTERVAL_HOURS = 24L
+    const val PERIODIC_HARD_REFRESH_INTERVAL_DAYS = 7L
     const val BYTES_PER_KB = 1024L
     const val BYTES_PER_MB = 1024L * 1024L
     const val DOWNLOAD_BUFFER_SIZE_BYTES = 64 * 1024
@@ -77,6 +80,7 @@ object Constants {
     const val NOTIFICATION_ID_DOWNLOAD = 1
     const val NOTIFICATION_ID_IMPORT = 2
     const val NOTIFICATION_ID_SYNC = 3
+    const val NOTIFICATION_ID_HARD_REFRESH = 4
 
     // Notification Channel IDs
     const val NOTIFICATION_CHANNEL_ID_DOWNLOAD = "download_channel"

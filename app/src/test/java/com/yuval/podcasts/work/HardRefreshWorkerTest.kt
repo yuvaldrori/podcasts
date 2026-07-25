@@ -17,7 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
-class SyncWorkerTest {
+class HardRefreshWorkerTest {
     private lateinit var context: Context
     private lateinit var repository: PodcastRepository
     private lateinit var logManager: LogManager
@@ -30,21 +30,21 @@ class SyncWorkerTest {
     }
 
     @Test
-    fun `doWork calls refreshPodcasts for all podcasts`() = runBlocking {
+    fun `doWork calls refreshPodcasts with forceRefresh true for all podcasts`() = runBlocking {
         val podcasts = listOf(
             Podcast("url1", "T1", "D1", "I1", "W1"),
             Podcast("url2", "T2", "D2", "I2", "W2")
         )
         every { repository.allPodcasts } returns flowOf(podcasts)
         
-        val worker = TestListenableWorkerBuilder<SyncWorker>(context)
+        val worker = TestListenableWorkerBuilder<HardRefreshWorker>(context)
             .setWorkerFactory(object : androidx.work.WorkerFactory() {
                 override fun createWorker(
                     appContext: Context,
                     workerClassName: String,
                     workerParameters: androidx.work.WorkerParameters
                 ): ListenableWorker? {
-                    return SyncWorker(appContext, workerParameters, repository, logManager)
+                    return HardRefreshWorker(appContext, workerParameters, repository, logManager)
                 }
             })
             .build()
@@ -52,7 +52,7 @@ class SyncWorkerTest {
         val result = worker.doWork()
 
         assertEquals(ListenableWorker.Result.success(), result)
-        coVerify(exactly = 1) { repository.refreshPodcasts(listOf("url1", "url2"), forceRefresh = false, any()) }
+        coVerify(exactly = 1) { repository.refreshPodcasts(listOf("url1", "url2"), forceRefresh = true, any()) }
         coVerify(exactly = 1) { repository.requeueMissingDownloads() }
     }
 }

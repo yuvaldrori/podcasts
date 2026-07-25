@@ -64,6 +64,6 @@ class OpmlImportWorkerTest {
         val result = worker.doWork()
 
         assertEquals(ListenableWorker.Result.success(), result)
-        coVerify(exactly = 1) { repository.refreshPodcasts(listOf("url1", "url2"), any()) }
+        coVerify(exactly = 1) { repository.refreshPodcasts(listOf("url1", "url2"), forceRefresh = false, any()) }
     }
 }

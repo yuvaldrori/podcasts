@@ -10,7 +10,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
 @HiltWorker
-class SyncWorker @AssistedInject constructor(
+class HardRefreshWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     repository: PodcastRepository,
@@ -20,7 +20,7 @@ class SyncWorker @AssistedInject constructor(
     workerParams = workerParams,
     repository = repository,
     logManager = logManager,
-    forceRefresh = false,
-    notificationId = Constants.NOTIFICATION_ID_SYNC,
-    workerTag = "SyncWorker"
+    forceRefresh = true,
+    notificationId = Constants.NOTIFICATION_ID_HARD_REFRESH,
+    workerTag = "HardRefreshWorker"
 )
