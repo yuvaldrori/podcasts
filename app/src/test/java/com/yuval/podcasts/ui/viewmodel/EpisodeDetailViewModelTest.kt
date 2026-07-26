@@ -64,7 +64,7 @@ class EpisodeDetailViewModelTest {
     }
 
     @Test
-    fun addToQueue_callsRepository() = runTest {
+    fun addToQueue_invokesEnqueueEpisodeUseCase() = runTest {
         val episode = Episode("ep1", "url", "title", "desc", "url", null, null, 0L, 0L, 0, null, false, 0L, null)
         coEvery { enqueueEpisodeUseCase(episode) } returns Unit
         every { repository.getEpisodeWithPodcastFlow(any()) } returns flowOf(null)

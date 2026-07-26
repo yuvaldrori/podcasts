@@ -52,7 +52,7 @@ interface EpisodeDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertEpisodes(episodes: List<Episode>)
 
-    @Query("SELECT * FROM episodes WHERE podcastFeedUrl = :feedUrl")
+    @Query("SELECT * FROM episodes WHERE podcastFeedUrl = :feedUrl ORDER BY pubDate DESC")
     suspend fun getEpisodesForPodcastSync(feedUrl: String): List<Episode>
 
     @Query("DELETE FROM episodes WHERE podcastFeedUrl = :feedUrl")

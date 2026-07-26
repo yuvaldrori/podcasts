@@ -90,6 +90,6 @@ class OpmlConditionalIntegrationTest {
         println("Errors:                    $countErrors")
         println("==========================================")
 
-        assertTrue("At least 80% of feeds should support 304 Not Modified", count304 > totalChecked * 0.8)
+        assertTrue("At least 80% of feeds should support 304 Not Modified", count304 >= totalChecked * 0.8)
     }
 }

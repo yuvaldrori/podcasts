@@ -63,16 +63,19 @@ class PodcastDaoTest {
         podcastDao.insertPodcast(podcast1)
         podcastDao.insertPodcast(podcast2)
 
-        // Podcast 2 has a newer episode, so it should be first
-        val episode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
-        val episode2 = Episode("ep2", "url2", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
+        // Podcast 1 (inserted first) has the NEWER episode — so the test can only pass if
+        // ORDER BY is actually applied. Without ORDER BY, SQLite's default rowid order
+        // would return podcast1 first anyway (since it was inserted first), which would
+        // accidentally pass even with a broken query.
+        val episode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
+        val episode2 = Episode("ep2", "url2", "E2", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
         
         episodeDao.insertEpisodes(listOf(episode1, episode2))
 
         val allPodcasts = podcastDao.getAllPodcasts().first()
 
-        assertEquals("url2", allPodcasts[0].feedUrl)
-        assertEquals("url1", allPodcasts[1].feedUrl)
+        assertEquals("url1", allPodcasts[0].feedUrl)
+        assertEquals("url2", allPodcasts[1].feedUrl)
     }
 
 

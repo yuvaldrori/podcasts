@@ -68,21 +68,12 @@ class PlayerLastEpisodeTest {
     fun testTransitionReasonAtEndOfPlaylist() {
         val item1 = MediaItem.fromUri("https://example.com/1.mp3")
         player.addMediaItem(item1)
-        
-        var stateEndedCalled = false
-        player.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_ENDED) {
-                    stateEndedCalled = true
-                }
-            }
-        })
-        
-        // Simulate reaching the end
+
         player.prepare()
-        // We can't easily "play" to the end in Robolectric without idling resources, 
-        // but we can check what the player thinks is the next item.
-        
+
+        // At the end of a single-item playlist with REPEAT_MODE_OFF:
+        // - there is no next item
+        // - the repeat mode is off by default
         assertEquals(false, player.hasNextMediaItem())
         assertEquals(Player.REPEAT_MODE_OFF, player.repeatMode)
     }

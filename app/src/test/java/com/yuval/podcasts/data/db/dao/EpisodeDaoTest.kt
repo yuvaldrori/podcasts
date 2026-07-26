@@ -149,7 +149,8 @@ class EpisodeDaoTest {
         
         episodeDao.insertEpisodes(listOf(unplayedEpisode1, unplayedEpisode2))
 
-        episodeDao.markAllUnplayedAsPlayed(System.currentTimeMillis())
+        val timestampBefore = System.currentTimeMillis()
+        episodeDao.markAllUnplayedAsPlayed(timestampBefore)
 
         val unplayed = episodeDao.getUnplayedEpisodesWithPodcast().first()
         assertEquals(0, unplayed.size)
@@ -157,7 +158,12 @@ class EpisodeDaoTest {
         val ep1 = episodeDao.getEpisodeById("ep1")
         assertEquals(true, ep1?.isPlayed)
         assertEquals(0L, ep1?.lastPlayedPosition)
-        assertNotNull(ep1?.completedAt)
+        assertEquals(timestampBefore, ep1?.completedAt)
+
+        // Must also verify ep2 was updated — a LIMIT 1 bug in the query would not update ep2
+        val ep2 = episodeDao.getEpisodeById("ep2")
+        assertEquals(true, ep2?.isPlayed)
+        assertEquals(timestampBefore, ep2?.completedAt)
     }
 
 
@@ -173,8 +179,11 @@ class EpisodeDaoTest {
 
         val episodes = episodeDao.getEpisodesForPodcastSync("url2")
         assertEquals(2, episodes.size)
-        // Ensure they match the inserted data
-        assertEquals("url2", episodes[0].podcastFeedUrl)
+        // Verify the correct episodes were returned (sorted by pubDate DESC)
+        assertEquals("ep4", episodes[0].id)
+        assertEquals("E4", episodes[0].title)
+        assertEquals("ep3", episodes[1].id)
+        assertEquals("E3", episodes[1].title)
     }
 
     @Test

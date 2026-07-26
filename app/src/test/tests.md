@@ -85,7 +85,7 @@ These tests verify the audio player, background playback, and media buttons.
 *   **`MediaButtonRemappingTest`**: Ensures that pressing the "Fast Forward" or "Rewind" buttons on Bluetooth headphones correctly skips forward/backward by 30/10 seconds instead of skipping to the next episode.
 *   **`PlayerManagerTest`**: Tests the helper class that the UI uses to talk to the background service. It checks play, pause, and seeking functions.
 *   **`PlayerManagerInitializationTest`**: Checks that the PlayerManager doesn't try to send commands before it has successfully connected to the background audio service.
-*   **`PlayerSpeedTest`**: Verifies that changing the playback speed (e.g., 1.5x) works and that the speed is saved so the next episode plays at the same speed.
+*   **`PlayerSpeedTest`**: Verifies that changing the playback speed (e.g., 1.5x) works and documents that ExoPlayer retains PlaybackParameters across stop() and prepare() cycles by design (as playback speed is managed as a persistent user preference in PlayerManager).
 *   **`PlayerStopPlayTest`**: Ensures that stopping the player clears the current media and resets everything cleanly.
 *   **`PlayerLastEpisodeTest`**: Verifies that when the last episode in the queue finishes, the player correctly stops and does not restart the playlist from the beginning. It also ensures the repeat mode is always set to OFF.
 *   **`PlaybackResumptionTest`**: Verifies that when the app is cold-started or connected to a car (Bluetooth), the current episode correctly resumes from its last played position instead of starting from the beginning. It tests both the manual initialization and the standard Media3 `onPlaybackResumption` mechanism.

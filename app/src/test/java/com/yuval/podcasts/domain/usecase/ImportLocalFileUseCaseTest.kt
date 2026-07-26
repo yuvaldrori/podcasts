@@ -62,5 +62,7 @@ class ImportLocalFileUseCaseTest {
         assertEquals("/mock/path/test.mp3", episode.audioUrl)
         assertEquals(Constants.LOCAL_PODCAST_FEED_URL, episode.podcastFeedUrl)
         assertEquals(2, episode.downloadStatus)
+        // localFilePath is the most critical field for a local file import
+        assertEquals("/mock/path/test.mp3", episode.localFilePath)
     }
 }

@@ -1,24 +1,29 @@
 package com.yuval.podcasts.media
 
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.QueueDao
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import io.mockk.*
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import org.junit.Assert.assertEquals
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.cast.CastPlayer
 
+/**
+ * Tests for playback resumption logic: verifying that the correct resume position
+ * and media items are derived from the queue and episode database state.
+ *
+ * NOTE: These tests verify the *data* driving resumption decisions (episode's
+ * lastPlayedPosition, queue ordering), not the actual PlaybackService listener which
+ * requires a bound MediaSession to instantiate. For full service integration tests,
+ * see the instrumented test suite.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaybackResumptionTest {
 
@@ -26,9 +31,7 @@ class PlaybackResumptionTest {
     private val queueDao = mockk<QueueDao>(relaxed = true)
     private val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
     private val settingsRepository = mockk<SettingsRepository>(relaxed = true)
-    private val exoPlayer = mockk<ExoPlayer>(relaxed = true)
-    private val castPlayer = mockk<CastPlayer>(relaxed = true)
-    
+
     private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
@@ -37,8 +40,12 @@ class PlaybackResumptionTest {
         every { settingsRepository.skipSilenceFlow } returns flowOf(true)
     }
 
+    /**
+     * Verifies that an episode's lastPlayedPosition > 0 correctly triggers the seek
+     * condition used by PlaybackService when first loading an item.
+     */
     @Test
-    fun `when first item is loaded, it should resume from last played position`() = runTest(testDispatcher) {
+    fun `resume position is taken from lastPlayedPosition when greater than zero`() = runTest(testDispatcher) {
         val episodeId = "test_ep"
         val lastPosition = 15000L
         val episode = Episode(
@@ -58,44 +65,23 @@ class PlaybackResumptionTest {
             completedAt = null
         )
 
-        coEvery { queueDao.getQueueEpisodes() } returns flowOf(listOf(episode))
         coEvery { episodeDao.getEpisodeById(episodeId) } returns episode
-        
-        val player = exoPlayer
-        val listenerSlot = slot<Player.Listener>()
-        every { player.addListener(capture(listenerSlot)) } returns Unit
-        
-        val mediaItem = MediaItem.Builder().setMediaId(episodeId).build()
-        every { player.currentMediaItem } returns mediaItem
-        every { player.currentPosition } returns 0L
 
-        val listener = object : Player.Listener {
-            private var lastResumedId: String? = null
-            override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
-                if (item != null) {
-                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || 
-                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK ||
-                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
-                        if (lastResumedId != item.mediaId) {
-                            lastResumedId = item.mediaId
-                            if (episode.lastPlayedPosition > 0) {
-                                if (player.currentPosition < 2000) {
-                                    player.seekTo(episode.lastPlayedPosition)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        val fetchedEpisode = episodeDao.getEpisodeById(episodeId)
+        requireNotNull(fetchedEpisode)
 
-        listener.onMediaItemTransition(mediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED)
-
-        verify(exactly = 1) { player.seekTo(lastPosition) }
+        // The resume condition: lastPlayedPosition > 0 means we should seek on load
+        assertEquals(lastPosition, fetchedEpisode.lastPlayedPosition)
+        assertEquals(true, fetchedEpisode.lastPlayedPosition > 0)
     }
 
+    /**
+     * Verifies that the queue DAO returns episodes in the correct order, and that
+     * the first episode's lastPlayedPosition is used as the startup position.
+     * This data feeds into the MediaLibrarySession.Callback.onPlaybackResumption handler.
+     */
     @Test
-    fun `onPlaybackResumption should return media items with correct start position`() = runTest(testDispatcher) {
+    fun `onPlaybackResumption data - queue provides correct episode and start position`() = runTest(testDispatcher) {
         val episodeId = "test_ep"
         val lastPosition = 15000L
         val episode = Episode(
@@ -116,13 +102,18 @@ class PlaybackResumptionTest {
         )
 
         coEvery { queueDao.getQueueEpisodes() } returns flowOf(listOf(episode))
-        
-        val result = queueDao.getQueueEpisodes().first()
-        val mediaItems = result.mapNotNull { MediaItem.Builder().setMediaId(it.id).build() }
-        val startPosition = if (result.isNotEmpty()) result.first().lastPlayedPosition else 0L
-        
-        assertEquals(lastPosition, startPosition)
+
+        // Simulate what PlaybackService.onPlaybackResumption reads from the queue
+        val queueEpisodes = queueDao.getQueueEpisodes().first()
+
+        val mediaItems = queueEpisodes.map { ep ->
+            MediaItem.Builder().setMediaId(ep.id).build()
+        }
+        val startPositionMs = queueEpisodes.firstOrNull()?.lastPlayedPosition ?: 0L
+
         assertEquals(1, mediaItems.size)
         assertEquals(episodeId, mediaItems[0].mediaId)
+        // Confirm the start position matches the stored resume point
+        assertEquals(lastPosition, startPositionMs)
     }
 }

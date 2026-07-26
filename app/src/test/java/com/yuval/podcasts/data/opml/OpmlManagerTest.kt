@@ -2,6 +2,7 @@ package com.yuval.podcasts.data.opml
 
 import com.yuval.podcasts.data.db.entity.Podcast
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -116,9 +117,9 @@ class OpmlManagerTest {
         val exportedContent = outputStream.toString("UTF-8")
         
         // Simple string checks
-        assert(exportedContent.contains("""xmlUrl="https://example.com/feed.xml""""))
-        assert(exportedContent.contains("""text="My Favorite Podcast""""))
-        assert(exportedContent.contains("""htmlUrl="https://example.com""""))
-        assert(exportedContent.contains("<opml version=\"2.0\">"))
+        assertTrue(exportedContent.contains("""xmlUrl="https://example.com/feed.xml""""))
+        assertTrue(exportedContent.contains("""text="My Favorite Podcast""""))
+        assertTrue(exportedContent.contains("""htmlUrl="https://example.com""""))
+        assertTrue(exportedContent.contains("<opml version=\"2.0\">"))
     }
 }
