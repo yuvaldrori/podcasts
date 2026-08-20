@@ -75,6 +75,7 @@ class PlaybackService : MediaLibraryService() {
     private lateinit var serviceScope: CoroutineScope
     private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
     private var currentAudioSessionId: Int = androidx.media3.common.C.AUDIO_SESSION_ID_UNSET
+    private var playerListener: PlaybackServicePlayerListener? = null
 
 
 
@@ -284,12 +285,10 @@ class PlaybackService : MediaLibraryService() {
 
         val listener = PlaybackServicePlayerListener(
             removeEpisodeUseCase = removeEpisodeUseCase,
-            episodeDao = episodeDao,
             settingsRepository = settingsRepository,
             logManager = logManager,
             serviceScope = serviceScope,
             ioDispatcher = ioDispatcher,
-            mainDispatcher = mainDispatcher,
             getCurrentPlayer = { currentPlayer },
             setupLoudnessEnhancer = { setupLoudnessEnhancer(it) },
             onSavePosition = { id, pos ->
@@ -300,6 +299,7 @@ class PlaybackService : MediaLibraryService() {
                 }
             }
         )
+        playerListener = listener
         
         exoPlayer.addListener(listener)
 
@@ -390,6 +390,7 @@ class PlaybackService : MediaLibraryService() {
     private fun observeQueue() {
         serviceScope.launch {
             queueDao.getQueueEpisodes().distinctUntilChanged().collect { episodes ->
+                playerListener?.updateCachedPositions(episodes)
                 val mediaItems = withContext(ioDispatcher) {
                     episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
                 }
@@ -547,6 +548,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun saveCurrentPosition(mediaId: String, position: Long) {
+        playerListener?.updateCachedPosition(mediaId, position)
         serviceScope.launch(ioDispatcher) {
             episodeDao.updateLastPlayedPosition(mediaId, position)
         }
@@ -589,6 +591,7 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onDestroy() {
         serviceScope.cancel()
+        playerListener = null
         exoPlayer.release()
         if (isCastInitialized) {
             castPlayer.get().release()

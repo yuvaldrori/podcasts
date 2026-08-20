@@ -23,7 +23,6 @@ class PlaybackServiceTest {
     @Test
     fun playerListener_onStateEnded_removesLastEpisode() = runTest {
         val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
-        val episodeDao = mockk<EpisodeDao>(relaxed = true)
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
         val logManager = mockk<LogManager>(relaxed = true)
         val player = mockk<Player>(relaxed = true)
@@ -32,12 +31,10 @@ class PlaybackServiceTest {
 
         val listener = PlaybackServicePlayerListener(
             removeEpisodeUseCase = removeEpisodeUseCase,
-            episodeDao = episodeDao,
             settingsRepository = settingsRepository,
             logManager = logManager,
             serviceScope = this,
             ioDispatcher = testDispatcher,
-            mainDispatcher = testDispatcher,
             getCurrentPlayer = { player },
             initialCurrentlyPlayingId = "episode_123"
         )
@@ -70,26 +67,23 @@ class PlaybackServiceTest {
         )
 
         val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
-        val episodeDao = mockk<EpisodeDao>(relaxed = true)
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
         val logManager = mockk<LogManager>(relaxed = true)
         val player = mockk<Player>(relaxed = true)
 
-        coEvery { episodeDao.getEpisodeById(episodeId) } returns dummyEpisode
         every { player.currentPosition } returns 0L
 
         val testDispatcher = UnconfinedTestDispatcher(testScheduler)
 
         val listener = PlaybackServicePlayerListener(
             removeEpisodeUseCase = removeEpisodeUseCase,
-            episodeDao = episodeDao,
             settingsRepository = settingsRepository,
             logManager = logManager,
             serviceScope = this,
             ioDispatcher = testDispatcher,
-            mainDispatcher = testDispatcher,
             getCurrentPlayer = { player }
         )
+        listener.updateCachedPositions(listOf(dummyEpisode))
 
         val mediaItem = MediaItem.Builder().setMediaId(episodeId).build()
         listener.onMediaItemTransition(mediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
@@ -100,7 +94,6 @@ class PlaybackServiceTest {
     @Test
     fun playerListener_onMediaItemTransition_repeatReason_removesEpisode() = runTest {
         val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
-        val episodeDao = mockk<EpisodeDao>(relaxed = true)
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
         val logManager = mockk<LogManager>(relaxed = true)
         val player = mockk<Player>(relaxed = true)
@@ -109,12 +102,10 @@ class PlaybackServiceTest {
 
         val listener = PlaybackServicePlayerListener(
             removeEpisodeUseCase = removeEpisodeUseCase,
-            episodeDao = episodeDao,
             settingsRepository = settingsRepository,
             logManager = logManager,
             serviceScope = this,
             ioDispatcher = testDispatcher,
-            mainDispatcher = testDispatcher,
             getCurrentPlayer = { player },
             initialCurrentlyPlayingId = "episode_123"
         )
@@ -124,4 +115,57 @@ class PlaybackServiceTest {
 
         coVerify(exactly = 1) { removeEpisodeUseCase("episode_123", true) }
     }
+
+    @Test
+    fun playerListener_onMediaItemTransition_whenCached_seeksSynchronouslyBeforeCoroutineExecution() = runTest {
+        val lastPosition = 15000L
+        val episodeId = "cached_episode"
+        val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
+        val settingsRepository = mockk<SettingsRepository>(relaxed = true)
+        val logManager = mockk<LogManager>(relaxed = true)
+        val player = mockk<Player>(relaxed = true)
+
+        val standardDispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)
+
+        val dummyEpisode = Episode(
+            id = episodeId,
+            podcastFeedUrl = "feed",
+            title = "Ep Cached",
+            description = "Desc",
+            audioUrl = "url",
+            imageUrl = null,
+            episodeWebLink = null,
+            pubDate = 0L,
+            duration = 1000,
+            downloadStatus = 0,
+            localFilePath = null,
+            isPlayed = false,
+            lastPlayedPosition = lastPosition,
+            completedAt = null
+        )
+
+        every { player.currentPosition } returns 0L
+
+        val listener = PlaybackServicePlayerListener(
+            removeEpisodeUseCase = removeEpisodeUseCase,
+            settingsRepository = settingsRepository,
+            logManager = logManager,
+            serviceScope = this,
+            ioDispatcher = standardDispatcher,
+            getCurrentPlayer = { player }
+        )
+
+        listener.updateCachedPositions(listOf(dummyEpisode))
+
+        val mediaItem = MediaItem.Builder().setMediaId(episodeId).build()
+
+        // Transition to media item with standardDispatcher where coroutines haven't executed yet
+        listener.onMediaItemTransition(mediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
+
+        // With caching, seek occurs synchronously without needing testScheduler.advanceUntilIdle()
+        verify(exactly = 1) { player.seekTo(lastPosition) }
+    }
 }
+
+
+

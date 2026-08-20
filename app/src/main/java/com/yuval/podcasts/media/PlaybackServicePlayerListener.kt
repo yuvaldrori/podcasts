@@ -4,7 +4,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import com.yuval.podcasts.data.Constants
-import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import com.yuval.podcasts.utils.LogManager
@@ -12,17 +11,14 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 internal class PlaybackServicePlayerListener(
     private val removeEpisodeUseCase: RemoveEpisodeUseCase,
-    private val episodeDao: EpisodeDao,
     private val settingsRepository: SettingsRepository,
     private val logManager: LogManager,
     private val serviceScope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val getCurrentPlayer: () -> Player,
     private val setupLoudnessEnhancer: (Int) -> Unit = {},
     private val onSavePosition: (String?, Long?) -> Unit = { _, _ -> },
@@ -31,6 +27,21 @@ internal class PlaybackServicePlayerListener(
 
     var currentlyPlayingId: String? = initialCurrentlyPlayingId
     var lastResumedId: String? = null
+    private val positionCache = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    fun updateCachedPositions(episodes: List<com.yuval.podcasts.data.db.entity.Episode>) {
+        val newPositions = episodes.filter { it.lastPlayedPosition > 0 }.associate { it.id to it.lastPlayedPosition }
+        positionCache.putAll(newPositions)
+        positionCache.keys.retainAll(newPositions.keys)
+    }
+
+    fun updateCachedPosition(mediaId: String, position: Long) {
+        if (position > 0) {
+            positionCache[mediaId] = position
+        } else {
+            positionCache.remove(mediaId)
+        }
+    }
 
     override fun onAudioSessionIdChanged(audioSessionId: Int) {
         setupLoudnessEnhancer(audioSessionId)
@@ -45,8 +56,10 @@ internal class PlaybackServicePlayerListener(
         val newMediaId = newPosition.mediaItem?.mediaId
         if (oldMediaId != null) {
             if (oldMediaId != newMediaId) {
+                updateCachedPosition(oldMediaId, oldPosition.positionMs)
                 onSavePosition(oldMediaId, oldPosition.positionMs)
             } else if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                updateCachedPosition(oldMediaId, newPosition.positionMs)
                 onSavePosition(oldMediaId, newPosition.positionMs)
             }
         }
@@ -56,6 +69,10 @@ internal class PlaybackServicePlayerListener(
         if (!isPlaying) {
             val player = getCurrentPlayer()
             if (player.playbackState != Player.STATE_ENDED) {
+                val mediaId = player.currentMediaItem?.mediaId
+                if (mediaId != null) {
+                    updateCachedPosition(mediaId, player.currentPosition)
+                }
                 onSavePosition(null, null)
             }
         }
@@ -66,6 +83,7 @@ internal class PlaybackServicePlayerListener(
             val lastId = currentlyPlayingId
             logManager.i("PlaybackService", "Playback ended. lastId=$lastId")
             if (lastId != null) {
+                positionCache.remove(lastId)
                 serviceScope.launch(ioDispatcher) {
                     removeEpisodeUseCase(lastId, markAsPlayed = true)
                 }
@@ -101,17 +119,13 @@ internal class PlaybackServicePlayerListener(
             ) {
                 if (lastResumedId != mediaItem.mediaId) {
                     lastResumedId = mediaItem.mediaId
-                    serviceScope.launch(ioDispatcher) {
-                        val episode = episodeDao.getEpisodeById(mediaItem.mediaId)
-                        if (episode != null && episode.lastPlayedPosition > 0) {
-                            withContext(mainDispatcher) {
-                                val player = getCurrentPlayer()
-                                val currentItem = player.currentMediaItem
-                                val isSameItem = currentItem == null || currentItem.mediaId.isNullOrEmpty() || currentItem.mediaId == mediaItem.mediaId
-                                if (isSameItem && player.currentPosition < Constants.SEEK_POSITION_RESTORATION_THRESHOLD_MS) {
-                                    player.seekTo(episode.lastPlayedPosition)
-                                }
-                            }
+                    val cachedPosition = positionCache[mediaItem.mediaId]
+                    if (cachedPosition != null && cachedPosition > 0) {
+                        val player = getCurrentPlayer()
+                        val currentItem = player.currentMediaItem
+                        val isSameItem = currentItem == null || currentItem.mediaId.isNullOrEmpty() || currentItem.mediaId == mediaItem.mediaId
+                        if (isSameItem && player.currentPosition < Constants.SEEK_POSITION_RESTORATION_THRESHOLD_MS) {
+                            player.seekTo(cachedPosition)
                         }
                     }
                 }

@@ -2,9 +2,6 @@ package com.yuval.podcasts.media
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import com.yuval.podcasts.data.db.dao.EpisodeDao
-import com.yuval.podcasts.data.db.dao.PodcastDao
-import com.yuval.podcasts.data.db.dao.QueueDao
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
@@ -29,7 +26,6 @@ class PlaybackServicePositionRestorationTest {
 
         val player = mockk<Player>(relaxed = true)
         val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
-        val episodeDao = mockk<EpisodeDao>(relaxed = true)
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
         val logManager = mockk<LogManager>(relaxed = true)
 
@@ -38,22 +34,19 @@ class PlaybackServicePositionRestorationTest {
 
         val episodeA = Episode("epA", "feedUrl", "Title A", "Desc", "http://audioA.mp3", null, null, 0L, 1000L, 0, null, false, 30000L, null)
 
-        coEvery { episodeDao.getEpisodeById("epA") } returns episodeA
-
         // Player has switched to Track B
         every { player.currentMediaItem } returns mediaItemB
         every { player.currentPosition } returns 0L
 
         val listener = PlaybackServicePlayerListener(
             removeEpisodeUseCase = removeEpisodeUseCase,
-            episodeDao = episodeDao,
             settingsRepository = settingsRepository,
             logManager = logManager,
             serviceScope = testScope,
             ioDispatcher = testDispatcher,
-            mainDispatcher = testDispatcher,
             getCurrentPlayer = { player }
         )
+        listener.updateCachedPositions(listOf(episodeA))
 
         // Trigger transition for Track A
         listener.onMediaItemTransition(mediaItemA, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
@@ -62,3 +55,4 @@ class PlaybackServicePositionRestorationTest {
         verify(exactly = 0) { player.seekTo(30000L) }
     }
 }
+
