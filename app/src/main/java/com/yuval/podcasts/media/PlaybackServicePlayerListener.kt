@@ -68,7 +68,7 @@ internal class PlaybackServicePlayerListener(
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         if (!isPlaying) {
             val player = getCurrentPlayer()
-            if (player.playbackState != Player.STATE_ENDED) {
+            if (!player.playWhenReady && player.playbackState != Player.STATE_ENDED) {
                 val mediaId = player.currentMediaItem?.mediaId
                 if (mediaId != null) {
                     updateCachedPosition(mediaId, player.currentPosition)

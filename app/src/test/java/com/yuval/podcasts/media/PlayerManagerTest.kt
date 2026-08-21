@@ -193,6 +193,57 @@ class PlayerManagerTest {
     }
 
     @Test
+    fun onPlaybackStateChanged_whenBufferingWithPlayWhenReady_isPlayingRemainsTrue() {
+        val setupMethod = PlayerManager::class.java.getDeclaredMethod("setupControllerListener")
+        setupMethod.isAccessible = true
+        setupMethod.invoke(playerManager)
+
+        val listenerSlot = io.mockk.slot<Player.Listener>()
+        verify { mediaController.addListener(capture(listenerSlot)) }
+
+        every { mediaController.playWhenReady } returns true
+        every { mediaController.playbackState } returns Player.STATE_BUFFERING
+
+        listenerSlot.captured.onPlaybackStateChanged(Player.STATE_BUFFERING)
+
+        assertEquals(true, playerManager.isPlaying.value)
+    }
+
+    @Test
+    fun onIsPlayingChanged_whenFalseDuringBufferingWithPlayWhenReady_isPlayingRemainsTrue() {
+        val setupMethod = PlayerManager::class.java.getDeclaredMethod("setupControllerListener")
+        setupMethod.isAccessible = true
+        setupMethod.invoke(playerManager)
+
+        val listenerSlot = io.mockk.slot<Player.Listener>()
+        verify { mediaController.addListener(capture(listenerSlot)) }
+
+        every { mediaController.playWhenReady } returns true
+        every { mediaController.playbackState } returns Player.STATE_BUFFERING
+
+        listenerSlot.captured.onIsPlayingChanged(false)
+
+        assertEquals(true, playerManager.isPlaying.value)
+    }
+
+    @Test
+    fun onPlayWhenReadyChanged_whenFalse_isPlayingBecomesFalse() {
+        val setupMethod = PlayerManager::class.java.getDeclaredMethod("setupControllerListener")
+        setupMethod.isAccessible = true
+        setupMethod.invoke(playerManager)
+
+        val listenerSlot = io.mockk.slot<Player.Listener>()
+        verify { mediaController.addListener(capture(listenerSlot)) }
+
+        every { mediaController.playWhenReady } returns false
+        every { mediaController.playbackState } returns Player.STATE_READY
+
+        listenerSlot.captured.onPlayWhenReadyChanged(false, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+
+        assertEquals(false, playerManager.isPlaying.value)
+    }
+
+    @Test
     fun stopAndClear_resetsStateAndClearsController() {
         playerManager.stopAndClear()
 

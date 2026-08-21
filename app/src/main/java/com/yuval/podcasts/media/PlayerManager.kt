@@ -124,13 +124,25 @@ class PlayerManager @Inject constructor(
         }
     }
 
+    private fun updatePlayingState(player: Player) {
+        val isPlaying = player.playWhenReady &&
+            player.playbackState != Player.STATE_ENDED &&
+            player.playbackState != Player.STATE_IDLE
+        _isPlaying.update { isPlaying }
+    }
+
     private fun setupControllerListener() {
         val player = controller ?: return
 
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _isPlaying.update { isPlaying }
+                updatePlayingState(player)
                 logManager.i("PlayerManager", "isPlaying changed to $isPlaying")
+            }
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                updatePlayingState(player)
+                logManager.i("PlayerManager", "playWhenReady changed to $playWhenReady, reason $reason")
             }
 
             override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -140,6 +152,7 @@ class PlayerManager @Inject constructor(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 logManager.i("PlayerManager", "Playback state changed to $playbackState")
+                updatePlayingState(player)
                 if (playbackState == Player.STATE_ENDED) {
                     stopAndClear()
                 } else {
@@ -174,7 +187,7 @@ class PlayerManager @Inject constructor(
         })
 
         // Initial states
-        _isPlaying.update { player.isPlaying }
+        updatePlayingState(player)
         val currentSpeed = _playbackSpeed.value
         player.setPlaybackParameters(PlaybackParameters(currentSpeed))
         _duration.update { player.duration.coerceAtLeast(0L) }

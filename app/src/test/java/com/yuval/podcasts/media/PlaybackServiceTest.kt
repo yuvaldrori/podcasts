@@ -165,6 +165,66 @@ class PlaybackServiceTest {
         // With caching, seek occurs synchronously without needing testScheduler.advanceUntilIdle()
         verify(exactly = 1) { player.seekTo(lastPosition) }
     }
+
+    @Test
+    fun playerListener_onIsPlayingChanged_whenBufferingWithPlayWhenReady_doesNotSavePosition() = runTest {
+        val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
+        val settingsRepository = mockk<SettingsRepository>(relaxed = true)
+        val logManager = mockk<LogManager>(relaxed = true)
+        val player = mockk<Player>(relaxed = true)
+        val onSavePosition = mockk<(String?, Long?) -> Unit>(relaxed = true)
+
+        every { player.playWhenReady } returns true
+        every { player.playbackState } returns Player.STATE_BUFFERING
+        every { player.currentMediaItem } returns MediaItem.Builder().setMediaId("ep1").build()
+        every { player.currentPosition } returns 5000L
+
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+
+        val listener = PlaybackServicePlayerListener(
+            removeEpisodeUseCase = removeEpisodeUseCase,
+            settingsRepository = settingsRepository,
+            logManager = logManager,
+            serviceScope = this,
+            ioDispatcher = testDispatcher,
+            getCurrentPlayer = { player },
+            onSavePosition = onSavePosition
+        )
+
+        listener.onIsPlayingChanged(false)
+
+        verify(exactly = 0) { onSavePosition(any(), any()) }
+    }
+
+    @Test
+    fun playerListener_onIsPlayingChanged_whenPausedWithPlayWhenReadyFalse_savesPosition() = runTest {
+        val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
+        val settingsRepository = mockk<SettingsRepository>(relaxed = true)
+        val logManager = mockk<LogManager>(relaxed = true)
+        val player = mockk<Player>(relaxed = true)
+        val onSavePosition = mockk<(String?, Long?) -> Unit>(relaxed = true)
+
+        every { player.playWhenReady } returns false
+        every { player.playbackState } returns Player.STATE_READY
+        every { player.currentMediaItem } returns MediaItem.Builder().setMediaId("ep1").build()
+        every { player.currentPosition } returns 5000L
+
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+
+        val listener = PlaybackServicePlayerListener(
+            removeEpisodeUseCase = removeEpisodeUseCase,
+            settingsRepository = settingsRepository,
+            logManager = logManager,
+            serviceScope = this,
+            ioDispatcher = testDispatcher,
+            getCurrentPlayer = { player },
+            onSavePosition = onSavePosition
+        )
+
+        listener.onIsPlayingChanged(false)
+
+        verify(exactly = 1) { onSavePosition(null, null) }
+    }
 }
 
 
