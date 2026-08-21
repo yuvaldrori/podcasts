@@ -7,14 +7,15 @@ import androidx.media3.common.MediaMetadata
 import com.yuval.podcasts.data.db.entity.Episode
 
 object MediaItemMapper {
-    fun fromEpisode(ep: Episode): MediaItem? {
+    fun fromEpisode(ep: Episode, podcastImageUrl: String? = null): MediaItem? {
         return try {
             val uri = ep.playableUri.toUri()
+            val artworkUrl = ep.imageUrl ?: podcastImageUrl
             val metadata = MediaMetadata.Builder()
                 .setTitle(ep.title)
                 .setArtist(ep.podcastFeedUrl)
                 .setDisplayTitle(ep.title)
-                .setArtworkUri(ep.imageUrl?.toUri())
+                .setArtworkUri(artworkUrl?.toUri())
                 .setIsPlayable(true)
                 .setIsBrowsable(false)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST)

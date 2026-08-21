@@ -40,16 +40,16 @@ class ThemeViewModel @Inject constructor(
             @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
             combine(
                 playerManager.currentMediaId.flatMapLatest { id ->
-                    if (id == null) flowOf(null) else repository.getEpisodeByIdFlow(id)
+                    if (id == null) flowOf(null) else repository.getEpisodeWithPodcastFlow(id)
                 },
                 isDarkThemeFlow
-            ) { episode, isDark -> episode to isDark }
+            ) { episodeWithPodcast, isDark -> episodeWithPodcast to isDark }
                 .debounce(Constants.DYNAMIC_THEME_DEBOUNCE_MS)
-                .collectLatest { (episode, isDark) ->
-                    val finalImageUrl = episode?.imageUrl
+                .collectLatest { (episodeWithPodcast, isDark) ->
+                    val podcastImageUrl = episodeWithPodcast?.podcast?.imageUrl
                     
-                    if (finalImageUrl != null && finalImageUrl.startsWith("http")) {
-                        generateColorScheme(finalImageUrl, isDark)
+                    if (podcastImageUrl != null && podcastImageUrl.startsWith("http")) {
+                        generateColorScheme(podcastImageUrl, isDark)
                     } else {
                         _dynamicColorScheme.value = null
                     }

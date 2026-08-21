@@ -82,5 +82,50 @@ class MediaItemMapperTest {
         assertNotNull(mediaItem)
         assertEquals("test-id", mediaItem?.mediaId)
         assertEquals("https://audio.url", mediaItem?.requestMetadata?.mediaUri?.toString() ?: mediaItem?.localConfiguration?.uri?.toString())
+        assertEquals(null, mediaItem?.mediaMetadata?.artworkUri)
+    }
+
+    @Test
+    fun testFromEpisodeWithFallbackToPodcastArtwork() {
+        val episode = Episode(
+            id = "test-id",
+            podcastFeedUrl = "https://feed.url",
+            title = "Test Episode",
+            description = "Description",
+            audioUrl = "https://audio.url",
+            pubDate = 123456789L,
+            duration = 3600L,
+            imageUrl = null,
+            localFilePath = null,
+            downloadStatus = 0
+        )
+
+        val mediaItem = MediaItemMapper.fromEpisode(episode, podcastImageUrl = "https://podcast.image.url")
+        
+        assertNotNull(mediaItem)
+        assertEquals("test-id", mediaItem?.mediaId)
+        assertEquals("https://podcast.image.url", mediaItem?.mediaMetadata?.artworkUri?.toString())
+    }
+
+    @Test
+    fun testFromEpisodeEpisodeArtworkTakesPrecedenceOverPodcastArtwork() {
+        val episode = Episode(
+            id = "test-id",
+            podcastFeedUrl = "https://feed.url",
+            title = "Test Episode",
+            description = "Description",
+            audioUrl = "https://audio.url",
+            pubDate = 123456789L,
+            duration = 3600L,
+            imageUrl = "https://episode.image.url",
+            localFilePath = null,
+            downloadStatus = 0
+        )
+
+        val mediaItem = MediaItemMapper.fromEpisode(episode, podcastImageUrl = "https://podcast.image.url")
+        
+        assertNotNull(mediaItem)
+        assertEquals("test-id", mediaItem?.mediaId)
+        assertEquals("https://episode.image.url", mediaItem?.mediaMetadata?.artworkUri?.toString())
     }
 }

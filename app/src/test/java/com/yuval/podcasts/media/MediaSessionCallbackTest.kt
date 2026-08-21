@@ -47,8 +47,16 @@ class MediaSessionCallbackTest {
             downloadStatus = 0,
             localFilePath = null
         )
+        val podcast = com.yuval.podcasts.data.db.entity.Podcast(
+            feedUrl = "url",
+            title = "Podcast Title",
+            description = "",
+            imageUrl = "https://podcast.art/cover.png",
+            website = ""
+        )
+        val episodeWithPodcast = com.yuval.podcasts.data.db.entity.EpisodeWithPodcast(episode, podcast)
 
-        coEvery { episodeDao.getEpisodeById("ext-id") } returns episode
+        coEvery { episodeDao.getEpisodeWithPodcast("ext-id") } returns episodeWithPodcast
 
         // Simulate the resolution the real onAddMediaItems callback performs:
         // stub items (no localConfiguration) are resolved via episodeDao + MediaItemMapper
@@ -56,15 +64,16 @@ class MediaSessionCallbackTest {
 
         val resolvedItems = inputItems.map { item ->
             if (item.localConfiguration != null) return@map item
-            val ep = runBlocking(Dispatchers.Unconfined) {
-                episodeDao.getEpisodeById(item.mediaId)
+            val epWithPodcast = runBlocking(Dispatchers.Unconfined) {
+                episodeDao.getEpisodeWithPodcast(item.mediaId)
             }
-            ep?.let { MediaItemMapper.fromEpisode(it) } ?: item
+            epWithPodcast?.let { MediaItemMapper.fromEpisode(it.episode, it.podcast.imageUrl) } ?: item
         }
 
         assertEquals(1, resolvedItems.size)
         assertEquals("Resolved Title", resolvedItems[0].mediaMetadata.title)
         assertEquals("http://audio.com", resolvedItems[0].localConfiguration?.uri?.toString())
+        assertEquals("https://podcast.art/cover.png", resolvedItems[0].mediaMetadata.artworkUri?.toString())
     }
 
     /**

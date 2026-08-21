@@ -116,4 +116,23 @@ class PlayerViewModelTest {
         verify { playerManager.play("ep1", any(), any(), any(), 5_000L) }
         verify(exactly = 0) { playerManager.seekTo(any()) }
     }
+
+    @Test
+    fun `play falls back to podcast artwork when episode imageUrl is null`() = runTest {
+        val episode = Episode("ep1", "feed1", "Title", "Desc", "http://host/a.mp3", null, null, 0L, 0L, 0, null, false, 0L)
+        val podcast = com.yuval.podcasts.data.db.entity.Podcast("feed1", "Podcast Title", "Desc", "https://podcast.art/cover.png", "https://web.url")
+        io.mockk.coEvery { repository.getPodcast("feed1") } returns podcast
+
+        viewModel.play(episode)
+
+        verify {
+            playerManager.play(
+                mediaId = "ep1",
+                uri = "http://host/a.mp3",
+                title = "Title",
+                imageUrl = "https://podcast.art/cover.png",
+                startPositionMs = 0L
+            )
+        }
+    }
 }

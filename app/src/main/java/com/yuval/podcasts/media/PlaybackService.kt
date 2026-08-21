@@ -149,8 +149,8 @@ class PlaybackService : MediaLibraryService() {
                 val resolvedItems = mediaItems.map { item ->
                     if (item.localConfiguration != null) return@map item
                     
-                    val episode = episodeDao.getEpisodeById(item.mediaId)
-                    episode?.let { MediaItemMapper.fromEpisode(it) } ?: item
+                    val episodeWithPodcast = episodeDao.getEpisodeWithPodcast(item.mediaId)
+                    episodeWithPodcast?.let { MediaItemMapper.fromEpisode(it.episode, it.podcast.imageUrl) } ?: item
                 }.toMutableList()
                 resolvedItems
             }.asListenableFuture()
@@ -162,13 +162,13 @@ class PlaybackService : MediaLibraryService() {
             isStartup: Boolean
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             return serviceScope.async(ioDispatcher) {
-                val episodes = queueDao.getQueueEpisodes().first()
+                val queueWithPodcast = queueDao.getQueueEpisodesWithPodcast().first()
                 val lastPlayedId = settingsRepository.getLastPlayedEpisodeId()
-                if (episodes.isNotEmpty()) {
-                    var startIndex = episodes.indexOfFirst { it.id == lastPlayedId }
+                if (queueWithPodcast.isNotEmpty()) {
+                    var startIndex = queueWithPodcast.indexOfFirst { it.episode.id == lastPlayedId }
                     if (startIndex == -1) startIndex = 0
-                    val currentEp = episodes[startIndex]
-                    val mediaItems = episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
+                    val currentEp = queueWithPodcast[startIndex].episode
+                    val mediaItems = queueWithPodcast.mapNotNull { MediaItemMapper.fromEpisode(it.episode, it.podcast.imageUrl) }
                     MediaSession.MediaItemsWithStartPosition(
                         mediaItems,
                         startIndex,
@@ -225,9 +225,9 @@ class PlaybackService : MediaLibraryService() {
                         listOf(queueFolder)
                     }
                     Constants.MEDIA_LIBRARY_QUEUE_ID -> {
-                        val episodes = queueDao.getQueueEpisodesSync()
-                        episodes.mapNotNull { ep ->
-                            MediaItemMapper.fromEpisode(ep)
+                        val episodes = queueDao.getQueueEpisodesWithPodcastSync()
+                        episodes.mapNotNull { epWithPodcast ->
+                            MediaItemMapper.fromEpisode(epWithPodcast.episode, epWithPodcast.podcast.imageUrl)
                         }
                     }
                     else -> emptyList()
@@ -349,14 +349,14 @@ class PlaybackService : MediaLibraryService() {
 
         // Initialize state from queue for playback resumption
         serviceScope.launch(mainDispatcher) {
-            val episodes = queueDao.getQueueEpisodes().first()
-            if (episodes.isNotEmpty() && currentPlayer.mediaItemCount == 0) {
+            val queueWithPodcast = queueDao.getQueueEpisodesWithPodcast().first()
+            if (queueWithPodcast.isNotEmpty() && currentPlayer.mediaItemCount == 0) {
                 val lastPlayedId = settingsRepository.getLastPlayedEpisodeId()
-                var startIndex = episodes.indexOfFirst { it.id == lastPlayedId }
+                var startIndex = queueWithPodcast.indexOfFirst { it.episode.id == lastPlayedId }
                 if (startIndex == -1) startIndex = 0
-                val currentEp = episodes[startIndex]
+                val currentEp = queueWithPodcast[startIndex].episode
                 val mediaItems = withContext(ioDispatcher) {
-                    episodes.mapNotNull { ep -> MediaItemMapper.fromEpisode(ep) }
+                    queueWithPodcast.mapNotNull { ep -> MediaItemMapper.fromEpisode(ep.episode, ep.podcast.imageUrl) }
                 }
                 if (mediaItems.isNotEmpty()) {
                     currentPlayer.setMediaItems(mediaItems)
@@ -389,10 +389,11 @@ class PlaybackService : MediaLibraryService() {
 
     private fun observeQueue() {
         serviceScope.launch {
-            queueDao.getQueueEpisodes().distinctUntilChanged().collect { episodes ->
+            queueDao.getQueueEpisodesWithPodcast().distinctUntilChanged().collect { queueWithPodcast ->
+                val episodes = queueWithPodcast.map { it.episode }
                 playerListener?.updateCachedPositions(episodes)
                 val mediaItems = withContext(ioDispatcher) {
-                    episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
+                    queueWithPodcast.mapNotNull { MediaItemMapper.fromEpisode(it.episode, it.podcast.imageUrl) }
                 }
                 withContext(mainDispatcher) {
                     updatePlayerFromQueue(currentPlayer, episodes, mediaItems, logManager)

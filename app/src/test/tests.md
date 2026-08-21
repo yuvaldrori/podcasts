@@ -65,7 +65,7 @@ These tests verify small helper functions and data conversion logic.
 *   **`FormatterTest`**: Verifies that our date and time formatting functions work correctly. It checks that timestamps are converted to "MMM dd, yyyy" and that durations are correctly shown as "1h 30m" or "02:15".
 *   **`HtmlUtilsTest`**: Ensures that when converting podcast descriptions from HTML to displayable text, any embedded links are validated for safety. It allows only standard link types like `http`, `https`, and `mailto`, blocking potentially dangerous links like `javascript:`.
 *   **`UiTextTest`**: Checks that `UiText` wrapper correctly resolves dynamic string resources and plain text formatting in diverse context settings.
-*   **`MediaItemMapperTest`**: Ensures that we can correctly convert a podcast "Episode" from our database into a "MediaItem" that the Android audio player understands, preserving the title, artist, and artwork. It also verifies that when a downloaded episode's physical file is missing from disk, the mapped media item correctly falls back to streaming the network audio URL.
+*   **`MediaItemMapperTest`**: Ensures that we can correctly convert a podcast "Episode" from our database into a "MediaItem" that the Android audio player understands, preserving the title, artist, and artwork. It verifies that episode artwork is preferred with automatic fallback to subscription/podcast artwork when episode-level artwork is unavailable. It also verifies that when a downloaded episode's physical file is missing from disk, the mapped media item correctly falls back to streaming the network audio URL.
 *   **`StorageUtilsTest`**: Checks that file size converters, directory cleaners, and file validation tools calculate sizes accurately and safely delete nested directories.
 
 ## 🎧 Media Player Tests
@@ -80,7 +80,7 @@ These tests verify the audio player, background playback, and media buttons.
 *   **`PlaybackServiceResumeTest`**: Ensures that playback resumption via external controllers properly restores the player state and initiates the ExoPlayer instance correctly.
 *   **`PlaybackServicePositionRestorationTest`**: Verifies that playback position restoration does not seek a newly selected track to the previously played track's position during rapid async track switches.
 *   **`PlaybackServiceSilenceToggleTest`**: Tests skip-silence state observation and propagation to ExoPlayer.
-*   **`MediaSessionCallbackTest`**: Tests the logic that "resolves" media IDs into playable items. This ensures that when external controllers (like Android Auto) request a track, the app correctly finds the URI and metadata from the database.
+*   **`MediaSessionCallbackTest`**: Tests the logic that "resolves" media IDs into playable items. This ensures that when external controllers (like Android Auto) request a track, the app correctly finds the URI and metadata from the database and resolves artwork with subscription artwork fallback.
 *   **`MediaLibraryCallbackTest`**: Tests the media library service's browse callbacks (like `onGetLibraryRoot` and `onGetChildren`) used by Android Auto, ensuring they return the correct folder structure and queue episodes.
 *   **`MediaButtonRemappingTest`**: Ensures that pressing the "Fast Forward" or "Rewind" buttons on Bluetooth headphones correctly skips forward/backward by 30/10 seconds instead of skipping to the next episode.
 *   **`PlayerManagerTest`**: Tests the helper class that the UI uses to talk to the background service. It checks play, pause, and seeking functions.
@@ -95,7 +95,8 @@ These tests verify the audio player, background playback, and media buttons.
 
 ViewModels prepare data for the screen. These tests check that the data is correct before it gets drawn.
 
-*   **`PlayerViewModelTest`**: Tests the bridge between the UI and the audio player, ensuring UI buttons (Play/Pause, Skip) correctly trigger the corresponding player actions.
+*   **`PlayerViewModelTest`**: Tests the bridge between the UI and the audio player, ensuring UI buttons (Play/Pause, Skip) correctly trigger the corresponding player actions and verifying that single-episode playback resolves podcast artwork fallback.
+*   **`ThemeViewModelTest`**: Verifies that Material You dynamic color theme palettes are seeded exclusively from the subscription/podcast cover art rather than individual episode art.
 *   **`FeedsViewModelTest`**: Checks the "Subscriptions" screen logic. Makes sure it loads your podcasts, handles pulling down to refresh, and shows an error message if the internet is down.
 *   **`QueueViewModelTest`**: Checks the "Up Next" queue logic. Makes sure that removing an item from the queue tells the player to skip if that item was currently playing.
 *   **`QueueViewModelTimeTest`**: Verifies the math that calculates "Total Queue Time Remaining". If you have 3 hours of podcasts but you listen at 2x speed, it correctly tells you there is 1.5 hours remaining.

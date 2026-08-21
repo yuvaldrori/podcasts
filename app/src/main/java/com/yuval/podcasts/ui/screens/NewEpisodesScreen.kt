@@ -124,7 +124,7 @@ fun NewEpisodesScreen(
                                 EpisodeItem(
                                     episode = episode,
                                     modifier = Modifier.clickable(onClick = clickHandler),
-                                    imageUrl = episode.imageUrl ?: podcast.imageUrl,
+                                    imageUrl = podcast.imageUrl,
                                     downloadProgress = downloadProgressMap[episode.id] ?: 0,
                                     trailingContent = {
                                         Row {

@@ -35,6 +35,14 @@ interface QueueDao {
     """)
     suspend fun getQueueEpisodesSync(): List<Episode>
 
+    @Transaction
+    @Query("""
+        SELECT episodes.* FROM episodes 
+        INNER JOIN queue ON episodes.id = queue.episodeId 
+        ORDER BY queue.position ASC
+    """)
+    suspend fun getQueueEpisodesWithPodcastSync(): List<EpisodeWithPodcast>
+
 
 
     @Transaction

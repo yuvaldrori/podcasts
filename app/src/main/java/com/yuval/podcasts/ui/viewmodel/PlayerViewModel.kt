@@ -84,12 +84,14 @@ class PlayerViewModel @Inject constructor(
             if (episode.localFilePath != null) {
                 verifyAndEnqueueLocalFile(episode)
             }
+            val podcast = repository.getPodcast(episode.podcastFeedUrl)
+            val finalImageUrl = episode.imageUrl ?: podcast?.imageUrl
             withContext(kotlinx.coroutines.Dispatchers.Main) {
                 playerManager.play(
                     mediaId = episode.id,
                     uri = uri,
                     title = episode.title,
-                    imageUrl = episode.imageUrl,
+                    imageUrl = finalImageUrl,
                     startPositionMs = startPositionMs
                 )
             }

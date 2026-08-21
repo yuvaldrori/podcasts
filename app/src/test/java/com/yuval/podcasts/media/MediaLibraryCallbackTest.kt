@@ -100,7 +100,15 @@ class MediaLibraryCallbackTest {
             localFilePath = null
         )
         
-        coEvery { queueDao.getQueueEpisodesSync() } returns listOf(dummyEpisode)
+        val dummyPodcast = com.yuval.podcasts.data.db.entity.Podcast(
+            feedUrl = "feed_url",
+            title = "Podcast Title",
+            description = "Description",
+            imageUrl = "http://podcast.art/img.jpg",
+            website = "http://website.com"
+        )
+        val dummyEpisodeWithPodcast = com.yuval.podcasts.data.db.entity.EpisodeWithPodcast(dummyEpisode, dummyPodcast)
+        coEvery { queueDao.getQueueEpisodesWithPodcastSync() } returns listOf(dummyEpisodeWithPodcast)
         
         val result = callback.onGetChildren(session, controller, "queue", 0, 100, null).get()
         val items = result.value

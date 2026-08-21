@@ -142,4 +142,26 @@ class QueueDaoTest {
         assertEquals("ep2", notDownloadedCustom[0].id)
         assertEquals("ep3", notDownloadedCustom[1].id)
     }
+
+    @Test
+    fun getQueueEpisodesWithPodcastSync_returnsJoinedDataInOrder() = runBlocking {
+        val podcast = Podcast("url1", "P1", "D1", "https://podcast.art/img.jpg", "W1")
+        podcastDao.insertPodcast(podcast)
+
+        val episode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
+        val episode2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
+        episodeDao.insertEpisodes(listOf(episode1, episode2))
+
+        val queueItem1 = QueueState("ep1", position = 1)
+        val queueItem2 = QueueState("ep2", position = 0)
+        queueDao.updateQueue(listOf(queueItem1, queueItem2))
+
+        val joinedQueue = queueDao.getQueueEpisodesWithPodcastSync()
+
+        assertEquals(2, joinedQueue.size)
+        assertEquals("ep2", joinedQueue[0].episode.id)
+        assertEquals("https://podcast.art/img.jpg", joinedQueue[0].podcast.imageUrl)
+        assertEquals("ep1", joinedQueue[1].episode.id)
+        assertEquals("https://podcast.art/img.jpg", joinedQueue[1].podcast.imageUrl)
+    }
 }

@@ -256,4 +256,18 @@ class EpisodeDaoTest {
         assertEquals("Title1", episodes1[0].title)
         assertEquals("Title2", episodes2[0].title)
     }
+
+    @Test
+    fun getEpisodeWithPodcast_returnsEpisodeAndPodcast() = runBlocking {
+        val podcast = Podcast("url1", "P1", "D1", "https://podcast.art/img.jpg", "W1")
+        podcastDao.insertPodcast(podcast)
+
+        val episode = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
+        episodeDao.insertEpisodes(listOf(episode))
+
+        val result = episodeDao.getEpisodeWithPodcast("ep1")
+        assertNotNull(result)
+        assertEquals("ep1", result?.episode?.id)
+        assertEquals("https://podcast.art/img.jpg", result?.podcast?.imageUrl)
+    }
 }
