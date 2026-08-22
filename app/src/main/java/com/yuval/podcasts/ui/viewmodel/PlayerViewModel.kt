@@ -92,7 +92,9 @@ class PlayerViewModel @Inject constructor(
                     uri = uri,
                     title = episode.title,
                     imageUrl = finalImageUrl,
-                    startPositionMs = startPositionMs
+                    startPositionMs = startPositionMs,
+                    artist = podcast?.title ?: episode.podcastFeedUrl,
+                    albumTitle = podcast?.title
                 )
             }
         }

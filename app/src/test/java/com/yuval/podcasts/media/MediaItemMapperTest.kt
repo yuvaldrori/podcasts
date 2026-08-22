@@ -128,4 +128,58 @@ class MediaItemMapperTest {
         assertEquals("test-id", mediaItem?.mediaId)
         assertEquals("https://episode.image.url", mediaItem?.mediaMetadata?.artworkUri?.toString())
     }
+
+    @Test
+    fun testFromEpisodeWithPodcastTitle() {
+        val episode = Episode(
+            id = "test-id",
+            podcastFeedUrl = "https://feed.url",
+            title = "Test Episode",
+            description = "Description",
+            audioUrl = "https://audio.url",
+            pubDate = 123456789L,
+            duration = 3600L,
+            imageUrl = null,
+            localFilePath = null,
+            downloadStatus = 0
+        )
+
+        val mediaItem = MediaItemMapper.fromEpisode(
+            episode,
+            podcastImageUrl = "https://podcast.image.url",
+            podcastTitle = "My Favorite Podcast"
+        )
+        
+        assertNotNull(mediaItem)
+        assertEquals("test-id", mediaItem?.mediaId)
+        assertEquals("Test Episode", mediaItem?.mediaMetadata?.title)
+        assertEquals("My Favorite Podcast", mediaItem?.mediaMetadata?.artist)
+        assertEquals("My Favorite Podcast", mediaItem?.mediaMetadata?.albumTitle)
+        assertEquals("https://podcast.image.url", mediaItem?.mediaMetadata?.artworkUri?.toString())
+    }
+
+    @Test
+    fun testFromEpisodeWithoutPodcastTitleFallsBackToFeedUrl() {
+        val episode = Episode(
+            id = "test-id",
+            podcastFeedUrl = "https://feed.url",
+            title = "Test Episode",
+            description = "Description",
+            audioUrl = "https://audio.url",
+            pubDate = 123456789L,
+            duration = 3600L,
+            imageUrl = null,
+            localFilePath = null,
+            downloadStatus = 0
+        )
+
+        val mediaItem = MediaItemMapper.fromEpisode(episode)
+        
+        assertNotNull(mediaItem)
+        assertEquals("test-id", mediaItem?.mediaId)
+        assertEquals("Test Episode", mediaItem?.mediaMetadata?.title)
+        assertEquals("https://feed.url", mediaItem?.mediaMetadata?.artist)
+        assertEquals(null, mediaItem?.mediaMetadata?.albumTitle)
+    }
 }
+

@@ -195,7 +195,15 @@ class PlayerManager @Inject constructor(
         _currentPosition.update { player.currentPosition }
     }
 
-    fun play(mediaId: String, uri: String, title: String? = null, imageUrl: String? = null, startPositionMs: Long = 0L) {
+    fun play(
+        mediaId: String,
+        uri: String,
+        title: String? = null,
+        imageUrl: String? = null,
+        startPositionMs: Long = 0L,
+        artist: String? = null,
+        albumTitle: String? = null
+    ) {
         _currentMediaId.update { mediaId }
         _currentPosition.update { startPositionMs }
         scope.launch {
@@ -203,7 +211,12 @@ class PlayerManager @Inject constructor(
             browser?.let {
                 val metadata = MediaMetadata.Builder()
                     .setTitle(title)
+                    .setDisplayTitle(title)
+                    .setArtist(artist)
+                    .setAlbumTitle(albumTitle)
                     .setArtworkUri(imageUrl?.toUri())
+                    .setIsPlayable(true)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST)
                     .build()
 
                 val mediaItem = MediaItem.Builder()

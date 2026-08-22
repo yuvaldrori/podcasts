@@ -81,12 +81,12 @@ class PlayerViewModelTest {
         vm.play(episode)
 
         // Since the entire play flow runs on the io dispatcher, playback and file check have not started yet.
-        verify(exactly = 0) { playerManager.play(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { playerManager.play(any(), any(), any(), any(), any(), any(), any()) }
         coVerify(exactly = 0) { enqueueEpisodeUseCase(episode) }
 
         // Draining the IO dispatcher runs the deferred check (re-enqueueing the missing file) + starts playback.
         advanceUntilIdle()
-        verify { playerManager.play(any(), any(), any(), any(), any()) }
+        verify { playerManager.play(any(), any(), any(), any(), any(), any(), any()) }
         coVerify { enqueueEpisodeUseCase(episode) }
     }
 
@@ -100,7 +100,7 @@ class PlayerViewModelTest {
         vm.seekToChapter(episode, chapter)
 
         verify { playerManager.seekTo(5_000L) }
-        verify(exactly = 0) { playerManager.play(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { playerManager.play(any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -113,7 +113,7 @@ class PlayerViewModelTest {
         vm.seekToChapter(episode, chapter)
 
         // Should start ep1 from the chapter offset rather than seeking the other episode.
-        verify { playerManager.play("ep1", any(), any(), any(), 5_000L) }
+        verify { playerManager.play("ep1", any(), any(), any(), 5_000L, any(), any()) }
         verify(exactly = 0) { playerManager.seekTo(any()) }
     }
 
@@ -131,7 +131,9 @@ class PlayerViewModelTest {
                 uri = "http://host/a.mp3",
                 title = "Title",
                 imageUrl = "https://podcast.art/cover.png",
-                startPositionMs = 0L
+                startPositionMs = 0L,
+                artist = "Podcast Title",
+                albumTitle = "Podcast Title"
             )
         }
     }

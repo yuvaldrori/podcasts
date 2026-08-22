@@ -67,11 +67,13 @@ class MediaSessionCallbackTest {
             val epWithPodcast = runBlocking(Dispatchers.Unconfined) {
                 episodeDao.getEpisodeWithPodcast(item.mediaId)
             }
-            epWithPodcast?.let { MediaItemMapper.fromEpisode(it.episode, it.podcast.imageUrl) } ?: item
+            epWithPodcast?.let { MediaItemMapper.fromEpisode(it.episode, it.podcast.imageUrl, it.podcast.title) } ?: item
         }
 
         assertEquals(1, resolvedItems.size)
         assertEquals("Resolved Title", resolvedItems[0].mediaMetadata.title)
+        assertEquals("Podcast Title", resolvedItems[0].mediaMetadata.artist)
+        assertEquals("Podcast Title", resolvedItems[0].mediaMetadata.albumTitle)
         assertEquals("http://audio.com", resolvedItems[0].localConfiguration?.uri?.toString())
         assertEquals("https://podcast.art/cover.png", resolvedItems[0].mediaMetadata.artworkUri?.toString())
     }
