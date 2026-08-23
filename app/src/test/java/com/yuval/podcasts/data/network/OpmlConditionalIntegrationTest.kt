@@ -92,4 +92,74 @@ class OpmlConditionalIntegrationTest {
 
         assertTrue("At least 80% of feeds should support 304 Not Modified", count304 >= totalChecked * 0.8)
     }
+
+    @Test
+    fun testAllOpmlFeedsParsedWithCleanDescriptionsAndTitles() = runTest {
+        val opmlFile = File("/home/yuval/podcasts/podcasts.opml (6)")
+        assertTrue("OPML file must exist", opmlFile.exists())
+
+        val factory = DocumentBuilderFactory.newInstance()
+        val builder = factory.newDocumentBuilder()
+        val doc = builder.parse(FileInputStream(opmlFile))
+        val nodes = doc.getElementsByTagName("outline")
+
+        val feeds = mutableListOf<Pair<String, String>>()
+        for (i in 0 until nodes.length) {
+            val node = nodes.item(i)
+            val xmlUrl = node.attributes?.getNamedItem("xmlUrl")?.nodeValue
+            val title = node.attributes?.getNamedItem("text")?.nodeValue ?: "Unknown"
+            if (!xmlUrl.isNullOrBlank()) {
+                feeds.add(title to xmlUrl)
+            }
+        }
+
+        val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+        val podcastApi = PodcastApi(client, Dispatchers.IO)
+        val parser = RssParser()
+
+        var successfulFeeds = 0
+        val htmlTagRegex = Regex("</?[a-zA-Z][a-zA-Z0-9]*\\b[^>]*>")
+
+        for ((opmlTitle, feedUrl) in feeds) {
+            try {
+                podcastApi.withRssStreamConditional(feedUrl) { result ->
+                    if (result is RssFetchResult.Success) {
+                        val parsed = parser.parse(result.stream, feedUrl)
+                        successfulFeeds++
+
+                        // 1. Verify Podcast Title & Description
+                        val cleanPodcastTitle = parsed.podcast.title
+                        val cleanPodcastDesc = parsed.podcast.description
+
+                        assertTrue("Podcast title should not contain HTML tags: '$cleanPodcastTitle'", !htmlTagRegex.containsMatchIn(cleanPodcastTitle))
+                        assertTrue("Podcast description should not contain HTML tags: '$cleanPodcastDesc'", !htmlTagRegex.containsMatchIn(cleanPodcastDesc))
+                        assertTrue("Podcast description should not contain &nbsp;: '$cleanPodcastDesc'", !cleanPodcastDesc.contains("&nbsp;"))
+
+                        // 2. Verify Episodes & Chapters
+                        for (epWithChapters in parsed.episodes.take(5)) {
+                            val epTitle = epWithChapters.episode.title
+                            assertTrue("Episode title should not contain HTML tags: '$epTitle'", !htmlTagRegex.containsMatchIn(epTitle))
+
+                            val previewDesc = com.yuval.podcasts.ui.utils.HtmlUtils.stripHtml(epWithChapters.episode.description)
+                            assertTrue("Episode preview description should not contain HTML tags: '$previewDesc'", !htmlTagRegex.containsMatchIn(previewDesc))
+
+                            for (ch in epWithChapters.chapters) {
+                                assertTrue("Chapter title should not contain HTML tags: '${ch.title}'", !htmlTagRegex.containsMatchIn(ch.title))
+                            }
+                        }
+
+                        println("✅ Verified feed: '$cleanPodcastTitle' (${parsed.episodes.size} episodes)")
+                    }
+                }
+            } catch (e: Exception) {
+                println("⚠️ Skipping feed '$opmlTitle' due to network error: ${e.message}")
+            }
+        }
+
+        println("\nSuccessfully verified $successfulFeeds feeds from OPML without any HTML tags.")
+        assertTrue("Should successfully verify at least 25 feeds", successfulFeeds >= 25)
+    }
 }

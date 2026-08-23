@@ -236,4 +236,78 @@ class RssParserTest {
         
         assertEquals("https://test.com/podcast_std.jpg", parsed.podcast.imageUrl)
     }
+
+    @Test
+    fun parse_withHtmlAndEntitiesInTitlesAndDescriptions_sanitizesCorrectly() {
+        val xml = """
+            <rss version="2.0">
+                <channel>
+                    <title>The <b>Awesome</b> &amp; Great Podcast</title>
+                    <description>&lt;p dir=&quot;rtl&quot;&gt;Channel &amp;amp; description with &lt;b&gt;tags&lt;/b&gt;&lt;/p&gt;</description>
+                    <item>
+                        <title>Episode &amp;quot;One&amp;quot; &amp;lt;Special&amp;gt;</title>
+                        <guid>ep1</guid>
+                        <enclosure url="https://test.com/audio.mp3" type="audio/mpeg" />
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val parsed = parser.parse(inputStream, "https://test.com")
+
+        assertEquals("The Awesome & Great Podcast", parsed.podcast.title)
+        assertEquals("Channel & description with tags", parsed.podcast.description)
+        assertEquals("Episode \"One\" <Special>", parsed.episodes[0].episode.title)
+    }
+
+    @Test
+    fun parse_withHtmlEntitiesInChapters_sanitizesChapterTitles() {
+        val xml = """
+            <rss version="2.0" xmlns:psc="http://podlove.org/simple-chapters">
+                <channel>
+                    <title>Chapters Podcast</title>
+                    <item>
+                        <title>Episode 1</title>
+                        <guid>ep1</guid>
+                        <psc:chapters version="1.2">
+                            <psc:chapter start="00:00:00" title="Intro &amp;amp; Welcome" />
+                            <psc:chapter start="00:05:00" title="&lt;b&gt;Topic 1&lt;/b&gt;" />
+                        </psc:chapters>
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val parsed = parser.parse(inputStream, "https://test.com")
+
+        assertEquals(2, parsed.episodes[0].chapters.size)
+        assertEquals("Intro & Welcome", parsed.episodes[0].chapters[0].title)
+        assertEquals("Topic 1", parsed.episodes[0].chapters[1].title)
+    }
+
+    @Test
+    fun parse_withEmojiEntitiesAndEncodedTags_decodesAndStripsProperly() {
+        val xml = """
+            <rss version="2.0">
+                <channel>
+                    <title><![CDATA[Emoji Show &#x1F389; & Fun &#128512;]]></title>
+                    <description>&lt;div&gt;&lt;p&gt;Encoded &amp;lt;strong&amp;gt;bold text&amp;lt;/strong&amp;gt; with emoji &amp;#x1F600;&lt;/p&gt;&lt;/div&gt;</description>
+                    <item>
+                        <title>&amp;lt;span&amp;gt;Episode &amp;#127881;&amp;lt;/span&amp;gt;</title>
+                        <guid>ep1</guid>
+                        <enclosure url="https://test.com/audio.mp3" type="audio/mpeg" />
+                    </item>
+                </channel>
+            </rss>
+        """.trimIndent()
+
+        val inputStream = ByteArrayInputStream(xml.toByteArray())
+        val parsed = parser.parse(inputStream, "https://test.com")
+
+        assertEquals("Emoji Show 🎉 & Fun 😀", parsed.podcast.title)
+        assertEquals("Encoded bold text with emoji 😀", parsed.podcast.description)
+        assertEquals("Episode 🎉", parsed.episodes[0].episode.title)
+    }
 }

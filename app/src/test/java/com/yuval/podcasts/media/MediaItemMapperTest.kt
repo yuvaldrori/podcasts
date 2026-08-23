@@ -181,5 +181,31 @@ class MediaItemMapperTest {
         assertEquals("https://feed.url", mediaItem?.mediaMetadata?.artist)
         assertEquals(null, mediaItem?.mediaMetadata?.albumTitle)
     }
+
+    @Test
+    fun testFromEpisodeWithPodcastMetadata() {
+        val episode = Episode(
+            id = "test-id",
+            podcastFeedUrl = "https://feed.url",
+            title = "Episode Title",
+            description = "Description",
+            audioUrl = "https://audio.url",
+            pubDate = 123456789L,
+            duration = 3600L,
+            imageUrl = null,
+            localFilePath = null,
+            downloadStatus = 0
+        )
+
+        val mediaItem = MediaItemMapper.fromEpisode(
+            ep = episode,
+            podcastTitle = "Podcast Name & Show"
+        )
+
+        assertNotNull(mediaItem)
+        assertEquals("Episode Title", mediaItem?.mediaMetadata?.title)
+        assertEquals("Podcast Name & Show", mediaItem?.mediaMetadata?.artist)
+        assertEquals("Podcast Name & Show", mediaItem?.mediaMetadata?.albumTitle)
+    }
 }
 

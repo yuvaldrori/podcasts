@@ -1,5 +1,6 @@
 package com.yuval.podcasts.ui.utils
 
+import android.text.Html
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.StrikethroughSpan
@@ -14,6 +15,18 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextDecoration
+
+object HtmlUtils {
+    /**
+     * Strips HTML tags and decodes HTML entities into clean plain text.
+     */
+    fun stripHtml(html: String?): String {
+        if (html.isNullOrBlank()) return ""
+        if (!html.contains('<') && !html.contains('&')) return html.trim()
+        val spanned = Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT)
+        return spanned.toString().replace('\u00A0', ' ').trim()
+    }
+}
 
 /**
  * Converts a [Spanned] (e.g. from Html.fromHtml) into a Compose [AnnotatedString].

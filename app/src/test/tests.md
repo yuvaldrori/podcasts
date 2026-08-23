@@ -23,9 +23,10 @@ These tests ensure the app can talk to the internet and understand the podcast d
 
 *   **`PodcastApiIntegrationTest`**: Makes sure that if the app is trying to download an RSS feed and the user cancels the action (like closing the app), the network request stops immediately to save data and battery.
 *   **`PodcastRemoteDataSourceTest`**: Verifies that the remote data source correctly orchestrates the network fetch and RSS parsing into clean data models.
-*   **`RssParserTest`**: Feeds fake XML files (RSS feeds) to the parser to ensure it correctly extracts the podcast title, episode names, audio links, publication dates, and artwork. It specifically verifies the robust handling of CDATA sections, HTML entities, and schemeless URLs (e.g., adding "https:" to "//example.com"), and automatically upgrades insecure `http:` links to `https:` (for podcasts, episodes, images, and audio) to comply with modern Android security restrictions.
+*   **`RssParserTest`**: Feeds fake XML files (RSS feeds) to the parser to ensure it correctly extracts the podcast title, episode names, audio links, publication dates, and artwork. It specifically verifies the robust handling of CDATA sections, HTML entities, and schemeless URLs (e.g., adding "https:" to "//example.com"), automatically upgrades insecure `http:` links to `https:` (for podcasts, episodes, images, and audio) to comply with modern Android security restrictions, and ensures that any HTML tags and entities in podcast titles, channel descriptions, episode titles, and chapter markers are sanitized to clean plain text.
 *   **`RssParserCrashTest`**: A safety test that feeds broken, corrupted, or badly formatted XML to the parser to ensure the app doesn't crash, but instead handles the error gracefully by throwing a managed exception.
 *   **`DateParserTest`**: Verifies that `DateParser` correctly parses RSS publication dates in multiple standard and non-standard formats (such as single-digit day representation, legacy timezone name replacements like EST, and ISO-8601 string fallbacks) to prevent dates from being zeroed out.
+*   **`OpmlConditionalIntegrationTest`**: Performs live network integration tests across all podcast feeds in OPML files, validating HTTP 304 Not Modified caching support and asserting that all 38 feeds parse with clean titles, channel descriptions, preview descriptions, and chapter markers free of HTML tags or unescaped entities.
 
 ## 📁 Repository Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/data/repository/`*
@@ -63,9 +64,9 @@ These tests verify background tasks managed by WorkManager.
 These tests verify small helper functions and data conversion logic.
 
 *   **`FormatterTest`**: Verifies that our date and time formatting functions work correctly. It checks that timestamps are converted to "MMM dd, yyyy" and that durations are correctly shown as "1h 30m" or "02:15".
-*   **`HtmlUtilsTest`**: Ensures that when converting podcast descriptions from HTML to displayable text, any embedded links are validated for safety. It allows only standard link types like `http`, `https`, and `mailto`, blocking potentially dangerous links like `javascript:`.
+*   **`HtmlUtilsTest`**: Ensures that when converting podcast descriptions from HTML to displayable text, any embedded links are validated for safety (allowing only standard link types like `http`, `https`, and `mailto`, and blocking potentially dangerous links like `javascript:`). Also verifies that `stripHtml` properly strips raw HTML tags, nested markup, and formatting attributes while cleanly decoding standard HTML entities (such as `&amp;`, `&quot;`, `&nbsp;`, `&lt;`, and `&gt;`) into clean plain text for UI previews.
 *   **`UiTextTest`**: Checks that `UiText` wrapper correctly resolves dynamic string resources and plain text formatting in diverse context settings.
-*   **`MediaItemMapperTest`**: Ensures that we can correctly convert a podcast "Episode" from our database into a "MediaItem" that the Android audio player understands, preserving the title, artist, album, and artwork. It verifies that `podcastTitle` is mapped to both the `artist` and `albumTitle` metadata properties with fallback to `podcastFeedUrl` for `artist` if missing. It also verifies that episode artwork is preferred with automatic fallback to subscription/podcast artwork when episode-level artwork is unavailable, and that when a downloaded episode's physical file is missing from disk, the mapped media item correctly falls back to streaming the network audio URL.
+*   **`MediaItemMapperTest`**: Ensures that we can correctly convert a podcast "Episode" from our database into a "MediaItem" that the Android audio player understands, preserving the title, artist, album, and artwork. It verifies that `podcastTitle` is mapped to both the `artist` and `albumTitle` metadata properties with fallback to `podcastFeedUrl` for `artist` if missing. It also verifies that episode artwork is preferred with automatic fallback to subscription/podcast artwork when episode-level artwork is unavailable, that residual HTML markup or entity codes in titles, artists, and album names are stripped, and that when a downloaded episode's physical file is missing from disk, the mapped media item correctly falls back to streaming the network audio URL.
 *   **`StorageUtilsTest`**: Checks that file size converters, directory cleaners, and file validation tools calculate sizes accurately and safely delete nested directories.
 
 ## 🎧 Media Player Tests
@@ -105,9 +106,14 @@ ViewModels prepare data for the screen. These tests check that the data is corre
 *   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files works, and logs can be downloaded correctly.
 
 ## 🤖 Android UI Tests (Instrumented)
-*Located in: `app/src/androidTest/java/com/yuval/podcasts/ui/screens/`*
+*Located in: `app/src/androidTest/java/com/yuval/podcasts/ui/`*
 
 These tests actually boot up the UI on an Android device to "click" buttons and check the screen.
+
+*   **`EpisodeItemTest`**: Verifies that `EpisodeItem` (used across the Queue, New Episodes, and Podcast Details screens) and `PodcastItem` (used on the Subscriptions tab) cleanly render plain text descriptions with all raw HTML tags (`<p>`, `<strong>`, `<br>`, etc.) and entities (`&nbsp;`, `&amp;`) stripped.
+*   **`NewEpisodesScreenTest`**: Tests user interactions on the New Episodes feed, including snackbar triggers and swipe state persistence across scrolls.
+*   **`QueueScreenTest`**: Verifies dragging and dropping episodes to reorder the playback queue.
+*   **`EpisodeDetailScreenShareTest`**: Verifies that tapping the Share button on the episode detail screen launches the system share sheet with the formatted episode title and web link.
 
 *   **`EpisodeDetailScreenShareTest`**: Opens the Episode Detail screen and clicks the "Share" button. It verifies that for internet podcasts, it shares the website link. But for *local* files (like an imported voice memo), it just shares the text "Listening to [Name] via Podcasts App" since there is no link to share.
 *   **`NewEpisodesScreenTest`**: Opens the "New Episodes" feed and verifies that pulling down to refresh triggers a background check for new episodes both when the list is populated and when it is empty. It also checks that refresh error states display the appropriate snackbar messages.

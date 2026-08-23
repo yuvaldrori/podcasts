@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,6 +22,7 @@ import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import kotlin.time.Duration.Companion.seconds
 import com.yuval.podcasts.ui.utils.Formatter
+import com.yuval.podcasts.ui.utils.HtmlUtils
 
 @Composable
 fun EpisodeItem(
@@ -127,8 +129,11 @@ fun EpisodeItem(
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                    val cleanDescription = remember(episode.description) {
+                        HtmlUtils.stripHtml(episode.description)
+                    }
                     Text(
-                        text = episode.description, 
+                        text = cleanDescription, 
                         maxLines = 1, 
                         style = MaterialTheme.typography.bodySmall, 
                         modifier = Modifier.weight(1f),

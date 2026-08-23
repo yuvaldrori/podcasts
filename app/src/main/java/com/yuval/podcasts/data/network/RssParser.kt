@@ -46,10 +46,10 @@ class RssParser @Inject constructor() {
 
             when {
                 name == Constants.Rss.TITLE && ns.isEmpty() -> {
-                    if (podcastTitle.isEmpty()) podcastTitle = readText(parser)
+                    if (podcastTitle.isEmpty()) podcastTitle = sanitizeText(readText(parser))
                 }
                 name == Constants.Rss.DESCRIPTION && ns.isEmpty() -> {
-                    if (podcastDescription.isEmpty()) podcastDescription = readText(parser)
+                    if (podcastDescription.isEmpty()) podcastDescription = sanitizeText(readText(parser))
                 }
                 name == Constants.Rss.LINK && ns.isEmpty() -> {
                     if (podcastWebsite.isEmpty()) podcastWebsite = readText(parser)
@@ -139,7 +139,7 @@ class RssParser @Inject constructor() {
             val name = parser.name
             
             when {
-                name == Constants.Rss.TITLE -> title = readText(parser)
+                name == Constants.Rss.TITLE -> title = sanitizeText(readText(parser))
                 name == Constants.Rss.DESCRIPTION -> description = readText(parser)
                 name == Constants.Rss.LINK -> episodeWebLink = readText(parser)
                 name == Constants.Rss.GUID -> id = readText(parser)
@@ -194,7 +194,8 @@ class RssParser @Inject constructor() {
             if (parser.eventType != XmlPullParser.START_TAG) continue
             if (parser.name == Constants.Rss.CHAPTER) {
                 val start = parser.getAttributeValue(null, Constants.Rss.CHAPTER_START) ?: "0"
-                val title = parser.getAttributeValue(null, Constants.Rss.CHAPTER_TITLE) ?: ""
+                val rawTitle = parser.getAttributeValue(null, Constants.Rss.CHAPTER_TITLE) ?: ""
+                val title = sanitizeText(rawTitle)
                 chapters.add(Chapter(
                     episodeId = "", // Filled by caller/Dao
                     title = title,
@@ -212,10 +213,15 @@ class RssParser @Inject constructor() {
 
     private fun readText(parser: XmlPullParser): String {
         val result = StringBuilder()
-        while (parser.next() == XmlPullParser.TEXT || parser.eventType == XmlPullParser.CDSECT) {
-            result.append(parser.text)
+        var depth = 1
+        while (depth > 0) {
+            when (parser.next()) {
+                XmlPullParser.TEXT, XmlPullParser.CDSECT -> result.append(parser.text)
+                XmlPullParser.START_TAG -> depth++
+                XmlPullParser.END_TAG -> depth--
+                XmlPullParser.END_DOCUMENT -> break
+            }
         }
-        // After reading all text events, we should be at END_TAG
         return result.toString().trim()
     }
 
@@ -249,7 +255,58 @@ class RssParser @Inject constructor() {
         }
     }
 
+    internal fun sanitizeText(input: String): String {
+        if (input.isBlank()) return ""
+        var text = input
+
+        // Strip initial HTML tags (e.g. <p dir="rtl">, <b>, </i>, <br/>)
+        if (text.contains('<') && text.contains('>')) {
+            text = text.replace(TAG_REGEX, "")
+        }
+
+        // Decode XML/HTML entities (up to 3 passes for nested/double-encoded entities)
+        var passes = 0
+        while (text.contains('&') && text.contains(';') && passes < 3) {
+            val prev = text
+            text = text
+                .replace("&amp;", "&")
+                .replace("&quot;", "\"")
+                .replace("&apos;", "'")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&nbsp;", " ")
+            if (text.contains("&#")) {
+                text = text.replace(HEX_ENTITY_REGEX) { match ->
+                    try {
+                        val codePoint = match.groupValues[1].toInt(16)
+                        String(Character.toChars(codePoint))
+                    } catch (e: Exception) {
+                        match.value
+                    }
+                }.replace(DEC_ENTITY_REGEX) { match ->
+                    try {
+                        val codePoint = match.groupValues[1].toInt()
+                        String(Character.toChars(codePoint))
+                    } catch (e: Exception) {
+                        match.value
+                    }
+                }
+            }
+            // Strip any newly unmasked HTML tags from decoded entities (e.g. &lt;b&gt; -> <b>)
+            if (text.contains('<') && text.contains('>')) {
+                text = text.replace(TAG_REGEX, "")
+            }
+            if (prev == text) break
+            passes++
+        }
+
+        return text.replace('\u00A0', ' ').trim()
+    }
+
     companion object {
         private const val MAX_DURATION_PARTS = 3
+        private val TAG_REGEX = Regex("</?(?:p|div|span|strong|b|em|i|u|a|br|hr|h[1-6]|ul|ol|li|img|blockquote|code|pre|table|tr|td|th|tbody|thead|font|center)\\b[^>]*>", RegexOption.IGNORE_CASE)
+        private val HEX_ENTITY_REGEX = Regex("&#x([0-9a-fA-F]+);")
+        private val DEC_ENTITY_REGEX = Regex("&#(\\d+);")
     }
 }

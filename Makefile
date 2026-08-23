@@ -1,4 +1,4 @@
-.PHONY: init build build-release test lint clean verify emulator stop-emulator run help describe layout screenshot check-updates benchmark-run
+.PHONY: init build build-release test test-ui lint clean verify emulator stop-emulator run help describe layout screenshot check-updates benchmark-run
 
 # Default target
 all: verify
@@ -9,6 +9,7 @@ help:
 	@echo "  make build	    - Assemble debug APK"
 	@echo "  make build-release - Assemble release APK"
 	@echo "  make test	    - Run unit tests"
+	@echo "  make test-ui       - Run instrumented UI tests on connected device"
 	@echo "  make lint	    - Run Android Lint (strict mode)"
 	@echo "  make clean	    - Clean build artifacts"
 	@echo "  make verify	    - Run clean, lint, test, and debug build"
@@ -37,6 +38,9 @@ build-release:
 
 test:
 	./gradlew :app:testDebugUnitTest
+
+test-ui:
+	./gradlew :app:connectedDebugAndroidTest
 
 lint:
 	./gradlew :app:lintDebug -PwarningsAsErrors=true --warning-mode all
