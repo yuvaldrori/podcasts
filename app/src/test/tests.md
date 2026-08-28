@@ -37,6 +37,7 @@ Repositories are the "managers" that decide whether to get data from the databas
 *   **`LocalMediaDataSourceTest`**: Verifies that when importing local files, the app correctly sanitizes filenames to prevent "Path Traversal" security vulnerabilities (keeping files safely inside the app's folder).
 *   **`AddLocalFileIntegrationTest`**: Tests the feature that lets users import their own local MP3 files. It checks if the app can read the MP3's metadata (title, artist, duration) and fake a "podcast episode" in the database.
 *   **`SettingsRepositoryTest`**: Checks that user preferences (like the default playback speed, default Smart Silence, and default Volume Boost) are loaded correctly from device storage.
+*   **`ConstantsTest`**: Verifies that standard MIME type arrays for audio importing and OPML importing contain all required formats, MIME subtypes, and fallbacks to ensure compatibility with Android's system document picker.
 
 ## 💼 Domain Logic (Use Cases)
 *Located in: `app/src/test/java/com/yuval/podcasts/domain/usecase/`*

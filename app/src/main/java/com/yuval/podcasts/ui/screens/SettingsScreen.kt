@@ -85,7 +85,7 @@ fun SettingsScreen(
     )
 
     val localAudioLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
+        contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri -> uri?.let { onImportLocalAudio(it) } }
     )
 
@@ -178,7 +178,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
-                    onClick = { opmlImportLauncher.launch(arrayOf(Constants.MIME_TYPE_ALL)) },
+                    onClick = { opmlImportLauncher.launch(Constants.OPML_MIME_TYPES) },
                     modifier = Modifier.weight(1f),
                     enabled = !isImporting
                 ) {
@@ -201,7 +201,7 @@ fun SettingsScreen(
             Text(text = stringResource(R.string.import_local_audio_title), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
             Button(
-                onClick = { localAudioLauncher.launch(Constants.MIME_TYPE_AUDIO_ALL) },
+                onClick = { localAudioLauncher.launch(Constants.AUDIO_MIME_TYPES) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.import_local_audio_btn))

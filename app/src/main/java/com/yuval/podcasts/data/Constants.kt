@@ -46,8 +46,29 @@ object Constants {
     const val MIME_TYPE_OPML = "text/x-opml"
     const val MIME_TYPE_JSONL = "application/jsonl"
     const val MIME_TYPE_AUDIO_ALL = "audio/*"
+    const val MIME_TYPE_APPLICATION_OCTET_STREAM = "application/octet-stream"
     const val MIME_TYPE_TEXT_PLAIN = "text/plain"
     const val MIME_TYPE_ALL = "*/*"
+    val AUDIO_MIME_TYPES = arrayOf(
+        MIME_TYPE_AUDIO_ALL,
+        "audio/mpeg",
+        "audio/mp3",
+        "audio/x-mp3",
+        "audio/mp4",
+        "audio/m4a",
+        "audio/aac",
+        "audio/ogg",
+        "audio/wav",
+        "audio/flac",
+        MIME_TYPE_APPLICATION_OCTET_STREAM
+    )
+    val OPML_MIME_TYPES = arrayOf(
+        MIME_TYPE_OPML,
+        "text/xml",
+        "application/xml",
+        MIME_TYPE_TEXT_PLAIN,
+        MIME_TYPE_ALL
+    )
 
     // WorkManager Names
     const val WORK_NAME_CLEANUP = "cleanup_orphaned_files"
