@@ -60,7 +60,8 @@ object Constants {
         "audio/ogg",
         "audio/wav",
         "audio/flac",
-        MIME_TYPE_APPLICATION_OCTET_STREAM
+        MIME_TYPE_APPLICATION_OCTET_STREAM,
+        MIME_TYPE_ALL
     )
     val OPML_MIME_TYPES = arrayOf(
         MIME_TYPE_OPML,

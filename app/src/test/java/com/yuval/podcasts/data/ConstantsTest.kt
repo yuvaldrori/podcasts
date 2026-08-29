@@ -12,6 +12,7 @@ class ConstantsTest {
         assertTrue("Should include audio/mpeg", types.contains("audio/mpeg"))
         assertTrue("Should include audio/mp3", types.contains("audio/mp3"))
         assertTrue("Should include application/octet-stream", types.contains("application/octet-stream"))
+        assertTrue("Should include */*", types.contains(Constants.MIME_TYPE_ALL))
     }
 
     @Test
