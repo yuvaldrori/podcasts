@@ -311,6 +311,8 @@ class PlaybackService : MediaLibraryService() {
                 try {
                     val player = castPlayer.get()
                     player.repeatMode = Player.REPEAT_MODE_OFF
+                    // Note: setSessionAvailabilityListener is deprecated in upstream Media3 CastPlayer,
+                    // but remains the primary bridge listener mechanism for switching active Player references.
                     @Suppress("DEPRECATION")
                     player.setSessionAvailabilityListener(object : SessionAvailabilityListener {
                         override fun onCastSessionAvailable() {

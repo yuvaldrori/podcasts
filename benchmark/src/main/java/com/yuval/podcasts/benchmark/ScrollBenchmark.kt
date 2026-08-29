@@ -50,14 +50,14 @@ class ScrollBenchmark {
                         waitButton.click()
                     }
                     
-                    if (device.hasObject(By.text("New"))) {
+                    if (device.hasObject(By.textContains("New")) || device.hasObject(By.descContains("New"))) {
                         found = true
                         break
                     }
                     Thread.sleep(1000)
                 }
                 check(found) { "Tab 'New' not found!" }
-                val tab = device.findObject(By.text("New"))
+                val tab = device.findObject(By.textContains("New")) ?: device.findObject(By.descContains("New"))
                 checkNotNull(tab) { "Tab 'New' not found!" }.click()
                 
                 // Wait for content to load

@@ -12,7 +12,7 @@ enum class DownloadStatus(val value: Int) {
     DOWNLOADED(2);
 
     companion object {
-        fun fromInt(value: Int) = values().find { it.value == value } ?: NOT_DOWNLOADED
+        fun fromInt(value: Int) = entries.find { it.value == value } ?: NOT_DOWNLOADED
     }
 }
 

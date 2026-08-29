@@ -49,7 +49,12 @@ class EpisodeDetailScreenShareTest {
             "id1", com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL, "My Recording", "Desc", "path/to/file",
             null, null, 0L, 0L, 2, "path/to/file", false, 0L, null
         )
-        val uiState = EpisodeDetailUiState.Success(EpisodeWithPodcast(episode, podcast), false, emptyList())
+        val uiState = EpisodeDetailUiState.Success(
+            episodeWithPodcast = EpisodeWithPodcast(episode, podcast),
+            isInQueue = false,
+            chapters = emptyList(),
+            annotatedDescription = androidx.compose.ui.text.AnnotatedString("Desc")
+        )
 
         composeTestRule.setContent {
             EpisodeDetailScreen(
@@ -83,7 +88,12 @@ class EpisodeDetailScreenShareTest {
             "id2", "http://feed", "Remote Episode", "Desc", "http://audio",
             null, "http://weblink", 0L, 0L, 0, null, false, 0L, null
         )
-        val uiState = EpisodeDetailUiState.Success(EpisodeWithPodcast(episode, podcast), false, emptyList())
+        val uiState = EpisodeDetailUiState.Success(
+            episodeWithPodcast = EpisodeWithPodcast(episode, podcast),
+            isInQueue = false,
+            chapters = emptyList(),
+            annotatedDescription = androidx.compose.ui.text.AnnotatedString("Desc")
+        )
 
         composeTestRule.setContent {
             EpisodeDetailScreen(
