@@ -1,7 +1,6 @@
 package com.yuval.podcasts.ui.screens
 
 import android.content.Intent
-import android.text.Html
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,15 +21,11 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.ui.viewmodel.EpisodeDetailUiState
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.components.LoadingBox
 import com.yuval.podcasts.ui.components.PodcastCover
 import com.yuval.podcasts.ui.utils.Formatter
-import com.yuval.podcasts.ui.utils.toAnnotatedString
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,14 +157,8 @@ fun EpisodeDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        val annotatedDescription by produceState<AnnotatedString>(AnnotatedString(""), data.episode.description) {
-                            value = withContext(kotlinx.coroutines.Dispatchers.Default) {
-                                Html.fromHtml(data.episode.description, Html.FROM_HTML_MODE_COMPACT).toAnnotatedString()
-                            }
-                        }
-                        
                         Text(
-                            text = annotatedDescription,
+                            text = uiState.annotatedDescription,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.fillMaxWidth()

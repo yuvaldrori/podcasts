@@ -6,7 +6,7 @@ import java.time.format.DateTimeFormatterBuilder
 import java.util.Locale
 
 object DateParser {
-    private val TIMEZONE_OFFSETS = mapOf(
+    private val TIMEZONE_REGEXES = mapOf(
         "EST" to "-0500",
         "EDT" to "-0400",
         "CST" to "-0600",
@@ -16,19 +16,19 @@ object DateParser {
         "PST" to "-0800",
         "PDT" to "-0700",
         "UT" to "GMT"
-    )
+    ).map { (abbrev, offset) -> Regex("\\b$abbrev\\b") to offset }
 
     private val formatters = listOf(
         DateTimeFormatter.RFC_1123_DATE_TIME,
         
         DateTimeFormatterBuilder()
             .parseCaseInsensitive()
-            .appendPattern("[EEE, ]d MMM yyyy HH:mm:ss[ zzz][ Z][ z]")
+            .appendPattern("[EEEE, ][EEE, ]d [MMMM][MMM] yyyy HH:mm:ss[ zzz][ Z][ z]")
             .toFormatter(Locale.ENGLISH),
             
         DateTimeFormatterBuilder()
             .parseCaseInsensitive()
-            .appendPattern("[EEE, ]d MMM yyyy HH:mm[ zzz][ Z][ z]")
+            .appendPattern("[EEEE, ][EEE, ]d [MMMM][MMM] yyyy HH:mm[ zzz][ Z][ z]")
             .toFormatter(Locale.ENGLISH),
 
         DateTimeFormatterBuilder()
@@ -42,8 +42,8 @@ object DateParser {
         val trimmed = dateStr.trim()
         
         var sanitized = trimmed
-        for ((abbrev, offset) in TIMEZONE_OFFSETS) {
-            sanitized = sanitized.replace(abbrev, offset)
+        for ((regex, offset) in TIMEZONE_REGEXES) {
+            sanitized = sanitized.replace(regex, offset)
         }
 
         for (formatter in formatters) {

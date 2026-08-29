@@ -17,8 +17,7 @@ class RemoveEpisodeUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(episodeId: String, markAsPlayed: Boolean = false) = withContext(ioDispatcher) {
         if (markAsPlayed) {
-            repository.updatePlaybackStatus(episodeId, true, System.currentTimeMillis())
-            repository.updateLastPlayedPosition(episodeId, 0L)
+            repository.markAsPlayed(episodeId)
         }
         repository.removeFromQueue(episodeId)
     }

@@ -120,11 +120,12 @@ class QueueViewModelTest {
     }
 
     @Test
-    fun commitReorder_retainsManualQueueDuringDelay() = runTest {
+    fun commitReorder_retainsManualQueueUntilRepositoryEmitsNewOrder() = runTest {
         val podcast = Podcast("p1", "T", "D", "I", "W")
         val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 3600L, 0, null, false, 0L, null)
         val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 7200L, 0, null, false, 0L, null)
         val initialQueue = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
+        val reorderedQueue = listOf(EpisodeWithPodcast(ep2, podcast), EpisodeWithPodcast(ep1, podcast))
         listeningQueueFlow.value = initialQueue
 
         val uiStateJob = backgroundScope.launch { viewModel.uiState.collect {} }
@@ -137,26 +138,21 @@ class QueueViewModelTest {
         var currentState = viewModel.uiState.value as QueueUiState.Success
         assertEquals("e2", currentState.queue[0].episode.id)
 
-        // Commit reorder - this launches a coroutine with reorderQueue and delay(Constants.QUEUE_REORDER_COMMIT_DELAY_MS)
+        // Commit reorder - awaiting repository.listeningQueue to emit the new order
         viewModel.commitReorder()
 
-        // Room has NOT committed yet, but even if database write happened, delay is pending.
-        // Therefore, the manual override should STILL be active.
+        // Before repository emits reordered list, manual queue remains in effect
+        advanceUntilIdle()
         currentState = viewModel.uiState.value as QueueUiState.Success
         assertEquals("e2", currentState.queue[0].episode.id)
 
-        // Now advance virtual time by half the delay duration - the delay is still pending
-        testScheduler.advanceTimeBy(Constants.QUEUE_REORDER_COMMIT_DELAY_MS / 2)
+        // Repository emits reordered list
+        listeningQueueFlow.value = reorderedQueue
+        advanceUntilIdle()
+
+        // Manual override is cleared, state reflects persisted queue
         currentState = viewModel.uiState.value as QueueUiState.Success
         assertEquals("e2", currentState.queue[0].episode.id)
-
-        // Now advance virtual time to finish the delay (remaining half + 10ms margin)
-        testScheduler.advanceTimeBy(Constants.QUEUE_REORDER_COMMIT_DELAY_MS / 2 + 10)
-        
-        // The delay finished, setting manual override to null, so it falls back to the database queue
-        // (which hasn't emitted new order yet in this test, so it goes back to initialQueue e1)
-        currentState = viewModel.uiState.value as QueueUiState.Success
-        assertEquals("e1", currentState.queue[0].episode.id)
 
         uiStateJob.cancel()
     }

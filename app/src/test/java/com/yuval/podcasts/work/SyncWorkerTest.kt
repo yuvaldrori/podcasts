@@ -55,4 +55,26 @@ class SyncWorkerTest {
         coVerify(exactly = 1) { repository.refreshPodcasts(listOf("url1", "url2"), forceRefresh = false, any()) }
         coVerify(exactly = 1) { repository.requeueMissingDownloads() }
     }
+
+    @Test(expected = kotlinx.coroutines.CancellationException::class)
+    fun `doWork rethrows CancellationException without swallowing`() = runBlocking {
+        val podcasts = listOf(Podcast("url1", "T1", "D1", "I1", "W1"))
+        every { repository.allPodcasts } returns flowOf(podcasts)
+        coEvery { repository.refreshPodcasts(any(), any(), any()) } throws kotlinx.coroutines.CancellationException("Job cancelled")
+
+        val worker = TestListenableWorkerBuilder<SyncWorker>(context)
+            .setWorkerFactory(object : androidx.work.WorkerFactory() {
+                override fun createWorker(
+                    appContext: Context,
+                    workerClassName: String,
+                    workerParameters: androidx.work.WorkerParameters
+                ): ListenableWorker? {
+                    return SyncWorker(appContext, workerParameters, repository, logManager)
+                }
+            })
+            .build()
+
+        worker.doWork()
+        Unit
+    }
 }

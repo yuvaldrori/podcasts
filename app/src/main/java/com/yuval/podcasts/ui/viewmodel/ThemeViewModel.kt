@@ -20,6 +20,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import com.yuval.podcasts.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,7 +30,8 @@ class ThemeViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val playerManager: PlayerManager,
     private val repository: PodcastRepository,
-    private val imageLoader: ImageLoader
+    private val imageLoader: ImageLoader,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _dynamicColorScheme = MutableStateFlow<ColorScheme?>(null)
@@ -70,19 +74,21 @@ class ThemeViewModel @Inject constructor(
         val result = imageLoader.execute(request)
         if (result is SuccessResult) {
             val bitmap = (result.drawable as? BitmapDrawable)?.bitmap ?: return
-            val palette = Palette.from(bitmap).generate()
-            
-            val swatch = if (isDarkTheme) {
-                palette.darkVibrantSwatch ?: palette.vibrantSwatch
-            } else {
-                palette.lightVibrantSwatch ?: palette.vibrantSwatch
+            val scheme = withContext(ioDispatcher) {
+                val palette = Palette.from(bitmap).generate()
+                
+                val swatch = if (isDarkTheme) {
+                    palette.darkVibrantSwatch ?: palette.vibrantSwatch
+                } else {
+                    palette.lightVibrantSwatch ?: palette.vibrantSwatch
+                }
+                
+                swatch?.let {
+                    val seedColorArgb = it.rgb
+                    SchemeTonalSpot(Hct.fromInt(seedColorArgb), isDarkTheme, 0.0).toColorScheme()
+                }
             }
-            
-            swatch?.let {
-                val seedColorArgb = it.rgb
-                val scheme = SchemeTonalSpot(Hct.fromInt(seedColorArgb), isDarkTheme, 0.0)
-                _dynamicColorScheme.value = scheme.toColorScheme()
-            }
+            _dynamicColorScheme.value = scheme
         }
     }
 }

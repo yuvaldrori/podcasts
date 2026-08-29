@@ -22,12 +22,17 @@ import androidx.navigation.toRoute
 import com.yuval.podcasts.ui.navigation.EpisodeDetailScreenRoute
 import kotlinx.coroutines.flow.map
 
+import com.yuval.podcasts.ui.utils.toAnnotatedString
+import androidx.compose.ui.text.AnnotatedString
+import android.text.Html
+
 sealed interface EpisodeDetailUiState {
     object Loading : EpisodeDetailUiState
     data class Success(
         val episodeWithPodcast: EpisodeWithPodcast,
         val isInQueue: Boolean,
-        val chapters: List<Chapter>
+        val chapters: List<Chapter>,
+        val annotatedDescription: AnnotatedString
     ) : EpisodeDetailUiState
     object Error : EpisodeDetailUiState
 }
@@ -49,10 +54,13 @@ class EpisodeDetailViewModel @Inject constructor(
         if (episodeData == null) {
             EpisodeDetailUiState.Error
         } else {
+            val spanned = Html.fromHtml(episodeData.episode.description, Html.FROM_HTML_MODE_COMPACT)
+            val annotatedDescription = spanned.toAnnotatedString()
             EpisodeDetailUiState.Success(
                 episodeWithPodcast = episodeData,
                 isInQueue = queue.any { it.episode.id == episodeData.episode.id },
-                chapters = chapters
+                chapters = chapters,
+                annotatedDescription = annotatedDescription
             )
         }
     }.stateIn(

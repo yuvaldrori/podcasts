@@ -99,7 +99,7 @@ class ThemeViewModelTest {
 
         coEvery { imageLoader.execute(capture(requestSlot)) } returns fakeSuccessResult
 
-        val viewModel = ThemeViewModel(context, playerManager, repository, imageLoader)
+        val viewModel = ThemeViewModel(context, playerManager, repository, imageLoader, testDispatcher)
 
         currentMediaIdFlow.value = "ep1"
         advanceTimeBy(350L) // debounce

@@ -270,4 +270,36 @@ class EpisodeDaoTest {
         assertEquals("ep1", result?.episode?.id)
         assertEquals("https://podcast.art/img.jpg", result?.podcast?.imageUrl)
     }
+
+    @Test
+    fun syncNetworkEpisodes_multipleFeedsInBatch_preservesLocalStateForEachFeed() = runBlocking {
+        val podcast1 = Podcast("url1", "P1", "D1", "I1", "W1")
+        val podcast2 = Podcast("url2", "P2", "D2", "I2", "W2")
+        podcastDao.insertPodcast(podcast1)
+        podcastDao.insertPodcast(podcast2)
+
+        val netEp1 = com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", "url1", "Title1", "Desc", "audio1", null, null, 1000L, 100L)
+        val netEp2 = com.yuval.podcasts.data.db.entity.NetworkEpisode("ep2", "url2", "Title2", "Desc", "audio2", null, null, 2000L, 100L)
+        episodeDao.syncNetworkEpisodes(listOf(netEp1, netEp2))
+
+        episodeDao.updatePlaybackStatus("ep1", true, 111L)
+        episodeDao.updatePlaybackStatus("ep2", true, 222L)
+
+        // Resync both feeds in a single batch with updated titles
+        val updatedNetEp1 = netEp1.copy(title = "Updated Title 1")
+        val updatedNetEp2 = netEp2.copy(title = "Updated Title 2")
+        val newCount = episodeDao.syncNetworkEpisodes(listOf(updatedNetEp1, updatedNetEp2))
+
+        assertEquals(0, newCount)
+        val fetched1 = episodeDao.getEpisodeById("ep1")
+        val fetched2 = episodeDao.getEpisodeById("ep2")
+
+        assertEquals("Updated Title 1", fetched1?.title)
+        assertEquals(true, fetched1?.isPlayed)
+        assertEquals(111L, fetched1?.completedAt)
+
+        assertEquals("Updated Title 2", fetched2?.title)
+        assertEquals(true, fetched2?.isPlayed)
+        assertEquals(222L, fetched2?.completedAt)
+    }
 }

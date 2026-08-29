@@ -8,7 +8,7 @@ The tests are split into two main categories: **Local Unit Tests** (which run fa
 
 These tests ensure the local Room database saves, retrieves, and migrates information correctly.
 
-*   **`EpisodeDaoTest`**: Verifies that we can insert, update, and delete podcast episodes. It checks that we can correctly fetch a list of unplayed episodes, verifies that queued episodes are excluded from the unplayed episodes feed, and specifically verifies that `updateDownloadStatusAfterSuccess` only updates the download path and status if the current status matches the expected downloading state.
+*   **`EpisodeDaoTest`**: Verifies that we can insert, update, and delete podcast episodes. It checks that we can correctly fetch a list of unplayed episodes, verifies that queued episodes are excluded from the unplayed episodes feed, verifies that `updateDownloadStatusAfterSuccess` only updates the download path and status if the current status matches the expected downloading state, and verifies that `syncNetworkEpisodes` safely processes multi-feed episode batches without corrupting or dropping local user state.
 *   **`PodcastDaoTest`**: Checks that adding and removing Podcast subscriptions works, and ensures that fetching "all podcasts" returns the correct list ordered alphabetically.
 *   **`QueueDaoTest`**: Confirms that adding episodes to the play queue, reordering the queue, and removing items from the queue behaves as expected in the database. Specifically verifies the position-shifting logic for efficient insertions, and confirms the parameterized querying of queued episodes that are not yet downloaded.
 *   **`ChapterDaoTest`**: Verifies that we can bulk delete and update chapters for multiple episodes in a single operation to maintain performance during synchronization.
@@ -25,7 +25,7 @@ These tests ensure the app can talk to the internet and understand the podcast d
 *   **`PodcastRemoteDataSourceTest`**: Verifies that the remote data source correctly orchestrates the network fetch and RSS parsing into clean data models.
 *   **`RssParserTest`**: Feeds fake XML files (RSS feeds) to the parser to ensure it correctly extracts the podcast title, episode names, audio links, publication dates, and artwork. It specifically verifies the robust handling of CDATA sections, HTML entities, and schemeless URLs (e.g., adding "https:" to "//example.com"), automatically upgrades insecure `http:` links to `https:` (for podcasts, episodes, images, and audio) to comply with modern Android security restrictions, and ensures that any HTML tags and entities in podcast titles, channel descriptions, episode titles, and chapter markers are sanitized to clean plain text.
 *   **`RssParserCrashTest`**: A safety test that feeds broken, corrupted, or badly formatted XML to the parser to ensure the app doesn't crash, but instead handles the error gracefully by throwing a managed exception.
-*   **`DateParserTest`**: Verifies that `DateParser` correctly parses RSS publication dates in multiple standard and non-standard formats (such as single-digit day representation, legacy timezone name replacements like EST, and ISO-8601 string fallbacks) to prevent dates from being zeroed out.
+*   **`DateParserTest`**: Verifies that `DateParser` correctly parses RSS publication dates in standard and non-standard formats (such as single-digit day representation, legacy timezone abbreviations like EST/UT using word boundaries to avoid corrupting month names like August, and ISO-8601 string fallbacks).
 *   **`OpmlConditionalIntegrationTest`**: Performs live network integration tests across all podcast feeds in OPML files, validating HTTP 304 Not Modified caching support and asserting that all 38 feeds parse with clean titles, channel descriptions, preview descriptions, and chapter markers free of HTML tags or unescaped entities.
 
 ## 📁 Repository Tests
@@ -45,7 +45,7 @@ Repositories are the "managers" that decide whether to get data from the databas
 Use Cases handle specific business rules.
 
 *   **`EnqueueEpisodeUseCaseTest`**: Verifies the logic for adding a new episode to the queue. If it's a brand new episode, it gets added to the front. If it's older, it gets added to the back. It checks that downloading starts when a remote, un-downloaded item is queued, and verifies that background downloads are skipped for local episodes or already downloaded episodes (provided their physical file exists). It also verifies that if a downloaded episode's physical file is missing from storage, the usecase schedules a fresh background download.
-*   **`RemoveEpisodeUseCaseTest`**: Checks that when an episode is removed from the queue, its downloaded audio file is deleted from the phone to free up storage space.
+*   **`RemoveEpisodeUseCaseTest`**: Checks that when an episode is removed from the queue, its downloaded audio file is deleted from the phone to free up storage space and verifies atomic mark-as-played status updates when requested.
 *   **`ImportLocalFileUseCaseTest`**: Verifies that importing a local audio file parses its metadata (using metadata extractor) and correctly triggers insertion into the local media database.
 *   **`ReorderSubscriptionInQueueUseCaseTest`**: Confirms the business rules for moving all episodes belonging to a specific podcast subscription to the bottom of the playback queue.
 *   **`RefreshAllPodcastsSyncUseCaseTest`**: Verifies that the synchronous refresh command used by AppFunctions delegates the refresh logic to the repository and returns the correct total count of newly added episodes.
@@ -55,7 +55,7 @@ Use Cases handle specific business rules.
 
 These tests verify background tasks managed by WorkManager.
 
-*   **`SyncWorkerTest`**: Verifies smart periodic update execution, ensuring `SyncWorker` calls `refreshPodcasts` with `forceRefresh = false` to leverage ETAG and Last-Modified conditional headers.
+*   **`SyncWorkerTest`**: Verifies smart periodic update execution, ensuring `SyncWorker` calls `refreshPodcasts` with `forceRefresh = false` to leverage ETAG and Last-Modified conditional headers, and verifies that coroutine `CancellationException` is properly rethrown instead of swallowed into a failure result.
 *   **`HardRefreshWorkerTest`**: Verifies forced periodic update execution, ensuring `HardRefreshWorker` calls `refreshPodcasts` with `forceRefresh = true` to bypass ETAG and Last-Modified headers and perform full HTTP 200 re-fetches.
 *   **`CleanupWorkerTest`**: Verifies that the periodic cleanup job identifies and deletes orphaned audio files from disk while preserving active queue and downloaded episodes.
 
@@ -85,7 +85,7 @@ These tests verify the audio player, background playback, and media buttons.
 *   **`MediaSessionCallbackTest`**: Tests the logic that "resolves" media IDs into playable items. This ensures that when external controllers (like Android Auto) request a track, the app correctly finds the URI and metadata from the database and resolves artwork with subscription artwork fallback.
 *   **`MediaLibraryCallbackTest`**: Tests the media library service's browse callbacks (like `onGetLibraryRoot` and `onGetChildren`) used by Android Auto, ensuring they return the correct folder structure and queue episodes.
 *   **`MediaButtonRemappingTest`**: Ensures that pressing the "Fast Forward" or "Rewind" buttons on Bluetooth headphones correctly skips forward/backward by 30/10 seconds instead of skipping to the next episode.
-*   **`PlayerManagerTest`**: Tests the helper class that the UI uses to talk to the background service. It checks play, pause, and seeking functions, and confirms that `isPlaying` state remains consistently `true` during buffering when `playWhenReady` is active to prevent UI Play/Pause button flapping.
+*   **`PlayerManagerTest`**: Tests the helper class that the UI uses to talk to the background service. It checks play, pause, and seeking functions, confirms that `isPlaying` state remains consistently `true` during buffering when `playWhenReady` is active to prevent UI Play/Pause button flapping, and verifies that releasing the player manager cancels active coroutines via `cancelChildren()` without invalidating the root singleton scope for future operations.
 *   **`PlayerManagerInitializationTest`**: Checks that the PlayerManager doesn't try to send commands before it has successfully connected to the background audio service.
 *   **`PlayerSpeedTest`**: Verifies that changing the playback speed (e.g., 1.5x) works and documents that ExoPlayer retains PlaybackParameters across stop() and prepare() cycles by design (as playback speed is managed as a persistent user preference in PlayerManager).
 *   **`PlayerStopPlayTest`**: Ensures that stopping the player clears the current media and resets everything cleanly.
@@ -97,14 +97,14 @@ These tests verify the audio player, background playback, and media buttons.
 
 ViewModels prepare data for the screen. These tests check that the data is correct before it gets drawn.
 
-*   **`PlayerViewModelTest`**: Tests the bridge between the UI and the audio player, ensuring UI buttons (Play/Pause, Skip) correctly trigger the corresponding player actions and verifying that single-episode playback resolves podcast artwork fallback.
-*   **`ThemeViewModelTest`**: Verifies that Material You dynamic color theme palettes are seeded exclusively from the subscription/podcast cover art rather than individual episode art.
+*   **`PlayerViewModelTest`**: Tests the bridge between the UI and the audio player with injected dispatchers and type-safe playback combines, ensuring UI buttons (Play/Pause, Skip) correctly trigger the corresponding player actions and verifying that single-episode playback resolves podcast artwork fallback.
+*   **`ThemeViewModelTest`**: Verifies that Material You dynamic color theme palettes are seeded exclusively from the subscription/podcast cover art rather than individual episode art, and that bitmap palette generation is offloaded to the IO dispatcher.
 *   **`FeedsViewModelTest`**: Checks the "Subscriptions" screen logic. Makes sure it loads your podcasts, handles pulling down to refresh, and shows an error message if the internet is down.
-*   **`QueueViewModelTest`**: Checks the "Up Next" queue logic. Makes sure that removing an item from the queue tells the player to skip if that item was currently playing.
+*   **`QueueViewModelTest`**: Checks the "Up Next" queue logic, verifying typed playback statistics combines and deterministic flow completion when reordering. Makes sure that removing an item from the queue tells the player to skip if that item was currently playing.
 *   **`QueueViewModelTimeTest`**: Verifies the math that calculates "Total Queue Time Remaining". If you have 3 hours of podcasts but you listen at 2x speed, it correctly tells you there is 1.5 hours remaining.
-*   **`EpisodeDetailViewModelTest`**: Ensures the episode details screen loads the correct episode and knows whether that episode is already in your queue or not.
+*   **`EpisodeDetailViewModelTest`**: Ensures the episode details screen loads the correct episode, pre-parses HTML descriptions into Compose AnnotatedStrings in the background, and knows whether that episode is already in your queue or not.
 *   **`PodcastDetailViewModelTest`**: Verifies that the podcast detail screen loads episodes for the specified feed URL and handles adding episodes to the queue.
-*   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files works, and logs can be downloaded correctly.
+*   **`SettingsViewModelTest`**: Checks the settings screen logic, specifically ensuring that importing/exporting OPML files and downloading logs work correctly and log errors through LogManager.
 
 ## 🤖 Android UI Tests (Instrumented)
 *Located in: `app/src/androidTest/java/com/yuval/podcasts/ui/`*

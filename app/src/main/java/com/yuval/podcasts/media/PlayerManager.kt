@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.SupervisorJob
 import com.yuval.podcasts.di.MainDispatcher
 import com.yuval.podcasts.di.IoDispatcher
@@ -373,7 +374,7 @@ class PlayerManager @Inject constructor(
     }
 
     fun release() {
-        scope.cancel()
+        scope.coroutineContext.cancelChildren()
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
         controller = null

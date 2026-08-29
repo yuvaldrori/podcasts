@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -55,37 +56,40 @@ class QueueViewModel @Inject constructor(
         .map { QueueUiState.Success(it) as QueueUiState }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), QueueUiState.Loading)
 
-    // Header "time remaining" ticks with the playback position but carries only a Long, so
-    // position updates recompose the header text without touching the list.
-    @Suppress("UNCHECKED_CAST")
-    val queueTimeRemaining: StateFlow<Long> = combine(
-        effectiveQueue,
-        _manualQueue,
+    private data class PlayerPlaybackStats(
+        val speed: Float,
+        val currentMediaId: String?,
+        val currentPosition: Long,
+        val duration: Long
+    )
+
+    private val playerPlaybackStatsFlow = combine(
         playerManager.playbackSpeed,
         playerManager.currentMediaId,
         playerManager.currentPosition,
         playerManager.duration
-    ) { args: Array<Any?> ->
-        val queue = args[0] as ImmutableList<EpisodeWithPodcast>
-        val manualQueue = args[1] as? ImmutableList<EpisodeWithPodcast>
-        val speed = args[2] as Float
-        val currentId = args[3] as? String
-        val currentPos = args[4] as Long
-        val currentDur = args[5] as Long
+    ) { speed, currentId, currentPos, duration ->
+        PlayerPlaybackStats(speed, currentId, currentPos, duration)
+    }
 
+    // Header "time remaining" ticks with the playback position but carries only a Long, so
+    // position updates recompose the header text without touching the list.
+    val queueTimeRemaining: StateFlow<Long> = combine(
+        effectiveQueue,
+        playerPlaybackStatsFlow
+    ) { queue, stats ->
         // If speed is non-positive, don't compute remaining time.
-        if (speed <= 0f) return@combine 0L
+        if (stats.speed <= 0f) return@combine 0L
 
-        val activeQueue = manualQueue ?: queue
-        val totalMsRemaining = activeQueue.sumOf { item ->
-            if (item.episode.id == currentId && currentDur > 0) {
-                (currentDur - currentPos).coerceAtLeast(0L)
+        val totalMsRemaining = queue.sumOf { item ->
+            if (item.episode.id == stats.currentMediaId && stats.duration > 0) {
+                (stats.duration - stats.currentPosition).coerceAtLeast(0L)
             } else {
                 val durationMs = item.episode.duration.seconds.inWholeMilliseconds
                 (durationMs - item.episode.lastPlayedPosition).coerceAtLeast(0L)
             }
         }
-        (totalMsRemaining / speed).toLong()
+        (totalMsRemaining / stats.speed).toLong()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), 0L)
 
     fun moveItem(fromIndex: Int, toIndex: Int) {
@@ -99,9 +103,12 @@ class QueueViewModel @Inject constructor(
 
     fun commitReorder() {
         val manual = _manualQueue.value ?: return
+        val targetIds = manual.map { item -> item.episode.id }
         viewModelScope.launch {
-            repository.reorderQueue(manual.map { item -> item.episode.id })
-            delay(Constants.QUEUE_REORDER_COMMIT_DELAY_MS)
+            repository.reorderQueue(targetIds)
+            repository.listeningQueue.first { current ->
+                current.map { it.episode.id } == targetIds
+            }
             _manualQueue.value = null
         }
     }
@@ -109,7 +116,9 @@ class QueueViewModel @Inject constructor(
     fun reorderQueue(newOrderIds: List<String>) {
         viewModelScope.launch {
             repository.reorderQueue(newOrderIds)
-            delay(Constants.QUEUE_REORDER_COMMIT_DELAY_MS)
+            repository.listeningQueue.first { current ->
+                current.map { it.episode.id } == newOrderIds
+            }
             _manualQueue.value = null
         }
     }

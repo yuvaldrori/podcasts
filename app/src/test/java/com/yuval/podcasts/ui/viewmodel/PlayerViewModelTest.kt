@@ -43,7 +43,7 @@ class PlayerViewModelTest {
         
         every { repository.listeningQueue } returns flowOf(emptyList())
 
-        viewModel = PlayerViewModel(repository, playerManager, enqueueEpisodeUseCase, testDispatcher)
+        viewModel = PlayerViewModel(repository, playerManager, enqueueEpisodeUseCase, testDispatcher, testDispatcher)
     }
 
     @Test
@@ -70,7 +70,7 @@ class PlayerViewModelTest {
         // that the blocking File.exists() check + re-download enqueue are dispatched off the
         // caller's thread rather than executed synchronously inside play().
         val ioDispatcher = StandardTestDispatcher(testScheduler)
-        val vm = PlayerViewModel(repository, playerManager, enqueueEpisodeUseCase, ioDispatcher)
+        val vm = PlayerViewModel(repository, playerManager, enqueueEpisodeUseCase, ioDispatcher, testDispatcher)
 
         // A local episode whose file does not exist on disk -> should be re-enqueued for download.
         val episode = Episode(
@@ -93,7 +93,7 @@ class PlayerViewModelTest {
     @Test
     fun `seekToChapter seeks in place when the chapter belongs to the current episode`() = runTest {
         every { playerManager.currentMediaId } returns MutableStateFlow("ep1")
-        val vm = PlayerViewModel(repository, playerManager, enqueueEpisodeUseCase, testDispatcher)
+        val vm = PlayerViewModel(repository, playerManager, enqueueEpisodeUseCase, testDispatcher, testDispatcher)
         val episode = Episode("ep1", "feed", "Title", "Desc", "Audio", null, null, 0L, 0L, 0, null, false, 0L)
         val chapter = Chapter(episodeId = "ep1", title = "Intro", startTimeMs = 5_000L)
 
@@ -106,7 +106,7 @@ class PlayerViewModelTest {
     @Test
     fun `seekToChapter starts the episode at the offset when a different episode is playing`() = runTest {
         every { playerManager.currentMediaId } returns MutableStateFlow("other_episode")
-        val vm = PlayerViewModel(repository, playerManager, enqueueEpisodeUseCase, testDispatcher)
+        val vm = PlayerViewModel(repository, playerManager, enqueueEpisodeUseCase, testDispatcher, testDispatcher)
         val episode = Episode("ep1", "feed", "Title", "Desc", "http://host/a.mp3", null, null, 0L, 0L, 0, null, false, 0L)
         val chapter = Chapter(episodeId = "ep1", title = "Intro", startTimeMs = 5_000L)
 

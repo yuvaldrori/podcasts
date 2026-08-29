@@ -18,7 +18,7 @@ internal class PlaybackServicePlayerListener(
     private val settingsRepository: SettingsRepository,
     private val logManager: LogManager,
     private val serviceScope: CoroutineScope,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val ioDispatcher: CoroutineDispatcher,
     private val getCurrentPlayer: () -> Player,
     private val setupLoudnessEnhancer: (Int) -> Unit = {},
     private val onSavePosition: (String?, Long?) -> Unit = { _, _ -> },

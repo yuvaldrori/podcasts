@@ -75,6 +75,7 @@ abstract class BaseSyncWorker(
             logManager.i(workerTag, "Sync completed successfully")
             Result.success()
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             logManager.e(workerTag, "Sync failed", mapOf("error" to (e.javaClass.simpleName + ": " + e.message)))
             if (runAttemptCount < Constants.SYNC_RETRY_COUNT) {
                 Result.retry()

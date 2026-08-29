@@ -173,5 +173,29 @@ class SettingsViewModelTest {
         job.cancel()
     }
 
+    @Test
+    fun exportLogs_failure_logsErrorToLogManager() = runTest {
+        every { contentResolver.openOutputStream(uri) } throws Exception("Disk full")
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
+        viewModel.exportLogs(uri)
+        advanceUntilIdle()
+
+        verify { logManager.e("SettingsViewModel", "Failed to export logs", any()) }
+        assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
+        job.cancel()
+    }
+
+    @Test
+    fun exportOpml_failure_logsErrorToLogManager() = runTest {
+        every { contentResolver.openOutputStream(uri) } throws Exception("Disk full")
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.exportOpml(uri)
+        advanceUntilIdle()
+
+        verify { logManager.e("SettingsViewModel", "Failed to export OPML", any()) }
+        assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
+        job.cancel()
+    }
 }

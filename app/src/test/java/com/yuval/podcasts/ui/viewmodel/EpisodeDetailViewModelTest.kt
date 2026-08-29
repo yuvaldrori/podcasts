@@ -129,4 +129,29 @@ class EpisodeDetailViewModelTest {
         assertEquals(false, (viewModel.uiState.value as EpisodeDetailUiState.Success).isInQueue)
         job.cancel()
     }
+
+    @Test
+    fun init_parsesHtmlDescriptionIntoAnnotatedString() = runTest {
+        val htmlDescription = "Hello <a href=\"https://example.com\">link</a> world"
+        val episode = Episode("ep1", "url", "title", htmlDescription, "url", null, null, 0L, 0L, 0, null, false, 0L, null)
+        val podcast = Podcast("url", "podTitle", "podDesc", "img", "web")
+        val episodeWithPodcast = EpisodeWithPodcast(episode, podcast)
+
+        every { repository.getEpisodeWithPodcastFlow("ep1") } returns flowOf(episodeWithPodcast)
+        every { repository.listeningQueue } returns flowOf(emptyList())
+        every { repository.getChapters(any()) } returns flowOf(emptyList())
+
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
+
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        val successState = viewModel.uiState.value as EpisodeDetailUiState.Success
+        assertEquals("Hello link world", successState.annotatedDescription.text)
+        val urlAnnotations = successState.annotatedDescription.getStringAnnotations("URL", 0, successState.annotatedDescription.length)
+        assertEquals(1, urlAnnotations.size)
+        assertEquals("https://example.com", urlAnnotations[0].item)
+
+        job.cancel()
+    }
 }

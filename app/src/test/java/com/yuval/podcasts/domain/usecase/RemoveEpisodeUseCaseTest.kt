@@ -24,8 +24,7 @@ class RemoveEpisodeUseCaseTest {
         
         useCase("ep1", markAsPlayed = true)
         
-        coVerify { repository.updatePlaybackStatus("ep1", true, any()) }
-        coVerify { repository.updateLastPlayedPosition("ep1", 0L) }
+        coVerify(exactly = 1) { repository.markAsPlayed("ep1") }
         coVerify { repository.removeFromQueue("ep1") }
     }
 
@@ -35,7 +34,7 @@ class RemoveEpisodeUseCaseTest {
 
         useCase("ep1", markAsPlayed = false)
         
-        coVerify(exactly = 0) { repository.updatePlaybackStatus(any(), any(), any()) }
+        coVerify(exactly = 0) { repository.markAsPlayed(any()) }
         coVerify { repository.removeFromQueue("ep1") }
     }
 }

@@ -43,4 +43,18 @@ class DateParserTest {
         val millis = DateParser.parsePubDate(dateStr)
         assertEquals(0L, millis)
     }
+
+    @Test
+    fun parsePubDate_monthContainingTimezoneSubstring_doesNotCorruptDate() {
+        val dateStr = "15 August 2023 12:00:00 GMT"
+        val millis = DateParser.parsePubDate(dateStr)
+        assertEquals(1692100800000L, millis)
+    }
+
+    @Test
+    fun parsePubDate_legacyUt_parsesCorrectly() {
+        val dateStr = "Tue, 15 Aug 2023 12:00:00 UT"
+        val millis = DateParser.parsePubDate(dateStr)
+        assertEquals(1692100800000L, millis)
+    }
 }

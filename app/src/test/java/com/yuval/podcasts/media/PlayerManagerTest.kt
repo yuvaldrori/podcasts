@@ -254,5 +254,20 @@ class PlayerManagerTest {
         assertEquals(0L, playerManager.currentPosition.value)
         assertEquals(0L, playerManager.duration.value)
     }
+
+    @Test
+    fun release_doesNotCancelSingletonScope_subsequentOperationsSucceed() = runTest {
+        playerManager.release()
+
+        val newController = mockk<MediaBrowser>(relaxed = true)
+        val controllerField: Field = PlayerManager::class.java.getDeclaredField("controller")
+        controllerField.isAccessible = true
+        controllerField.set(playerManager, newController)
+
+        playerManager.setPlaybackSpeed(2.0f)
+
+        coVerify { settingsRepository.savePlaybackSpeed(2.0f) }
+        verify { newController.setPlaybackParameters(PlaybackParameters(2.0f)) }
+    }
 }
 

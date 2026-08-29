@@ -28,40 +28,50 @@ data class PlayerUiState(
     val currentEpisode: Episode? = null
 )
 
+private data class PlaybackStatus(
+    val isPlaying: Boolean,
+    val isConnected: Boolean,
+    val currentPosition: Long,
+    val duration: Long,
+    val playbackSpeed: Float
+)
+
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val playerManager: PlayerManager,
     private val enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase,
-    @param:com.yuval.podcasts.di.IoDispatcher private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher
+    @param:com.yuval.podcasts.di.IoDispatcher private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher,
+    @param:com.yuval.podcasts.di.MainDispatcher private val mainDispatcher: kotlinx.coroutines.CoroutineDispatcher
 ) : ViewModel() {
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<PlayerUiState> = combine(
+    private val playbackStatusFlow = combine(
         playerManager.isPlaying,
         playerManager.isInitialized,
         playerManager.currentPosition,
         playerManager.duration,
-        playerManager.playbackSpeed,
-        playerManager.currentMediaId.flatMapLatest { id ->
-            if (id == null) flowOf(null) else repository.getEpisodeByIdFlow(id)
-        }
-    ) { values ->
-        val isPlaying = values[0] as Boolean
-        val isInitialized = values[1] as Boolean
-        val currentPosition = values[2] as Long
-        val playerDuration = values[3] as Long
-        val playbackSpeed = values[4] as Float
-        val currentEpisode = values[5] as Episode?
+        playerManager.playbackSpeed
+    ) { isPlaying, isInitialized, currentPosition, duration, playbackSpeed ->
+        PlaybackStatus(isPlaying, isInitialized, currentPosition, duration, playbackSpeed)
+    }
 
-        val finalDuration = if (playerDuration > 0) playerDuration else (currentEpisode?.duration?.seconds?.inWholeMilliseconds ?: 0L)
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val currentEpisodeFlow = playerManager.currentMediaId.flatMapLatest { id ->
+        if (id == null) flowOf(null) else repository.getEpisodeByIdFlow(id)
+    }
+
+    val uiState: StateFlow<PlayerUiState> = combine(
+        playbackStatusFlow,
+        currentEpisodeFlow
+    ) { status, currentEpisode ->
+        val finalDuration = if (status.duration > 0) status.duration else (currentEpisode?.duration?.seconds?.inWholeMilliseconds ?: 0L)
         
         PlayerUiState(
-            isPlaying = isPlaying,
-            isConnected = isInitialized,
-            currentPosition = currentPosition,
+            isPlaying = status.isPlaying,
+            isConnected = status.isConnected,
+            currentPosition = status.currentPosition,
             duration = finalDuration,
-            playbackSpeed = playbackSpeed,
+            playbackSpeed = status.playbackSpeed,
             currentEpisode = currentEpisode
         )
     }.stateIn(
@@ -86,7 +96,7 @@ class PlayerViewModel @Inject constructor(
             }
             val podcast = repository.getPodcast(episode.podcastFeedUrl)
             val finalImageUrl = episode.imageUrl ?: podcast?.imageUrl
-            withContext(kotlinx.coroutines.Dispatchers.Main) {
+            withContext(mainDispatcher) {
                 playerManager.play(
                     mediaId = episode.id,
                     uri = uri,
@@ -105,7 +115,7 @@ class PlayerViewModel @Inject constructor(
             episodes.forEach { episode ->
                 verifyAndEnqueueLocalFile(episode)
             }
-            withContext(kotlinx.coroutines.Dispatchers.Main) {
+            withContext(mainDispatcher) {
                 playerManager.playQueue(episodes, startIndex, startPositionMs)
             }
         }

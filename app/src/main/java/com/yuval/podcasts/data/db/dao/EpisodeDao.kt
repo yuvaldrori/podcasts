@@ -34,17 +34,21 @@ interface EpisodeDao {
     suspend fun syncNetworkEpisodes(episodes: List<NetworkEpisode>): Int {
         if (episodes.isEmpty()) return 0
         
-        val podcastFeedUrl = episodes.first().podcastFeedUrl
-        val existingEpisodes = getEpisodesForPodcastSync(podcastFeedUrl).associateBy { it.id }
-        
+        val episodesByFeed = episodes.groupBy { it.podcastFeedUrl }
         var newEpisodesCount = 0
-        val episodesToUpsert = episodes.map { networkEp ->
-            val existing = existingEpisodes[networkEp.id]
-            if (existing == null) {
-                newEpisodesCount++
+        val episodesToUpsert = mutableListOf<Episode>()
+
+        for ((feedUrl, feedEpisodes) in episodesByFeed) {
+            val existingEpisodes = getEpisodesForPodcastSync(feedUrl).associateBy { it.id }
+            for (networkEp in feedEpisodes) {
+                val existing = existingEpisodes[networkEp.id]
+                if (existing == null) {
+                    newEpisodesCount++
+                }
+                episodesToUpsert.add(networkEp.mergeWithLocal(existing))
             }
-            networkEp.mergeWithLocal(existing)
         }
+
         upsertEpisodes(episodesToUpsert)
         return newEpisodesCount
     }

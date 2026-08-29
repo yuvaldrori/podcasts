@@ -91,7 +91,7 @@ class SettingsViewModel @Inject constructor(
                 _successMessage.update { UiText.StringResource(R.string.logs_downloaded_success, context.getString(R.string.default_logs_filename)) }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                android.util.Log.e("SettingsViewModel", "Failed to export logs", e)
+                logManager.e("SettingsViewModel", "Failed to export logs", mapOf("error" to (e.message ?: "")))
                 showError(UiText.StringResource(R.string.error_export_failed))
             }
         }
@@ -147,7 +147,7 @@ class SettingsViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                android.util.Log.e("SettingsViewModel", "Failed to export OPML", e)
+                logManager.e("SettingsViewModel", "Failed to export OPML", mapOf("error" to (e.message ?: "")))
                 showError(UiText.StringResource(R.string.error_export_opml, e.message ?: ""))
             }
         }
