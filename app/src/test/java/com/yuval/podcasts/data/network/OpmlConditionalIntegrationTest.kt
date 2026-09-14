@@ -14,7 +14,7 @@ class OpmlConditionalIntegrationTest {
 
     @Test
     fun testOpmlSubscriptionsWithProductionPodcastApi() = runTest {
-        val opmlFile = File("/home/yuval/podcasts/podcasts.opml (5)")
+        val opmlFile = File("/home/yuval/podcasts/podcasts.opml (6)")
         assertTrue("OPML file must exist", opmlFile.exists())
 
         // Parse URLs from OPML using standard XML parser

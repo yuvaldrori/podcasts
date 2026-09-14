@@ -71,7 +71,7 @@ class OpmlManager @Inject constructor() {
         serializer.startTag(null, "outline")
         serializer.attribute(null, "text", "Podcasts")
         
-        podcasts.forEach { podcast ->
+        podcasts.filter { it.feedUrl != com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL }.forEach { podcast ->
             serializer.startTag(null, "outline")
             serializer.attribute(null, "type", "rss")
             serializer.attribute(null, "text", podcast.title)

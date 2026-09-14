@@ -30,7 +30,8 @@ build_warnings.txt
 
 # Local Database Backups & Exports
 *.db
-*.opml
+*.opml*
+*.mp3
 *.xml
 !app/src/main/AndroidManifest.xml
 !app/src/benchmark/AndroidManifest.xml

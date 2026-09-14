@@ -11,17 +11,18 @@ import com.yuval.podcasts.media.PlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.seconds
 
@@ -42,17 +43,27 @@ class QueueViewModel @Inject constructor(
 
     val downloadProgressMap: StateFlow<Map<String, Int>> = repository.downloadProgressMap
 
-    private val _manualQueue = MutableStateFlow<ImmutableList<EpisodeWithPodcast>?>(null)
+    private val _queue = MutableStateFlow<ImmutableList<EpisodeWithPodcast>?>(null)
 
-    // The effective queue = the in-progress manual reorder, or the persisted queue.
-    private val effectiveQueue: kotlinx.coroutines.flow.Flow<ImmutableList<EpisodeWithPodcast>> = combine(
-        repository.listeningQueue,
-        _manualQueue
-    ) { current, manual -> manual ?: current.toImmutableList() }
+    private var isDragging = false
+    private var reorderJob: Job? = null
+    private val isReordering: Boolean
+        get() = isDragging || reorderJob?.isActive == true
+
+    init {
+        viewModelScope.launch {
+            repository.listeningQueue.collect { dbQueue ->
+                if (!isReordering) {
+                    _queue.value = dbQueue.toImmutableList()
+                }
+            }
+        }
+    }
 
     // Only re-emits when the queue itself changes — NOT on every playback-position tick — so
     // the queue list doesn't recompose once per second during playback.
-    val uiState: StateFlow<QueueUiState> = effectiveQueue
+    val uiState: StateFlow<QueueUiState> = _queue
+        .filterNotNull()
         .map { QueueUiState.Success(it) as QueueUiState }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), QueueUiState.Loading)
 
@@ -75,7 +86,7 @@ class QueueViewModel @Inject constructor(
     // Header "time remaining" ticks with the playback position but carries only a Long, so
     // position updates recompose the header text without touching the list.
     val queueTimeRemaining: StateFlow<Long> = combine(
-        effectiveQueue,
+        _queue.filterNotNull(),
         playerPlaybackStatsFlow
     ) { queue, stats ->
         // If speed is non-positive, don't compute remaining time.
@@ -93,33 +104,49 @@ class QueueViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), 0L)
 
     fun moveItem(fromIndex: Int, toIndex: Int) {
-        val currentSuccess = uiState.value as? QueueUiState.Success ?: return
-        val currentList = _manualQueue.value ?: currentSuccess.queue
-        val newList = currentList.toMutableList().apply {
-            add(toIndex, removeAt(fromIndex))
-        }.toImmutableList()
-        _manualQueue.value = newList
+        reorderJob?.cancel()
+        isDragging = true
+        _queue.update { current ->
+            val list = current ?: return@update null
+            if (fromIndex !in list.indices || toIndex !in list.indices) return@update list
+            list.toMutableList().apply {
+                add(toIndex, removeAt(fromIndex))
+            }.toImmutableList()
+        }
     }
 
     fun commitReorder() {
-        val manual = _manualQueue.value ?: return
-        val targetIds = manual.map { item -> item.episode.id }
-        viewModelScope.launch {
-            repository.reorderQueue(targetIds)
-            repository.listeningQueue.first { current ->
-                current.map { it.episode.id } == targetIds
+        isDragging = false
+        val currentQueue = _queue.value ?: return
+        val targetIds = currentQueue.map { item -> item.episode.id }
+        reorderJob?.cancel()
+        reorderJob = viewModelScope.launch {
+            try {
+                repository.reorderQueue(targetIds)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _queue.value = repository.listeningQueue.first().toImmutableList()
             }
-            _manualQueue.value = null
         }
     }
 
     fun reorderQueue(newOrderIds: List<String>) {
-        viewModelScope.launch {
-            repository.reorderQueue(newOrderIds)
-            repository.listeningQueue.first { current ->
-                current.map { it.episode.id } == newOrderIds
+        isDragging = false
+        reorderJob?.cancel()
+        _queue.update { current ->
+            if (current == null) return@update null
+            val itemMap = current.associateBy { it.episode.id }
+            val reordered = newOrderIds.mapNotNull { itemMap[it] }
+            val remaining = current.filter { it.episode.id !in newOrderIds }
+            (reordered + remaining).toImmutableList()
+        }
+        reorderJob = viewModelScope.launch {
+            try {
+                repository.reorderQueue(newOrderIds)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _queue.value = repository.listeningQueue.first().toImmutableList()
             }
-            _manualQueue.value = null
         }
     }
 

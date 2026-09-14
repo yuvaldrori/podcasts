@@ -116,4 +116,18 @@ class HtmlUtilsTest {
         val result = HtmlUtils.stripHtml(html)
         assertEquals("\"השבוע\" - הפודקאסט השבועי של \"הארץ\". מדי יום שלישי וחמישי יארח ליאור קודנר את מיטב המומחים.", result)
     }
+
+    @Test
+    fun stripHtml_decodesNumericAndHexEntities() {
+        val html = "It&#39;s a test &#8217;with quotes&#8217; and hex &#x2F; slash"
+        val result = HtmlUtils.stripHtml(html)
+        assertEquals("It's a test ’with quotes’ and hex / slash", result)
+    }
+
+    @Test
+    fun stripHtml_separatesAdjacentBlockTagsWithSpaceAndCollapsesWhitespace() {
+        val html = "<p>First paragraph.</p><p>Second paragraph.</p>\n<div>Third block.</div>"
+        val result = HtmlUtils.stripHtml(html)
+        assertEquals("First paragraph. Second paragraph. Third block.", result)
+    }
 }

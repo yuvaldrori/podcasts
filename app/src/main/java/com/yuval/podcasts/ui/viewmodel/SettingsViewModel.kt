@@ -141,7 +141,7 @@ class SettingsViewModel @Inject constructor(
             try {
                 withContext(ioDispatcher) {
                     context.contentResolver.openOutputStream(uri)?.use { stream ->
-                        val podcasts = repository.allPodcasts.first()
+                        val podcasts = repository.allPodcasts.first().filter { it.feedUrl != Constants.LOCAL_PODCAST_FEED_URL }
                         opmlManager.export(podcasts, stream)
                     }
                 }

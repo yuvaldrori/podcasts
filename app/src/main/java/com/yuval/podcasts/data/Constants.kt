@@ -27,7 +27,6 @@ object Constants {
     val FLOW_STOP_TIMEOUT_MS = 5.seconds.inWholeMilliseconds
     const val UNPLAYED_EPISODES_LIMIT = 150
     const val DYNAMIC_THEME_DEBOUNCE_MS = 200L
-    const val QUEUE_REORDER_COMMIT_DELAY_MS = 100L
     
     // UI Sizes
     const val COVER_SIZE_LIST_DP = 48

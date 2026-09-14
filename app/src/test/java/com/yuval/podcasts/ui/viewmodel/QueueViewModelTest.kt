@@ -120,7 +120,7 @@ class QueueViewModelTest {
     }
 
     @Test
-    fun commitReorder_retainsManualQueueUntilRepositoryEmitsNewOrder() = runTest {
+    fun commitReorder_callsRepositoryAndClearsManualQueueUponCompletion() = runTest {
         val podcast = Podcast("p1", "T", "D", "I", "W")
         val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 3600L, 0, null, false, 0L, null)
         val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 7200L, 0, null, false, 0L, null)
@@ -138,21 +138,46 @@ class QueueViewModelTest {
         var currentState = viewModel.uiState.value as QueueUiState.Success
         assertEquals("e2", currentState.queue[0].episode.id)
 
-        // Commit reorder - awaiting repository.listeningQueue to emit the new order
+        // Mock repository to update the listeningQueue when reorderQueue is called
+        coEvery { repository.reorderQueue(listOf("e2", "e1")) } answers {
+            listeningQueueFlow.value = reorderedQueue
+        }
+
+        // Commit reorder - should complete cleanly and clear manual override
         viewModel.commitReorder()
-
-        // Before repository emits reordered list, manual queue remains in effect
         advanceUntilIdle()
+
+        coVerify { repository.reorderQueue(listOf("e2", "e1")) }
         currentState = viewModel.uiState.value as QueueUiState.Success
         assertEquals("e2", currentState.queue[0].episode.id)
 
-        // Repository emits reordered list
-        listeningQueueFlow.value = reorderedQueue
+        uiStateJob.cancel()
+    }
+
+    @Test
+    fun commitReorder_clearsManualQueueEvenIfDivergentOrFails() = runTest {
+        val podcast = Podcast("p1", "T", "D", "I", "W")
+        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 3600L, 0, null, false, 0L, null)
+        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 7200L, 0, null, false, 0L, null)
+        val initialQueue = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
+        listeningQueueFlow.value = initialQueue
+
+        val uiStateJob = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        // Manual override is cleared, state reflects persisted queue
-        currentState = viewModel.uiState.value as QueueUiState.Success
-        assertEquals("e2", currentState.queue[0].episode.id)
+        // Move item manually (swap e1 and e2)
+        viewModel.moveItem(0, 1)
+
+        // Repository reorders, but fails or emits something divergent (never emits ["e2", "e1"])
+        coEvery { repository.reorderQueue(any()) } throws RuntimeException("Database error")
+
+        viewModel.commitReorder()
+        advanceUntilIdle()
+
+        // Manual queue must still be cleared so the UI is not stuck in a hanging manual state
+        val currentState = viewModel.uiState.value as QueueUiState.Success
+        // Reverts back to real listeningQueueFlow order
+        assertEquals("e1", currentState.queue[0].episode.id)
 
         uiStateJob.cancel()
     }

@@ -1,6 +1,5 @@
 package com.yuval.podcasts.ui.utils
 
-import android.text.Html
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.StrikethroughSpan
@@ -17,14 +16,47 @@ import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextDecoration
 
 object HtmlUtils {
+    private val TAG_REGEX = Regex("<[^>]*>", RegexOption.DOT_MATCHES_ALL)
+    private val NUMERIC_ENTITY_REGEX = Regex("&#(\\d+);|&#x([0-9a-fA-F]+);")
+    private val WHITESPACE_REGEX = Regex("[\\s\\u00A0]+")
+
     /**
      * Strips HTML tags and decodes HTML entities into clean plain text.
      */
     fun stripHtml(html: String?): String {
         if (html.isNullOrBlank()) return ""
         if (!html.contains('<') && !html.contains('&')) return html.trim()
-        val spanned = Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT)
-        return spanned.toString().replace('\u00A0', ' ').trim()
+
+        val withoutTags = html.replace(TAG_REGEX, " ")
+        val decodedNamed = withoutTags
+            .replace("&nbsp;", " ")
+            .replace("&quot;", "\"")
+            .replace("&apos;", "'")
+            .replace("&#39;", "'")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
+
+        val decodedNumeric = NUMERIC_ENTITY_REGEX.replace(decodedNamed) { matchResult ->
+            val decimalStr = matchResult.groupValues[1]
+            val hexStr = matchResult.groupValues[2]
+            try {
+                val codePoint = if (decimalStr.isNotEmpty()) {
+                    decimalStr.toInt(10)
+                } else {
+                    hexStr.toInt(16)
+                }
+                if (Character.isValidCodePoint(codePoint)) {
+                    String(Character.toChars(codePoint))
+                } else {
+                    matchResult.value
+                }
+            } catch (_: Exception) {
+                matchResult.value
+            }
+        }
+
+        return WHITESPACE_REGEX.replace(decodedNumeric, " ").trim()
     }
 }
 

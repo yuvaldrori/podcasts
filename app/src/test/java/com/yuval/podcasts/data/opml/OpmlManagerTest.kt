@@ -122,4 +122,33 @@ class OpmlManagerTest {
         assertTrue(exportedContent.contains("""htmlUrl="https://example.com""""))
         assertTrue(exportedContent.contains("<opml version=\"2.0\">"))
     }
+
+    @Test
+    fun export_filtersOutLocalPseudoSubscription() {
+        val podcasts = listOf(
+            Podcast(
+                feedUrl = "https://example.com/feed.xml",
+                title = "My Favorite Podcast",
+                description = "A great podcast",
+                imageUrl = "https://example.com/image.jpg",
+                website = "https://example.com"
+            ),
+            Podcast(
+                feedUrl = com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL,
+                title = "Local Files",
+                description = "Manually imported audio files",
+                imageUrl = "",
+                website = ""
+            )
+        )
+        val outputStream = ByteArrayOutputStream()
+
+        opmlManager.export(podcasts, outputStream)
+
+        val exportedContent = outputStream.toString("UTF-8")
+
+        assertTrue(exportedContent.contains("""xmlUrl="https://example.com/feed.xml""""))
+        org.junit.Assert.assertFalse(exportedContent.contains(com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL))
+        org.junit.Assert.assertFalse(exportedContent.contains("Local Files"))
+    }
 }

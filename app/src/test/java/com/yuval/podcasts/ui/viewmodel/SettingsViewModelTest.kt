@@ -157,6 +157,24 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun exportOpml_filtersOutLocalPseudoSubscription() = runTest {
+        val remotePodcast = com.yuval.podcasts.data.db.entity.Podcast("https://example.com/feed.xml", "Remote", "Desc", "Img", "Web")
+        val localPodcast = com.yuval.podcasts.data.db.entity.Podcast(Constants.LOCAL_PODCAST_FEED_URL, "Local Files", "Desc", "Img", "Web")
+        every { repository.allPodcasts } returns flowOf(listOf(remotePodcast, localPodcast))
+        every { contentResolver.openOutputStream(uri) } returns outputStream
+        every { outputStream.close() } returns Unit
+        every { opmlManager.export(any(), outputStream) } returns Unit
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.exportOpml(uri)
+        advanceUntilIdle()
+
+        verify { opmlManager.export(listOf(remotePodcast), outputStream) }
+        assertNull(viewModel.uiState.value.errorMessage)
+        job.cancel()
+    }
+
+    @Test
     fun clearMessages_resetsErrorMessage() = runTest {
         val url = "http://example.com/feed"
         coEvery { repository.fetchAndStorePodcast(url) } throws Exception("Error")
