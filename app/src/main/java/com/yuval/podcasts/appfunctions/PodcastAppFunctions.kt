@@ -1,6 +1,6 @@
 package com.yuval.podcasts.appfunctions
 
-import androidx.appfunctions.service.AppFunction
+import androidx.appfunctions.AppFunction
 import androidx.appfunctions.AppFunctionContext
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.PodcastRepository

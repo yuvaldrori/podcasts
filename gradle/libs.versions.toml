@@ -1,43 +1,42 @@
 [versions]
 agp = "9.2.1"
 kotlin = "2.3.21"
-composeBom = "2026.08.00"
+composeBom = "2026.09.00"
 coreKtx = "1.19.0"
 appcompat = "1.8.0"
 lifecycle = "2.11.0"
 activityCompose = "1.13.0"
-navigationCompose = "2.9.8"
+navigationCompose = "2.10.1"
 coil = "2.7.0"
 okhttp = "5.5.0"
-room = "2.8.4"
+room = "2.8.5"
 datastore = "1.2.1"
-media3 = "1.11.0"
+media3 = "1.11.1"
 hilt = "2.60.1"
 hiltNavigationCompose = "1.4.0"
 hiltWork = "1.4.0"
 workRuntime = "2.11.2"
 kotlinxCoroutines = "1.11.0"
 kotlinxSerialization = "1.11.0"
-kotlinxCollections = "0.5.1"
-ksp = "2.3.11"
-versionsPlugin = "0.61.0"
+kotlinxCollections = "0.5.2"
+ksp = "2.3.12"
+versionsPlugin = "0.62.0"
 palette = "1.0.0"
-material-color-utilities = "5.0.0"
-tracing = "2.0.0"
+material-color-utilities = "5.0.1"
+tracing = "2.0.2"
 junit = "4.13.2"
 mockk = "1.14.11"
 turbine = "1.2.1"
-robolectric = "4.16.1"
+robolectric = "4.17"
 androidxTestExt = "1.3.0"
 androidxTestCore = "1.7.0"
 espresso = "3.7.0"
-appfunctions = "1.0.0-alpha09"
+appfunctions = "1.0.0-alpha11"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-tracing-ktx = { group = "androidx.tracing", name = "tracing-ktx", version.ref = "tracing" }
 androidx-appfunctions = { group = "androidx.appfunctions", name = "appfunctions", version.ref = "appfunctions" }
-androidx-appfunctions-service = { group = "androidx.appfunctions", name = "appfunctions-service", version.ref = "appfunctions" }
 androidx-appfunctions-compiler = { group = "androidx.appfunctions", name = "appfunctions-compiler", version.ref = "appfunctions" }
 androidx-appfunctions-testing = { group = "androidx.appfunctions", name = "appfunctions-testing", version.ref = "appfunctions" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -96,7 +95,7 @@ androidx-test-core-ktx = { group = "androidx.test", name = "core-ktx", version.r
 androidx-arch-core-testing = { group = "androidx.arch.core", name = "core-testing", version = "2.2.0" }
 kxml2 = { group = "net.sf.kxml", name = "kxml2", version = "2.3.0" }
 androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version = "2.4.0" }
-androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version = "1.4.1" }
+androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version = "1.5.0" }
 androidx-palette-ktx = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
 material-color-utilities = { group = "com.materialkolor", name = "material-color-utilities", version.ref = "material-color-utilities" }
 

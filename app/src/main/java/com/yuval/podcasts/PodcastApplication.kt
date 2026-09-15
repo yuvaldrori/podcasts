@@ -7,7 +7,7 @@ import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.appfunctions.service.AppFunctionConfiguration
+import androidx.appfunctions.AppFunctionConfiguration
 import com.yuval.podcasts.appfunctions.PodcastAppFunctions
 import com.yuval.podcasts.work.CleanupWorker
 import com.yuval.podcasts.work.HardRefreshWorker
