@@ -37,4 +37,14 @@ class RemoveEpisodeUseCaseTest {
         coVerify(exactly = 0) { repository.markAsPlayed(any()) }
         coVerify { repository.removeFromQueue("ep1") }
     }
+
+    @Test
+    fun invoke_defaultArguments_marksAsPlayed() = runTest {
+        coEvery { repository.getEpisodeByIdFlow("ep1") } returns flowOf(null)
+
+        useCase("ep1")
+
+        coVerify(exactly = 1) { repository.markAsPlayed("ep1") }
+        coVerify { repository.removeFromQueue("ep1") }
+    }
 }

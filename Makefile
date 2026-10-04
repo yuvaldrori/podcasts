@@ -74,7 +74,7 @@ stop-emulator:
 	@echo "Stopping emulator..."
 	android emulator stop $(AVD_NAME)
 
-run:
+run: build
 	@echo "Deploying and running application..."
 	android run --apks=app/build/outputs/apk/debug/app-debug.apk --activity=com.yuval.podcasts.MainActivity
 

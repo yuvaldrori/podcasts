@@ -15,7 +15,7 @@ class RemoveEpisodeUseCase @Inject constructor(
     private val repository: PodcastRepository,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    suspend operator fun invoke(episodeId: String, markAsPlayed: Boolean = false) = withContext(ioDispatcher) {
+    suspend operator fun invoke(episodeId: String, markAsPlayed: Boolean = true) = withContext(ioDispatcher) {
         if (markAsPlayed) {
             repository.markAsPlayed(episodeId)
         }

@@ -153,7 +153,7 @@ class QueueViewModel @Inject constructor(
     fun removeFromQueue(episodeId: String) {
         viewModelScope.launch {
             val isPlayingDismissed = playerManager.currentMediaId.value == episodeId
-            removeEpisodeUseCase(episodeId, markAsPlayed = false)
+            removeEpisodeUseCase(episodeId, markAsPlayed = true)
             if (isPlayingDismissed && playerManager.currentMediaId.value == episodeId) {
                 playerManager.seekToNextMediaItem()
             }

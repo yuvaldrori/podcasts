@@ -72,11 +72,11 @@ class QueueViewModelTest {
     fun removeFromQueue_nonPlayingEpisode_onlyCallsRemoveEpisodeUseCase() = runTest {
         val episodeId = "ep1"
         currentMediaIdFlow.value = "other_ep"
-        coEvery { removeEpisodeUseCase(episodeId, false) } returns Unit
+        coEvery { removeEpisodeUseCase(episodeId, true) } returns Unit
 
         viewModel.removeFromQueue(episodeId)
 
-        coVerify { removeEpisodeUseCase(episodeId, false) }
+        coVerify { removeEpisodeUseCase(episodeId, true) }
         verify(exactly = 0) { playerManager.seekToNextMediaItem() }
     }
 
@@ -84,11 +84,11 @@ class QueueViewModelTest {
     fun removeFromQueue_playingEpisode_callsSeekToNext() = runTest {
         val episodeId = "ep1"
         currentMediaIdFlow.value = episodeId
-        coEvery { removeEpisodeUseCase(episodeId, false) } returns Unit
+        coEvery { removeEpisodeUseCase(episodeId, true) } returns Unit
 
         viewModel.removeFromQueue(episodeId)
 
-        coVerify { removeEpisodeUseCase(episodeId, false) }
+        coVerify { removeEpisodeUseCase(episodeId, true) }
         verify { playerManager.seekToNextMediaItem() }
     }
 
