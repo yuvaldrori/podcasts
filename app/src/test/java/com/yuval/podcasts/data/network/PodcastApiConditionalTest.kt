@@ -113,6 +113,6 @@ class PodcastApiConditionalTest {
             .build()
 
         val podcastApi = PodcastApi(client, Dispatchers.Unconfined)
-        podcastApi.withRssStreamConditional("http://example.com/feed.xml") { it }
+        podcastApi.withRssStreamConditional("http://example.com/feed.xml") {}
     }
 }

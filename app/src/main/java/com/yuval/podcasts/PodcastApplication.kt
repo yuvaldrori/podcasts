@@ -1,5 +1,8 @@
+@file:SuppressLint("RestrictedApi")
+
 package com.yuval.podcasts
 
+import android.annotation.SuppressLint
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration

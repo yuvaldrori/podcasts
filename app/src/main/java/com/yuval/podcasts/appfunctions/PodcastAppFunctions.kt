@@ -1,5 +1,8 @@
+@file:SuppressLint("RestrictedApi")
+
 package com.yuval.podcasts.appfunctions
 
+import android.annotation.SuppressLint
 import androidx.appfunctions.AppFunction
 import androidx.appfunctions.AppFunctionContext
 import com.yuval.podcasts.data.Constants
