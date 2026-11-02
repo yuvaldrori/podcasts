@@ -3,8 +3,8 @@
 package com.yuval.podcasts.appfunctions
 
 import android.annotation.SuppressLint
-import androidx.appfunctions.AppFunction
 import androidx.appfunctions.AppFunctionContext
+import androidx.appfunctions.AppFunctionDeclaration
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.domain.usecase.*
@@ -31,7 +31,7 @@ class PodcastAppFunctions @Inject constructor(
      *
      * @return A status message confirming that podcast playback has resumed.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun resumeQueue(context: AppFunctionContext): String {
         playerManager.play()
         return "Resuming playback"
@@ -43,7 +43,7 @@ class PodcastAppFunctions @Inject constructor(
      *
      * @return A status message confirming that playback has paused.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun stopPlayback(context: AppFunctionContext): String {
         playerManager.pause()
         return "Playback stopped"
@@ -55,7 +55,7 @@ class PodcastAppFunctions @Inject constructor(
      *
      * @return A status message confirming the skip forward action.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun skipForward(context: AppFunctionContext): String {
         playerManager.seekForward(Constants.SEEK_FORWARD_MS)
         return "Skipped forward 30 seconds"
@@ -67,7 +67,7 @@ class PodcastAppFunctions @Inject constructor(
      *
      * @return A status message confirming the skip backward action.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun skipBackward(context: AppFunctionContext): String {
         playerManager.seekBackward(Constants.SEEK_BACKWARD_MS)
         return "Skipped backward 15 seconds"
@@ -79,7 +79,7 @@ class PodcastAppFunctions @Inject constructor(
      *
      * @return A status message confirming that playback has transitioned to the next episode.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun nextEpisode(context: AppFunctionContext): String {
         playerManager.seekToNextMediaItem()
         return "Playing next episode"
@@ -91,7 +91,7 @@ class PodcastAppFunctions @Inject constructor(
      *
      * @return A message indicating the number of new podcast episodes found during the sync.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun refreshNewEpisodes(context: AppFunctionContext): String {
         val newEpisodes = refreshUseCase()
         return if (newEpisodes > 0) {
@@ -108,7 +108,7 @@ class PodcastAppFunctions @Inject constructor(
      * @param subscriptionNameOrUrl The feed URL or the display title of the podcast subscription to move.
      * @return A message confirming the reordering of the podcast episodes in the queue.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun moveSubscriptionToBottom(context: AppFunctionContext, subscriptionNameOrUrl: String): String {
         val resolvedFeedUrl = resolveSubscriptionFeedUrl(subscriptionNameOrUrl)
             ?: return "Could not find a podcast subscription matching '$subscriptionNameOrUrl'"
@@ -132,7 +132,7 @@ class PodcastAppFunctions @Inject constructor(
      * @param message The text message or note to be appended to the debug log.
      * @return A message confirming that the note has been successfully logged.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun addDebugLog(context: AppFunctionContext, message: String): String {
         logManager.i(TAG, "User note: $message")
         return "Log added"

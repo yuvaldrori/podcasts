@@ -19,6 +19,7 @@ object Constants {
     
     const val COMMAND_REWIND_10 = "REWIND_10"
     const val COMMAND_SKIP_30 = "SKIP_30"
+    const val EXTRA_REMOTE_AUDIO_URL = "extra_remote_audio_url"
     val REWIND_10_MS = 10.seconds.inWholeMilliseconds
     val SKIP_30_MS = 30.seconds.inWholeMilliseconds
     const val VOLUME_BOOST_GAIN_MB = 600

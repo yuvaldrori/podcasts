@@ -68,7 +68,16 @@ emulator:
 			ln -s "$$HOME/.config/.android/avd/$(AVD_NAME).ini" "$$HOME/.android/avd/$(AVD_NAME).ini"; \
 		fi; \
 	fi
+	@if [ -f "$$HOME/.android/avd/$(AVD_NAME).avd/config.ini" ]; then \
+		sed -i 's/^hw.cpu.ncore=.*/hw.cpu.ncore=4/; s/^hw.gpu.enabled=.*/hw.gpu.enabled=yes/; s/^hw.ramSize=.*/hw.ramSize=4096/' "$$HOME/.android/avd/$(AVD_NAME).avd/config.ini"; \
+	fi
 	android emulator start $(AVD_NAME)
+	@adb wait-for-device
+	@adb shell settings put global hide_error_dialogs 0 || true
+	@adb shell settings put global anr_show_background 0 || true
+	@adb shell pm disable-user --user 0 com.google.android.googlequicksearchbox >/dev/null 2>&1 || true
+	@adb shell pm disable-user --user 0 com.google.android.as >/dev/null 2>&1 || true
+	@adb shell pm disable-user --user 0 com.google.android.tts >/dev/null 2>&1 || true
 
 stop-emulator:
 	@echo "Stopping emulator..."

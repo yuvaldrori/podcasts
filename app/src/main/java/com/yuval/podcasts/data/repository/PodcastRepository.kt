@@ -126,6 +126,7 @@ class DefaultPodcastRepository @Inject constructor(
     }
 
     override suspend fun fetchAndStorePodcast(feedUrl: String, forceRefresh: Boolean): Int {
+        if (feedUrl == Constants.LOCAL_PODCAST_FEED_URL) return 0
         val existingPodcast = podcastDao.getPodcast(feedUrl)
         val etag = if (forceRefresh) null else existingPodcast?.etag
         val lastModified = if (forceRefresh) null else existingPodcast?.lastModified
@@ -275,12 +276,13 @@ class DefaultPodcastRepository @Inject constructor(
         forceRefresh: Boolean,
         onProgress: suspend (current: Int, total: Int) -> Unit
     ): Int = coroutineScope {
-        if (urls.isEmpty()) return@coroutineScope 0
+        val remoteUrls = urls.filter { it != Constants.LOCAL_PODCAST_FEED_URL }
+        if (remoteUrls.isEmpty()) return@coroutineScope 0
         val semaphore = Semaphore(Constants.MAX_PARALLEL_REFRESHES)
         val completedCount = AtomicInteger(0)
-        val total = urls.size
+        val total = remoteUrls.size
 
-        val deferreds = urls.map { url ->
+        val deferreds = remoteUrls.map { url ->
             async {
                 semaphore.withPermit {
                     try {

@@ -225,6 +225,66 @@ class PlaybackServiceTest {
 
         verify(exactly = 1) { onSavePosition(null, null) }
     }
+
+    @Test
+    fun initializeCastPlayer_movesListenerFromExoPlayerToCastPlayerAndSwitchesCurrentPlayer() {
+        val service = PlaybackService()
+        val castPlayer = mockk<androidx.media3.cast.CastPlayer>(relaxed = true)
+        val exoPlayer = mockk<androidx.media3.exoplayer.ExoPlayer>(relaxed = true)
+        val listener = mockk<PlaybackServicePlayerListener>(relaxed = true)
+        val onPlayerSwitched = mockk<(Player) -> Unit>(relaxed = true)
+        val logManager = mockk<LogManager>(relaxed = true)
+
+        @Suppress("DEPRECATION")
+        every { castPlayer.isCastSessionAvailable } returns false
+
+        service.initializeCastPlayer(
+            castPlayerInstance = castPlayer,
+            exoPlayer = exoPlayer,
+            listener = listener,
+            onPlayerSwitched = onPlayerSwitched,
+            logManager = logManager
+        )
+
+        verify(exactly = 1) { castPlayer.repeatMode = Player.REPEAT_MODE_OFF }
+        verify(exactly = 1) { exoPlayer.removeListener(listener) }
+        verify(exactly = 1) { castPlayer.addListener(listener) }
+        verify(exactly = 1) { onPlayerSwitched(castPlayer) }
+    }
+
+    @Test
+    fun releasePlayers_whenCastInitialized_onlyReleasesCastPlayer() {
+        val service = PlaybackService()
+        val castPlayer = mockk<androidx.media3.cast.CastPlayer>(relaxed = true)
+        val exoPlayer = mockk<androidx.media3.exoplayer.ExoPlayer>(relaxed = true)
+        val castPlayerLazy = dagger.Lazy { castPlayer }
+
+        service.releasePlayers(
+            exoPlayer = exoPlayer,
+            castPlayerProvider = castPlayerLazy,
+            isCastInitialized = true
+        )
+
+        verify(exactly = 1) { castPlayer.release() }
+        verify(exactly = 0) { exoPlayer.release() }
+    }
+
+    @Test
+    fun releasePlayers_whenCastNotInitialized_onlyReleasesExoPlayer() {
+        val service = PlaybackService()
+        val castPlayer = mockk<androidx.media3.cast.CastPlayer>(relaxed = true)
+        val exoPlayer = mockk<androidx.media3.exoplayer.ExoPlayer>(relaxed = true)
+        val castPlayerLazy = dagger.Lazy { castPlayer }
+
+        service.releasePlayers(
+            exoPlayer = exoPlayer,
+            castPlayerProvider = castPlayerLazy,
+            isCastInitialized = false
+        )
+
+        verify(exactly = 1) { exoPlayer.release() }
+        verify(exactly = 0) { castPlayer.release() }
+    }
 }
 
 

@@ -225,7 +225,7 @@ tasks.register("incrementVersionCode") {
 }
 
 // Automatically increment version code for release builds
-tasks.whenTaskAdded {
+tasks.configureEach {
     if (name == "assembleRelease" || name == "bundleRelease") {
         dependsOn("incrementVersionCode")
     }

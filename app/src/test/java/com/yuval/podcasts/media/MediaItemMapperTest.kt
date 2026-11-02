@@ -207,5 +207,41 @@ class MediaItemMapperTest {
         assertEquals("Podcast Name & Show", mediaItem?.mediaMetadata?.artist)
         assertEquals("Podcast Name & Show", mediaItem?.mediaMetadata?.albumTitle)
     }
+
+    @Test
+    fun testFromEpisodePopulatesRemoteAudioUrlExtraAndMimeTypeAndPodcastEpisodeMediaType() {
+        val tempFile = java.io.File.createTempFile("temp_cast_audio", ".mp3").apply { deleteOnExit() }
+        val episode = Episode(
+            id = "cast-ep-id",
+            podcastFeedUrl = "https://feed.url",
+            title = "Cast Episode",
+            description = "Description",
+            audioUrl = "https://cdn.example.com/cast_episode.mp3",
+            pubDate = 123456789L,
+            duration = 3600L,
+            imageUrl = "https://image.url",
+            localFilePath = tempFile.absolutePath,
+            downloadStatus = 2
+        )
+
+        val mediaItem = MediaItemMapper.fromEpisode(episode)
+
+        assertNotNull(mediaItem)
+        assertEquals(tempFile.absolutePath, mediaItem?.localConfiguration?.uri?.toString())
+        assertEquals(
+            "https://cdn.example.com/cast_episode.mp3",
+            mediaItem?.mediaMetadata?.extras?.getString(com.yuval.podcasts.data.Constants.EXTRA_REMOTE_AUDIO_URL)
+        )
+        assertEquals(
+            androidx.media3.common.MimeTypes.AUDIO_MPEG,
+            mediaItem?.localConfiguration?.mimeType
+        )
+        assertEquals(
+            androidx.media3.common.MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE,
+            mediaItem?.mediaMetadata?.mediaType
+        )
+
+        tempFile.delete()
+    }
 }
 

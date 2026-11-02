@@ -1,6 +1,6 @@
 [versions]
-agp = "9.4.1"
-kotlin = "2.4.20"
+agp = "9.5.0"
+kotlin = "2.4.21"
 composeBom = "2026.09.00"
 coreKtx = "1.19.1"
 appcompat = "1.8.0"
@@ -8,22 +8,22 @@ lifecycle = "2.11.0"
 activityCompose = "1.13.0"
 navigationCompose = "2.10.2"
 coil = "2.7.0"
-okhttp = "5.5.0"
+okhttp = "5.5.1"
 room = "2.8.5"
-datastore = "1.2.1"
+datastore = "1.3.0"
 media3 = "1.11.1"
 hilt = "2.60.1"
 hiltNavigationCompose = "1.4.0"
 hiltWork = "1.4.0"
 workRuntime = "2.12.0"
 kotlinxCoroutines = "1.11.0"
-kotlinxSerialization = "1.11.0"
+kotlinxSerialization = "1.12.0"
 kotlinxCollections = "0.5.2"
-ksp = "2.3.12"
-versionsPlugin = "0.64.0"
-palette = "1.0.0"
-material-color-utilities = "5.0.1"
-tracing = "2.0.3"
+ksp = "2.3.13"
+versionsPlugin = "0.67.0"
+palette = "1.1.0"
+material-color-utilities = "6.0.0"
+tracing = "2.0.5"
 junit = "4.13.2"
 mockk = "1.14.11"
 turbine = "1.2.1"
@@ -31,7 +31,7 @@ robolectric = "4.17"
 androidxTestExt = "1.3.0"
 androidxTestCore = "1.7.0"
 espresso = "3.7.0"
-appfunctions = "1.0.0-alpha12"
+appfunctions = "1.0.0-beta01"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -72,7 +72,7 @@ androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.re
 androidx-media3-cast = { group = "androidx.media3", name = "media3-cast", version.ref = "media3" }
 androidx-media3-test-utils = { group = "androidx.media3", name = "media3-test-utils", version.ref = "media3" }
 
-play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version = "22.3.1" }
+play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version = "23.0.0" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }

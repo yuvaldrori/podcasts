@@ -3,6 +3,9 @@ package com.yuval.podcasts.di
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.cast.CastPlayer
+import androidx.media3.cast.RemoteCastPlayer
+import com.yuval.podcasts.data.Constants
+import com.yuval.podcasts.media.cast.PodcastMediaItemConverter
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,8 +33,14 @@ object PlayerModule {
         @ApplicationContext context: Context,
         exoPlayer: ExoPlayer
     ): CastPlayer {
+        val remotePlayer = RemoteCastPlayer.Builder(context)
+            .setMediaItemConverter(PodcastMediaItemConverter())
+            .setSeekBackIncrementMs(Constants.SEEK_BACKWARD_MS)
+            .setSeekForwardIncrementMs(Constants.SEEK_FORWARD_MS)
+            .build()
         return CastPlayer.Builder(context)
             .setLocalPlayer(exoPlayer)
+            .setRemotePlayer(remotePlayer)
             .build()
     }
 }

@@ -58,7 +58,7 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var exoPlayer: ExoPlayer
     @Inject lateinit var castPlayer: dagger.Lazy<CastPlayer>
-    private var isCastInitialized = false
+    @Volatile private var isCastInitialized = false
     private lateinit var currentPlayer: Player
 
     @Inject lateinit var episodeDao: EpisodeDao
@@ -305,26 +305,21 @@ class PlaybackService : MediaLibraryService() {
 
         serviceScope.launch {
             // Delay CastPlayer initialization to allow main thread to remain fully responsive
-            // during app startup and focus processing.
+            // during app startup and focus processing. Media3's RemoteCastPlayer initializes
+            // CastContext asynchronously on a single-flight background executor.
             kotlinx.coroutines.delay(Constants.CAST_INIT_DELAY_MS)
             withContext(mainDispatcher) {
+                if (!serviceScope.isActive) return@withContext
                 try {
                     val player = castPlayer.get()
-                    player.repeatMode = Player.REPEAT_MODE_OFF
-                    // Note: setSessionAvailabilityListener is deprecated in upstream Media3 CastPlayer,
-                    // but remains the primary bridge listener mechanism for switching active Player references.
-                    @Suppress("DEPRECATION")
-                    player.setSessionAvailabilityListener(object : SessionAvailabilityListener {
-                        override fun onCastSessionAvailable() {
-                            setCurrentPlayer(player)
-                        }
-                        override fun onCastSessionUnavailable() {
-                            setCurrentPlayer(exoPlayer)
-                        }
-                    })
-                    player.addListener(listener)
+                    initializeCastPlayer(
+                        castPlayerInstance = player,
+                        exoPlayer = exoPlayer,
+                        listener = listener,
+                        onPlayerSwitched = { setCurrentPlayer(it) },
+                        logManager = logManager
+                    )
                     isCastInitialized = true
-                    logManager.i("PlaybackService", "CastPlayer lazily initialized")
                 } catch (e: Exception) {
                     logManager.e("PlaybackService", "Failed to initialize CastPlayer lazily", mapOf("error" to e.message.toString()))
                 }
@@ -540,8 +535,32 @@ class PlaybackService : MediaLibraryService() {
                 val itemInPlayer = currentPlayer.getMediaItemAt(index)
                 if (itemInPlayer.mediaId == episode.id) {
                     val updatedItem = mediaItems.getOrNull(index)
-                    if (updatedItem != null && (updatedItem.mediaMetadata != itemInPlayer.mediaMetadata || updatedItem.localConfiguration?.uri != itemInPlayer.localConfiguration?.uri)) {
-                        if (currentPlayer.currentMediaItemIndex != index) {
+                    if (updatedItem != null) {
+                        @Suppress("DEPRECATION")
+                        val isCasting = (currentPlayer as? CastPlayer)?.isCastSessionAvailable == true
+                        val needsReplacement = if (isCasting) {
+                            // On CastPlayer, localConfiguration.uri points to remote URL on Cast receiver,
+                            // while downloaded episodes have a local file path. RemoteCastPlayer cannot play local files.
+                            // Only update if remote audio URL or title has changed.
+                            val playerRemoteUrl = itemInPlayer.mediaMetadata.extras?.getString(Constants.EXTRA_REMOTE_AUDIO_URL)
+                                ?: itemInPlayer.localConfiguration?.uri?.toString()
+                            val updatedRemoteUrl = updatedItem.mediaMetadata.extras?.getString(Constants.EXTRA_REMOTE_AUDIO_URL)
+                                ?: updatedItem.localConfiguration?.uri?.toString()
+                            val titleChanged = updatedItem.mediaMetadata.title != null &&
+                                updatedItem.mediaMetadata.title != itemInPlayer.mediaMetadata.title
+                            titleChanged || (updatedRemoteUrl != null && updatedRemoteUrl != playerRemoteUrl)
+                        } else {
+                            val uriChanged = updatedItem.localConfiguration?.uri != itemInPlayer.localConfiguration?.uri
+                            val titleChanged = updatedItem.mediaMetadata.title != null &&
+                                updatedItem.mediaMetadata.title != itemInPlayer.mediaMetadata.title
+                            val artistChanged = updatedItem.mediaMetadata.artist != null &&
+                                updatedItem.mediaMetadata.artist != itemInPlayer.mediaMetadata.artist
+                            val albumTitleChanged = updatedItem.mediaMetadata.albumTitle != null &&
+                                updatedItem.mediaMetadata.albumTitle != itemInPlayer.mediaMetadata.albumTitle
+                            val artworkChanged = updatedItem.mediaMetadata.artworkUri != itemInPlayer.mediaMetadata.artworkUri
+                            uriChanged || titleChanged || artistChanged || albumTitleChanged || artworkChanged
+                        }
+                        if (needsReplacement && currentPlayer.currentMediaItemIndex != index) {
                             currentPlayer.replaceMediaItem(index, updatedItem)
                         }
                     }
@@ -588,6 +607,54 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    internal fun initializeCastPlayer(
+        castPlayerInstance: CastPlayer,
+        exoPlayer: ExoPlayer,
+        listener: PlaybackServicePlayerListener,
+        onPlayerSwitched: (Player) -> Unit,
+        logManager: LogManager
+    ) {
+        castPlayerInstance.repeatMode = Player.REPEAT_MODE_OFF
+        @Suppress("DEPRECATION")
+        castPlayerInstance.setSessionAvailabilityListener(object : SessionAvailabilityListener {
+            override fun onCastSessionAvailable() {
+                logManager.i("PlaybackService", "Cast session available")
+            }
+            override fun onCastSessionUnavailable() {
+                logManager.i("PlaybackService", "Cast session unavailable")
+            }
+        })
+        @Suppress("DEPRECATION")
+        if (castPlayerInstance.isCastSessionAvailable && exoPlayer.mediaItemCount > 0 && castPlayerInstance.mediaItemCount == 0) {
+            val items = (0 until exoPlayer.mediaItemCount).map { exoPlayer.getMediaItemAt(it) }
+            val startIndex = exoPlayer.currentMediaItemIndex.coerceAtLeast(0)
+            val startPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
+            val playWhenReady = exoPlayer.playWhenReady
+            castPlayerInstance.setMediaItems(items, startIndex, startPosition)
+            castPlayerInstance.playWhenReady = playWhenReady
+            if (exoPlayer.playbackState != Player.STATE_IDLE) {
+                castPlayerInstance.prepare()
+            }
+            exoPlayer.stop()
+        }
+        exoPlayer.removeListener(listener)
+        castPlayerInstance.addListener(listener)
+        onPlayerSwitched(castPlayerInstance)
+        logManager.i("PlaybackService", "CastPlayer lazily initialized")
+    }
+
+    internal fun releasePlayers(
+        exoPlayer: ExoPlayer,
+        castPlayerProvider: dagger.Lazy<CastPlayer>,
+        isCastInitialized: Boolean
+    ) {
+        if (isCastInitialized) {
+            castPlayerProvider.get().release()
+        } else {
+            exoPlayer.release()
+        }
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
@@ -595,10 +662,7 @@ class PlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         serviceScope.cancel()
         playerListener = null
-        exoPlayer.release()
-        if (isCastInitialized) {
-            castPlayer.get().release()
-        }
+        releasePlayers(exoPlayer, castPlayer, isCastInitialized)
         loudnessEnhancer?.release()
         loudnessEnhancer = null
         mediaSession?.run {

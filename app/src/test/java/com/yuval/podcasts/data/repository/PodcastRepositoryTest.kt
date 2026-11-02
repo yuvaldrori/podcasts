@@ -351,6 +351,43 @@ class PodcastRepositoryTest {
         coVerify { podcastDao.insertPodcast(match { it.etag == null && it.lastModified == null }) }
     }
 
+    @Test
+    fun fetchAndStorePodcast_whenLocalSubscription_skipsNetworkAndReturnsZero() = runBlocking {
+        val count = repository.fetchAndStorePodcast(com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL)
+
+        assertEquals(0, count)
+        coVerify(exactly = 0) { podcastApi.withRssStreamConditional<Int>(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { podcastDao.insertPodcast(any()) }
+    }
+
+    @Test
+    fun refreshPodcasts_filtersOutLocalSubscription() = runBlocking {
+        val feedUrl = "http://example.com/feed"
+        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
+        val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
+        stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, episodes))
+        coEvery { episodeDao.syncNetworkEpisodes(any()) } returns 1
+
+        val progressUpdates = mutableListOf<Pair<Int, Int>>()
+        val totalNew = repository.refreshPodcasts(
+            urls = listOf(com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL, feedUrl),
+            forceRefresh = false,
+            onProgress = { current, total -> progressUpdates.add(current to total) }
+        )
+
+        assertEquals(1, totalNew)
+        assertEquals(listOf(1 to 1), progressUpdates)
+        coVerify(exactly = 0) {
+            podcastApi.withRssStreamConditional<Int>(
+                eq(com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL),
+                any(),
+                any(),
+                any()
+            )
+        }
+        verify(exactly = 0) { logManager.e(any(), match { it.contains(com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL) }, any()) }
+    }
+
     private fun stubFetchPodcastData(feedUrl: String, parsed: ParsedPodcast, etag: String? = null, lastModified: String? = null) {
         val mockInputStream = mockk<InputStream>(relaxed = true)
         coEvery { podcastApi.withRssStream<ParsedPodcast>(eq(feedUrl), any()) } coAnswers {

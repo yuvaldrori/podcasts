@@ -210,6 +210,13 @@ class PlayerManager @Inject constructor(
         scope.launch {
             val browser = awaitController()
             browser?.let {
+                val extras = android.os.Bundle().apply {
+                    if (uri.startsWith("http://", ignoreCase = true) ||
+                        uri.startsWith("https://", ignoreCase = true)
+                    ) {
+                        putString(Constants.EXTRA_REMOTE_AUDIO_URL, uri)
+                    }
+                }
                 val metadata = MediaMetadata.Builder()
                     .setTitle(title)
                     .setDisplayTitle(title)
@@ -217,12 +224,14 @@ class PlayerManager @Inject constructor(
                     .setAlbumTitle(albumTitle)
                     .setArtworkUri(imageUrl?.toUri())
                     .setIsPlayable(true)
-                    .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
+                    .setExtras(extras)
                     .build()
 
                 val mediaItem = MediaItem.Builder()
                     .setMediaId(mediaId)
                     .setUri(uri)
+                    .setMimeType(MediaItemMapper.inferAudioMimeType(uri))
                     .setMediaMetadata(metadata)
                     .build()
                 it.setMediaItem(mediaItem)
