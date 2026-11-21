@@ -121,4 +121,14 @@ class FeedsViewModelTest {
 
         assertEquals(progressMap, localViewModel.downloadProgressMap.value)
     }
+
+    @Test
+    fun addToQueue_invokesEnqueueEpisodeUseCase() = runTest {
+        val episode = Episode("ep1", "feed1", "Title", "Desc", "http://example.com/a.mp3", null, null, 1000L, 0L, 0, null, false, 0L)
+
+        viewModel.addToQueue(episode)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { enqueueEpisodeUseCase(episode) }
+    }
 }

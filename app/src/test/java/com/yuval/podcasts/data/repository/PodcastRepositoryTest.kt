@@ -15,6 +15,7 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.NetworkEpisodeWithChapters
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.ParsedPodcast
+import com.yuval.podcasts.data.db.entity.QueueState
 import com.yuval.podcasts.utils.MainDispatcherRule
 import com.yuval.podcasts.utils.LogManager
 import io.mockk.*
@@ -231,17 +232,62 @@ class PodcastRepositoryTest {
     }
 
     @Test
-    fun requeueEpisode_insertsChronologically() = runTest {
-        val ep1 = Episode("ep1", "f", "T1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L)
-        val ep3 = Episode("ep3", "f", "T3", "D", "A", null, null, 3000L, 0L, 0, null, false, 0L)
+    fun requeueEpisode_insertsInTransactionReindexesPositionsAndResetsPlaybackStatus() = runTest {
+        val ep1 = testEpisode("ep1", "feedA", 1000L)
+        val ep3 = testEpisode("ep3", "feedC", 3000L)
         coEvery { queueDao.getQueueEpisodesSync() } returns listOf(ep1, ep3)
-        
-        val newEp = Episode("ep2", "f", "T2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L)
-        
+
+        val newEp = testEpisode("ep2", "feedB", 2000L)
+
         repository.requeueEpisode(newEp)
-        
-        coVerify { queueDao.updateQueue(match { it.size == 3 && it[1].episodeId == "ep2" }) }
-        coVerify { episodeDao.updatePlaybackStatus("ep2", false) }
+
+        coVerify(exactly = 1) { database.withTransaction(any()) }
+        coVerify(exactly = 1) {
+            queueDao.updateQueue(
+                listOf(
+                    QueueState("ep1", 0),
+                    QueueState("ep2", 1),
+                    QueueState("ep3", 2)
+                )
+            )
+        }
+        coVerify(exactly = 1) { episodeDao.updatePlaybackStatus("ep2", false, null) }
+    }
+
+    @Test
+    fun requeueEpisode_forwardsCurrentlyPlayingEpisodeId() = runTest {
+        val epB1 = testEpisode("epB1", "feedB", 3000L)
+        val epC1 = testEpisode("epC1", "feedC", 4000L)
+        coEvery { queueDao.getQueueEpisodesSync() } returns listOf(epB1, epC1)
+
+        val epA1 = testEpisode("epA1", "feedA", 1000L)
+
+        repository.requeueEpisode(epA1, currentlyPlayingEpisodeId = "epB1")
+
+        coVerify(exactly = 1) { database.withTransaction(any()) }
+        coVerify(exactly = 1) {
+            queueDao.updateQueue(
+                listOf(
+                    QueueState("epB1", 0),
+                    QueueState("epA1", 1),
+                    QueueState("epC1", 2)
+                )
+            )
+        }
+        coVerify(exactly = 1) { episodeDao.updatePlaybackStatus("epA1", false, null) }
+    }
+
+    @Test
+    fun requeueEpisode_alreadyInQueue_doesNotModifyQueueButResetsPlaybackStatus() = runTest {
+        val epA1 = testEpisode("epA1", "feedA", 1000L)
+        val epB1 = testEpisode("epB1", "feedB", 2000L)
+        coEvery { queueDao.getQueueEpisodesSync() } returns listOf(epA1, epB1)
+
+        repository.requeueEpisode(epA1)
+        repository.requeueEpisode(epA1, currentlyPlayingEpisodeId = "epA1")
+
+        coVerify(exactly = 0) { queueDao.updateQueue(any()) }
+        coVerify(exactly = 2) { episodeDao.updatePlaybackStatus("epA1", false, null) }
     }
 
     @Test
@@ -387,6 +433,9 @@ class PodcastRepositoryTest {
         }
         verify(exactly = 0) { logManager.e(any(), match { it.contains(com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL) }, any()) }
     }
+
+    private fun testEpisode(id: String, feedUrl: String, pubDate: Long): Episode =
+        Episode(id, feedUrl, "Title-$id", "Desc", "http://example.com/$id.mp3", null, null, pubDate, 0L, 0, null, false, 0L)
 
     private fun stubFetchPodcastData(feedUrl: String, parsed: ParsedPodcast, etag: String? = null, lastModified: String? = null) {
         val mockInputStream = mockk<InputStream>(relaxed = true)

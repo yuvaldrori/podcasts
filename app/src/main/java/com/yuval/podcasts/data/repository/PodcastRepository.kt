@@ -18,13 +18,11 @@ import com.yuval.podcasts.data.network.RssParser
 import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.work.DownloadWorker
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.room.withTransaction
 import java.io.File
@@ -60,7 +58,7 @@ interface PodcastRepository {
     suspend fun removeFromQueue(episodeId: String)
     suspend fun updateQueue(queue: List<QueueState>)
     suspend fun reorderQueue(newOrderIds: List<String>)
-    suspend fun requeueEpisode(episode: Episode)
+    suspend fun requeueEpisode(episode: Episode, currentlyPlayingEpisodeId: String? = null)
     suspend fun requeueMissingDownloads()
     suspend fun refreshPodcasts(
         urls: List<String>,
@@ -210,13 +208,11 @@ class DefaultPodcastRepository @Inject constructor(
         queueDao.updateQueue(newQueue)
     }
 
-    override suspend fun requeueEpisode(episode: Episode) {
+    override suspend fun requeueEpisode(episode: Episode, currentlyPlayingEpisodeId: String?) {
         database.withTransaction {
             val currentQueue = queueDao.getQueueEpisodesSync().toMutableList()
-            val insertionIndex = currentQueue.indexOfFirst { it.pubDate > episode.pubDate }.let {
-                if (it == -1) currentQueue.size else it
-            }
-            if (!currentQueue.any { it.id == episode.id }) {
+            if (currentQueue.none { it.id == episode.id }) {
+                val insertionIndex = findQueueInsertionIndex(currentQueue, episode, currentlyPlayingEpisodeId)
                 currentQueue.add(insertionIndex, episode)
                 val newQueue = currentQueue.mapIndexed { index, ep -> QueueState(ep.id, index) }
                 queueDao.updateQueue(newQueue)
@@ -306,5 +302,44 @@ class DefaultPodcastRepository @Inject constructor(
         if (file.exists() && !file.delete()) {
             logManager.w("PodcastRepository", "Failed to delete file for episode $episodeId: $path")
         }
+    }
+}
+
+/**
+ * Computes the insertion index for [episode] in [currentQueue] without reordering existing items:
+ * - Always inserts below [currentlyPlayingEpisodeId] when it is in the queue.
+ * - Groups with the same subscription (ordered oldest-first) if one exists at or below the playing item.
+ * - Otherwise inserts chronologically at subscription group boundaries so no existing group is split
+ *   (which also skips past the remainder of a currently playing multi-episode group).
+ */
+internal fun findQueueInsertionIndex(
+    currentQueue: List<Episode>,
+    episode: Episode,
+    currentlyPlayingEpisodeId: String? = null
+): Int {
+    val playingIndex = currentlyPlayingEpisodeId?.let { playingId ->
+        currentQueue.indexOfFirst { it.id == playingId }
+    } ?: -1
+    val minInsertionIndex = if (playingIndex == -1) 0 else playingIndex + 1
+
+    val lastSameSubscriptionIndex = currentQueue.indexOfLast {
+        it.podcastFeedUrl == episode.podcastFeedUrl
+    }
+    val canGroupWithSameSub = lastSameSubscriptionIndex != -1 &&
+        lastSameSubscriptionIndex >= playingIndex
+
+    return if (canGroupWithSameSub) {
+        val firstNewerSameSubIndex = (minInsertionIndex until currentQueue.size).firstOrNull { index ->
+            val item = currentQueue[index]
+            item.podcastFeedUrl == episode.podcastFeedUrl && item.pubDate > episode.pubDate
+        }
+        firstNewerSameSubIndex ?: (lastSameSubscriptionIndex + 1)
+    } else {
+        val firstNewerGroupIndex = (minInsertionIndex until currentQueue.size).firstOrNull { index ->
+            val isGroupStart = index == 0 ||
+                currentQueue[index].podcastFeedUrl != currentQueue[index - 1].podcastFeedUrl
+            isGroupStart && currentQueue[index].pubDate > episode.pubDate
+        }
+        firstNewerGroupIndex ?: currentQueue.size
     }
 }

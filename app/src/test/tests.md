@@ -33,7 +33,8 @@ These tests ensure the app can talk to the internet and understand the podcast d
 
 Repositories are the "managers" that decide whether to get data from the database or the internet.
 
-*   **`PodcastRepositoryTest`**: The main test for the repository. It checks that when you subscribe to a podcast, it fetches the data from the internet and saves it to the database. It also ensures long tasks run on background threads, and verifies that the pseudo-feed `local_subscription` is skipped during single and batch RSS refreshes.
+*   **`PodcastRepositoryTest`**: The main test for the repository. It checks subscribing and RSS syncing on background threads, verifies that `local_subscription` is skipped during single and batch refreshes, and confirms `requeueEpisode` updates the queue and playback status atomically inside a transaction while leaving duplicates untouched.
+*   **`QueueInsertionOrderTest`**: Verifies the pure queue-insertion ordering rules in `findQueueInsertionIndex`: episodes from the same subscription are grouped together oldest-first, unrelated subscriptions are inserted chronologically at group boundaries so existing groups are never split, newly added episodes always stay below any currently playing episode, and existing queue items keep their exact relative order.
 *   **`LocalMediaDataSourceTest`**: Verifies that when importing local files, the app correctly sanitizes filenames to prevent "Path Traversal" security vulnerabilities (keeping files safely inside the app's folder).
 *   **`AddLocalFileIntegrationTest`**: Tests the feature that lets users import their own local MP3 files. It checks if the app can read the MP3's metadata (title, artist, duration) and fake a "podcast episode" in the database.
 *   **`SettingsRepositoryTest`**: Checks that user preferences (like the default playback speed, default Smart Silence, and default Volume Boost) are loaded correctly from device storage.
@@ -44,7 +45,7 @@ Repositories are the "managers" that decide whether to get data from the databas
 
 Use Cases handle specific business rules.
 
-*   **`EnqueueEpisodeUseCaseTest`**: Verifies the logic for adding a new episode to the queue. If it's a brand new episode, it gets added to the front. If it's older, it gets added to the back. It checks that downloading starts when a remote, un-downloaded item is queued, and verifies that background downloads are skipped for local episodes or already downloaded episodes (provided their physical file exists). It also verifies that if a downloaded episode's physical file is missing from storage, the usecase schedules a fresh background download.
+*   **`EnqueueEpisodeUseCaseTest`**: Verifies that queuing an episode forwards the currently playing episode ID only while playback is active, schedules unique `KEEP` download work for remote un-downloaded episodes (including when a downloaded file is missing or null), and skips downloads for local or already-downloaded files.
 *   **`RemoveEpisodeUseCaseTest`**: Checks that when an episode is removed from the queue, its downloaded audio file is deleted from the phone to free up storage space and verifies that removing an episode marks it as played by default (or respects the explicit mark-as-played flag).
 *   **`ImportLocalFileUseCaseTest`**: Verifies that importing a local audio file parses its metadata (using metadata extractor) and correctly triggers insertion into the local media database.
 *   **`ReorderSubscriptionInQueueUseCaseTest`**: Confirms the business rules for moving all episodes belonging to a specific podcast subscription to the bottom of the playback queue.
@@ -101,7 +102,7 @@ ViewModels prepare data for the screen. These tests check that the data is corre
 
 *   **`PlayerViewModelTest`**: Tests the bridge between the UI and the audio player with injected dispatchers and type-safe playback combines, ensuring UI buttons (Play/Pause, Skip) correctly trigger the corresponding player actions and verifying that single-episode playback resolves podcast artwork fallback.
 *   **`ThemeViewModelTest`**: Verifies that Material You dynamic color theme palettes are seeded exclusively from the subscription/podcast cover art rather than individual episode art, and that bitmap palette generation is offloaded to the IO dispatcher.
-*   **`FeedsViewModelTest`**: Checks the "Subscriptions" screen logic. Makes sure it loads your podcasts, handles pulling down to refresh, and shows an error message if the internet is down.
+*   **`FeedsViewModelTest`**: Checks the "Subscriptions" and "New Episodes" screen logic, verifying refresh state and progress updates from WorkManager, download progress exposure, and `addToQueue` delegation to `EnqueueEpisodeUseCase`.
 *   **`QueueViewModelTest`**: Checks the "Up Next" queue logic, verifying typed playback statistics combines, optimistic single source of truth queue reordering with atomic rollback on failure, and seamless transition from user drag to database updates. Makes sure that removing an item from the queue marks it as played and tells the player to skip if that item was currently playing.
 *   **`QueueViewModelTimeTest`**: Verifies the math that calculates "Total Queue Time Remaining". If you have 3 hours of podcasts but you listen at 2x speed, it correctly tells you there is 1.5 hours remaining.
 *   **`EpisodeDetailViewModelTest`**: Ensures the episode details screen loads the correct episode, pre-parses HTML descriptions into Compose AnnotatedStrings in the background, and knows whether that episode is already in your queue or not.
@@ -115,6 +116,7 @@ These tests actually boot up the UI on an Android device to "click" buttons and 
 
 *   **`EpisodeItemTest`**: Verifies that `EpisodeItem` (used across the Queue, New Episodes, and Podcast Details screens) and `PodcastItem` (used on the Subscriptions tab) cleanly render plain text descriptions with all raw HTML tags (`<p>`, `<strong>`, `<br>`, etc.) and entities (`&nbsp;`, `&amp;`) stripped.
 *   **`NewEpisodesScreenTest`**: Tests user interactions on the New Episodes feed, including snackbar triggers and swipe state persistence across scrolls.
+*   **`AddToQueueIntegrationTest`**: End-to-end instrumented test wiring a real Room database, `DefaultPodcastRepository`, `NewEpisodesScreen`, and `QueueScreen` on the emulator. Taps the actual "Add to Queue" buttons from the New tab and verifies both persisted database order and visual top-to-bottom rendering order on the Queue screen for same-subscription date grouping, non-splitting of groups, playing-episode pinning, and preserving existing manually reordered items.
 *   **`QueueScreenTest`**: Verifies dragging and dropping episodes to reorder the playback queue.
 *   **`EpisodeDetailScreenShareTest`**: Verifies that tapping the Share button on the episode detail screen launches the system share sheet with the formatted episode title and web link.
 
