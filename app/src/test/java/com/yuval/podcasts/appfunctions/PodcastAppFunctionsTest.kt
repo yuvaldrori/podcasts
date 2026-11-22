@@ -1,6 +1,5 @@
 package com.yuval.podcasts.appfunctions
 
-import androidx.appfunctions.AppFunctionContext
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.repository.PodcastRepository
@@ -26,7 +25,6 @@ class PodcastAppFunctionsTest {
     private val reorderUseCase = mockk<ReorderSubscriptionInQueueUseCase>(relaxed = true)
     private val repository = mockk<PodcastRepository>(relaxed = true)
     private val logManager = mockk<LogManager>(relaxed = true)
-    private val context = mockk<AppFunctionContext>()
 
     private val appFunctions = PodcastAppFunctions(
         playerManager,
@@ -60,14 +58,14 @@ class PodcastAppFunctionsTest {
 
     @Test
     fun `resumeQueue calls playerManager play`() = runTest {
-        val result = appFunctions.resumeQueue(context)
+        val result = appFunctions.resumeQueue()
         verify { playerManager.play() }
         assertEquals("Resuming playback", result)
     }
 
     @Test
     fun `stopPlayback calls playerManager pause`() = runTest {
-        val result = appFunctions.stopPlayback(context)
+        val result = appFunctions.stopPlayback()
         verify { playerManager.pause() }
         assertEquals("Playback stopped", result)
     }
@@ -75,14 +73,14 @@ class PodcastAppFunctionsTest {
     @Test
     fun `refreshNewEpisodes returns correct count message`() = runTest {
         coEvery { refreshUseCase() } returns 5
-        val result = appFunctions.refreshNewEpisodes(context)
+        val result = appFunctions.refreshNewEpisodes()
         assertEquals("Found 5 new episodes", result)
     }
 
     @Test
     fun `moveSubscriptionToBottom resolves exact feed URL`() = runTest {
         val feedUrl = "https://example.com/rss"
-        val result = appFunctions.moveSubscriptionToBottom(context, feedUrl)
+        val result = appFunctions.moveSubscriptionToBottom(feedUrl)
         coVerify { reorderUseCase(feedUrl) }
         assertEquals("Moved episodes to the bottom of the queue", result)
     }
@@ -90,7 +88,7 @@ class PodcastAppFunctionsTest {
     @Test
     fun `moveSubscriptionToBottom resolves exact title`() = runTest {
         val title = "The Example Podcast"
-        val result = appFunctions.moveSubscriptionToBottom(context, title)
+        val result = appFunctions.moveSubscriptionToBottom(title)
         coVerify { reorderUseCase("https://example.com/rss") }
         assertEquals("Moved episodes to the bottom of the queue", result)
     }
@@ -98,7 +96,7 @@ class PodcastAppFunctionsTest {
     @Test
     fun `moveSubscriptionToBottom resolves partial title in Hebrew`() = runTest {
         val query = "בעברית"
-        val result = appFunctions.moveSubscriptionToBottom(context, query)
+        val result = appFunctions.moveSubscriptionToBottom(query)
         coVerify { reorderUseCase("https://hebrew.com/rss") }
         assertEquals("Moved episodes to the bottom of the queue", result)
     }
@@ -106,7 +104,7 @@ class PodcastAppFunctionsTest {
     @Test
     fun `moveSubscriptionToBottom returns error message when subscription not found`() = runTest {
         val query = "Nonexistent"
-        val result = appFunctions.moveSubscriptionToBottom(context, query)
+        val result = appFunctions.moveSubscriptionToBottom(query)
         coVerify(exactly = 0) { reorderUseCase(any()) }
         assertEquals("Could not find a podcast subscription matching 'Nonexistent'", result)
     }
@@ -114,21 +112,21 @@ class PodcastAppFunctionsTest {
     @Test
     fun `addDebugLog calls logManager`() = runTest {
         val msg = "Test log"
-        val result = appFunctions.addDebugLog(context, msg)
+        val result = appFunctions.addDebugLog(msg)
         verify { logManager.i("AppFunction", "User note: $msg") }
         assertEquals("Log added", result)
     }
 
     @Test
     fun `skipForward seeks forward with Constants duration`() = runTest {
-        val result = appFunctions.skipForward(context)
+        val result = appFunctions.skipForward()
         verify { playerManager.seekForward(Constants.SEEK_FORWARD_MS) }
         assertEquals("Skipped forward 30 seconds", result)
     }
 
     @Test
     fun `skipBackward seeks backward with Constants duration`() = runTest {
-        val result = appFunctions.skipBackward(context)
+        val result = appFunctions.skipBackward()
         verify { playerManager.seekBackward(Constants.SEEK_BACKWARD_MS) }
         assertEquals("Skipped backward 15 seconds", result)
     }

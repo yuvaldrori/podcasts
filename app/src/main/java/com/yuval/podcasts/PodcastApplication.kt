@@ -10,7 +10,6 @@ import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.appfunctions.AppFunctionConfiguration
 import com.yuval.podcasts.appfunctions.PodcastAppFunctions
 import com.yuval.podcasts.work.CleanupWorker
 import com.yuval.podcasts.work.HardRefreshWorker
@@ -25,7 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 @HiltAndroidApp
-class PodcastApplication : Application(), Configuration.Provider, AppFunctionConfiguration.Provider {
+class PodcastApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
@@ -37,12 +36,6 @@ class PodcastApplication : Application(), Configuration.Provider, AppFunctionCon
     lateinit var podcastAppFunctions: PodcastAppFunctions
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    override val appFunctionConfiguration: AppFunctionConfiguration by lazy {
-        AppFunctionConfiguration.Builder()
-            .addEnclosingClassFactory(PodcastAppFunctions::class.java) { podcastAppFunctions }
-            .build()
-    }
 
     override fun onCreate() {
         super.onCreate()

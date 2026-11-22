@@ -4,7 +4,11 @@ plugins {
 
 android {
     namespace = "com.yuval.podcasts.benchmark"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 2
+        }
+    }
 
     defaultConfig {
         minSdk = 37

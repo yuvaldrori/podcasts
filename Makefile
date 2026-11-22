@@ -26,9 +26,9 @@ init:
 	@echo "Initializing Android environment..."
 	chmod +x gradlew
 	android init
-	# The app targets minSdk/compileSdk/targetSdk = API 37, so provision the API 37
-	# platform, build tools, and emulator system image (the app won't install on older).
-	android sdk install platforms/android-37.0 build-tools/37.0.0 emulator platform-tools system-images/android-37.0/google_apis_ps16k/x86_64
+	# The app compiles against API 37.2 (with minSdk/targetSdk = 37), so provision the API 37.2
+	# platform, build tools, and emulator system image.
+	android sdk install platforms/android-37.2 build-tools/37.0.0 emulator platform-tools system-images/android-37.0/google_apis_ps16k/x86_64
 
 build:
 	./gradlew :app:assembleDebug

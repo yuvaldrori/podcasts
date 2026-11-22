@@ -121,26 +121,32 @@ fun UnifiedPlayer(
 
             // Bottom Row: Progress Slider and Times
             Column(modifier = Modifier.fillMaxWidth()) {
-                var sliderValue by remember { mutableFloatStateOf(0f) }
+                @OptIn(ExperimentalMaterial3Api::class)
+                val sliderState = rememberSliderState()
                 var isDragging by remember { mutableStateOf(false) }
-                
-                val currentProgress = if (uiState.duration > 0) uiState.currentPosition.toFloat() / uiState.duration.toFloat() else 0f
-                
+
+                val currentProgress = if (uiState.duration > 0) {
+                    (uiState.currentPosition.toFloat() / uiState.duration.toFloat()).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+
                 LaunchedEffect(uiState.currentPosition, uiState.duration) {
                     if (!isDragging) {
-                        sliderValue = currentProgress
+                        sliderState.value = currentProgress
                     }
                 }
 
+                @OptIn(ExperimentalMaterial3Api::class)
                 Slider(
-                    value = sliderValue,
-                    onValueChange = { 
+                    state = sliderState,
+                    onValueChange = {
                         isDragging = true
-                        sliderValue = it 
+                        sliderState.value = it
                     },
                     onValueChangeFinished = {
                         isDragging = false
-                        actions.onSeekTo((sliderValue * uiState.duration).toLong())
+                        actions.onSeekTo((sliderState.value * uiState.duration).toLong())
                     },
                     modifier = Modifier.fillMaxWidth().height(32.dp)
                 )
@@ -148,7 +154,7 @@ fun UnifiedPlayer(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    val displayPosition = if (isDragging) (sliderValue * uiState.duration).toLong() else uiState.currentPosition
+                    val displayPosition = if (isDragging) (sliderState.value * uiState.duration).toLong() else uiState.currentPosition
                     Text(
                         text = Formatter.formatTime(displayPosition),
                         style = MaterialTheme.typography.labelSmall
