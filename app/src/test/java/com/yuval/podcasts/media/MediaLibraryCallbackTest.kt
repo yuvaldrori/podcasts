@@ -1,18 +1,19 @@
 package com.yuval.podcasts.media
 
-import android.os.Bundle
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
-import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaSession
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.yuval.podcasts.data.db.dao.QueueDao
 import com.yuval.podcasts.data.db.entity.Episode
-import io.mockk.*
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
+import com.yuval.podcasts.data.db.entity.Podcast
+import io.mockk.coEvery
+import io.mockk.mockk
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.guava.await
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -21,6 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34])
 class MediaLibraryCallbackTest {
@@ -32,35 +34,37 @@ class MediaLibraryCallbackTest {
     fun setup() {
         queueDao = mockk(relaxed = true)
         service = PlaybackService()
-        
+
         service.exoPlayer = mockk(relaxed = true)
         service.castPlayer = mockk(relaxed = true)
         service.episodeDao = mockk(relaxed = true)
         service.queueDao = queueDao
         service.removeEpisodeUseCase = mockk(relaxed = true)
         service.settingsRepository = mockk(relaxed = true)
-        service.ioDispatcher = Dispatchers.Unconfined
-        service.mainDispatcher = Dispatchers.Unconfined
-        
-        // Initialize private currentPlayer using reflection
+
         val field = PlaybackService::class.java.getDeclaredField("currentPlayer")
         field.isAccessible = true
         field.set(service, service.exoPlayer)
+    }
 
-        // Initialize serviceScope using reflection
+    private fun bindDispatchers(dispatcher: kotlinx.coroutines.CoroutineDispatcher, scope: CoroutineScope) {
+        service.ioDispatcher = dispatcher
+        service.mainDispatcher = dispatcher
         val scopeField = PlaybackService::class.java.getDeclaredField("serviceScope")
         scopeField.isAccessible = true
-        scopeField.set(service, kotlinx.coroutines.CoroutineScope(Dispatchers.Unconfined))
+        scopeField.set(service, scope)
     }
 
     @Test
     fun onGetLibraryRoot_returnsBrowsableRoot() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        bindDispatchers(dispatcher, this)
         val callback = getCallback(service)
         val session = mockk<MediaLibrarySession>(relaxed = true)
         val controller = mockk<MediaSession.ControllerInfo>(relaxed = true)
-        
-        val result = callback.onGetLibraryRoot(session, controller, null).get()
-        
+
+        val result = callback.onGetLibraryRoot(session, controller, null).await()
+
         assertEquals("root", result.value?.mediaId)
         assertTrue(result.value?.mediaMetadata?.isBrowsable == true)
         assertTrue(result.value?.mediaMetadata?.isPlayable == false)
@@ -68,13 +72,15 @@ class MediaLibraryCallbackTest {
 
     @Test
     fun onGetChildren_root_returnsQueueFolder() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        bindDispatchers(dispatcher, this)
         val callback = getCallback(service)
         val session = mockk<MediaLibrarySession>(relaxed = true)
         val controller = mockk<MediaSession.ControllerInfo>(relaxed = true)
-        
-        val result = callback.onGetChildren(session, controller, "root", 0, 100, null).get()
+
+        val result = callback.onGetChildren(session, controller, "root", 0, 100, null).await()
         val items = result.value
-        
+
         assertEquals(1, items?.size)
         assertEquals("queue", items?.get(0)?.mediaId)
         assertEquals("Queue", items?.get(0)?.mediaMetadata?.title)
@@ -83,11 +89,13 @@ class MediaLibraryCallbackTest {
     }
 
     @Test
-    fun onGetChildren_queue_returnsMappedQueueEpisodes() = runTest {
+    fun onGetChildren_queue_returnsMappedQueueEpisodesWithPodcastMetadata() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        bindDispatchers(dispatcher, this)
         val callback = getCallback(service)
         val session = mockk<MediaLibrarySession>(relaxed = true)
         val controller = mockk<MediaSession.ControllerInfo>(relaxed = true)
-        
+
         val dummyEpisode = Episode(
             id = "episode_1",
             podcastFeedUrl = "feed_url",
@@ -99,25 +107,29 @@ class MediaLibraryCallbackTest {
             downloadStatus = 0,
             localFilePath = null
         )
-        
-        val dummyPodcast = com.yuval.podcasts.data.db.entity.Podcast(
+
+        val dummyPodcast = Podcast(
             feedUrl = "feed_url",
             title = "Podcast Title",
             description = "Description",
             imageUrl = "http://podcast.art/img.jpg",
             website = "http://website.com"
         )
-        val dummyEpisodeWithPodcast = com.yuval.podcasts.data.db.entity.EpisodeWithPodcast(dummyEpisode, dummyPodcast)
+        val dummyEpisodeWithPodcast = EpisodeWithPodcast(dummyEpisode, dummyPodcast)
         coEvery { queueDao.getQueueEpisodesWithPodcastSync() } returns listOf(dummyEpisodeWithPodcast)
-        
-        val result = callback.onGetChildren(session, controller, "queue", 0, 100, null).get()
+
+        val result = callback.onGetChildren(session, controller, "queue", 0, 100, null).await()
         val items = result.value
-        
+
         assertEquals(1, items?.size)
-        assertEquals("episode_1", items?.get(0)?.mediaId)
-        assertEquals("Episode 1", items?.get(0)?.mediaMetadata?.title)
-        assertTrue(items?.get(0)?.mediaMetadata?.isPlayable == true)
-        assertTrue(items?.get(0)?.mediaMetadata?.isBrowsable == false)
+        val item = items!![0]
+        assertEquals("episode_1", item.mediaId)
+        assertEquals("Episode 1", item.mediaMetadata.title)
+        assertEquals("Podcast Title", item.mediaMetadata.artist)
+        assertEquals("Podcast Title", item.mediaMetadata.albumTitle)
+        assertEquals("http://podcast.art/img.jpg", item.mediaMetadata.artworkUri?.toString())
+        assertTrue(item.mediaMetadata.isPlayable == true)
+        assertTrue(item.mediaMetadata.isBrowsable == false)
     }
 
     private fun getCallback(service: PlaybackService): MediaLibrarySession.Callback {

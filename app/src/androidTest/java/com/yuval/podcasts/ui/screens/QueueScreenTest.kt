@@ -1,16 +1,31 @@
 package com.yuval.podcasts.ui.screens
 
-import androidx.compose.ui.test.*
+import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.yuval.podcasts.R
 import com.yuval.podcasts.data.db.entity.Episode
-import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
-import com.yuval.podcasts.ui.viewmodel.QueueUiState
+import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.ui.theme.PodcastsTheme
+import com.yuval.podcasts.ui.viewmodel.QueueUiState
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,6 +35,9 @@ class QueueScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    private val context: Context
+        get() = ApplicationProvider.getApplicationContext()
 
     private val dummyPodcast = Podcast("feed", "Podcast Title", "Desc", "url", "web")
     private val ep1 = Episode("ep1", "feed", "Ep 1", "Desc", "url", null, null, 0L, 1000, 0, null, false, 0, null)
@@ -46,8 +64,8 @@ class QueueScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription("Play").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Pause").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.play)).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.pause)).assertDoesNotExist()
     }
 
     @Test
@@ -71,69 +89,83 @@ class QueueScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription("Pause").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.pause)).assertIsDisplayed()
     }
 
     @Test
-    fun dragAndDropStressTest() {
-        var callCount = 0
-        val state = QueueUiState.Success(persistentListOf(
-            EpisodeWithPodcast(ep1, dummyPodcast),
-            EpisodeWithPodcast(ep2, dummyPodcast)
-        ))
+    fun dragAndDropReordersItemsAndCommits() {
+        var commitCount = 0
+        var moveCount = 0
+        var queueItems by mutableStateOf(
+            listOf(
+                EpisodeWithPodcast(ep1, dummyPodcast),
+                EpisodeWithPodcast(ep2, dummyPodcast)
+            )
+        )
 
         composeTestRule.setContent {
             PodcastsTheme {
                 QueueScreen(
-                    uiState = state,
+                    uiState = QueueUiState.Success(queueItems.toImmutableList()),
                     queueTimeRemaining = 2000,
                     isPlaying = false,
                     currentMediaId = null,
                     onEpisodeClick = {},
                     onRemoveFromQueue = {},
-                    onMoveItem = { _, _ -> },
-                    onCommitReorder = { callCount++ },
+                    onMoveItem = { from, to ->
+                        moveCount++
+                        queueItems = queueItems.toMutableList().apply {
+                            add(to, removeAt(from))
+                        }
+                    },
+                    onCommitReorder = { commitCount++ },
                     onPlayQueue = { _, _, _ -> },
                     onPause = {}
                 )
             }
         }
 
-        // Assert handles are displayed
-        composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true).assertExists()
-
-        // Rapidly perform multiple reorder actions
         val handle1 = composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true)
-        
-        repeat(3) {
-            handle1.performTouchInput {
-                down(center)
-                moveBy(androidx.compose.ui.geometry.Offset(0f, 500f))
-                up()
-            }
-        }
+        handle1.assertExists()
 
-        assert(callCount > 0)
+        // Drag ep1 down past ep2
+        handle1.performTouchInput {
+            down(center)
+            moveBy(Offset(0f, 300f))
+            up()
+        }
+        composeTestRule.waitForIdle()
+
+        assertTrue("onMoveItem should have been invoked during drag", moveCount > 0)
+        assertEquals("onCommitReorder should be invoked once when drag ends", 1, commitCount)
+        assertEquals(listOf("ep2", "ep1"), queueItems.map { it.episode.id })
     }
 
     @Test
-    fun stateRestorationTest() {
+    fun stateRestorationTest_preservesReorderedQueueAcrossRestoration() {
         val restorationTester = StateRestorationTester(composeTestRule)
-        val state = QueueUiState.Success(persistentListOf(
-            EpisodeWithPodcast(ep1, dummyPodcast),
-            EpisodeWithPodcast(ep2, dummyPodcast)
-        ))
+        val episodesById = mapOf(
+            "ep1" to EpisodeWithPodcast(ep1, dummyPodcast),
+            "ep2" to EpisodeWithPodcast(ep2, dummyPodcast)
+        )
 
         restorationTester.setContent {
+            var orderIds by rememberSaveable { mutableStateOf(listOf("ep1", "ep2")) }
+            val items = orderIds.mapNotNull { episodesById[it] }.toImmutableList()
+
             PodcastsTheme {
                 QueueScreen(
-                    uiState = state,
+                    uiState = QueueUiState.Success(items),
                     queueTimeRemaining = 2000,
                     isPlaying = false,
                     currentMediaId = null,
                     onEpisodeClick = {},
                     onRemoveFromQueue = {},
-                    onMoveItem = { _, _ -> },
+                    onMoveItem = { from, to ->
+                        orderIds = orderIds.toMutableList().apply {
+                            add(to, removeAt(from))
+                        }
+                    },
                     onCommitReorder = {},
                     onPlayQueue = { _, _, _ -> },
                     onPause = {}
@@ -141,20 +173,21 @@ class QueueScreenTest {
             }
         }
 
-        // Assert handles are displayed
-        composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true).assertExists()
-
-        // Drag ep1 down
+        // Drag ep1 down below ep2
         composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true).performTouchInput {
             down(center)
-            moveBy(androidx.compose.ui.geometry.Offset(0f, 300f))
+            moveBy(Offset(0f, 300f))
             up()
         }
+        composeTestRule.waitForIdle()
 
-        // Simulate process death and restoration
+        // Simulate process death / configuration change and verify ep2 stays above ep1
         restorationTester.emulateSavedInstanceStateRestore()
+        composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithTag("reorder_handle_ep1", useUnmergedTree = true).assertExists()
+        val ep1Top = composeTestRule.onNodeWithText("Ep 1").fetchSemanticsNode().boundsInRoot.top
+        val ep2Top = composeTestRule.onNodeWithText("Ep 2").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Reordered order (Ep 2 above Ep 1) must survive state restoration", ep2Top < ep1Top)
     }
 
     @Test
@@ -181,12 +214,10 @@ class QueueScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("queue_list")
-            .performTouchInput {
-                swipeDown()
-            }
+        composeTestRule.onNodeWithTag("queue_list").performTouchInput { swipeDown() }
+        composeTestRule.waitForIdle()
 
-        org.junit.Assert.assertTrue("onRefreshAll should be called when non-empty queue is pulled down", refreshCalled)
+        assertTrue("onRefreshAll should be called when non-empty queue is pulled down", refreshCalled)
     }
 
     @Test
@@ -213,12 +244,10 @@ class QueueScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("queue_list")
-            .performTouchInput {
-                swipeDown()
-            }
+        composeTestRule.onNodeWithTag("queue_list").performTouchInput { swipeDown() }
+        composeTestRule.waitForIdle()
 
-        org.junit.Assert.assertTrue("onRefreshAll should be called when empty queue is pulled down", refreshCalled)
+        assertTrue("onRefreshAll should be called when empty queue is pulled down", refreshCalled)
     }
 
     @Test
@@ -229,7 +258,7 @@ class QueueScreenTest {
             PodcastsTheme {
                 QueueScreen(
                     uiState = state,
-                    queueTimeRemaining = 120_000L, // 2 minutes
+                    queueTimeRemaining = 120_000L,
                     isPlaying = false,
                     currentMediaId = null,
                     onEpisodeClick = {},
@@ -242,7 +271,8 @@ class QueueScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("2m of queue listening time").assertDoesNotExist()
+        val expectedLabel = context.getString(R.string.queue_listening_time, "2m")
+        composeTestRule.onNodeWithText(expectedLabel).assertDoesNotExist()
     }
 
     @Test
@@ -253,7 +283,7 @@ class QueueScreenTest {
             PodcastsTheme {
                 QueueScreen(
                     uiState = state,
-                    queueTimeRemaining = 120_000L, // 2 minutes
+                    queueTimeRemaining = 120_000L,
                     isPlaying = false,
                     currentMediaId = null,
                     onEpisodeClick = {},
@@ -266,6 +296,7 @@ class QueueScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("2m of queue listening time").assertIsDisplayed()
+        val expectedLabel = context.getString(R.string.queue_listening_time, "2m")
+        composeTestRule.onNodeWithText(expectedLabel).assertIsDisplayed()
     }
 }

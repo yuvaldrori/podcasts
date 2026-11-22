@@ -27,6 +27,16 @@ interface EpisodeDao {
     """)
     fun getUnplayedEpisodesWithPodcast(limit: Int = com.yuval.podcasts.data.Constants.UNPLAYED_EPISODES_LIMIT): Flow<List<EpisodeWithPodcast>>
 
+    @Query("""
+        SELECT COUNT(*) FROM (
+            SELECT 1 FROM episodes 
+            WHERE isPlayed = 0 
+            AND id NOT IN (SELECT episodeId FROM queue) 
+            LIMIT :limit
+        )
+    """)
+    fun getUnplayedEpisodeCount(limit: Int = com.yuval.podcasts.data.Constants.UNPLAYED_EPISODES_LIMIT): Flow<Int>
+
     @Upsert
     suspend fun upsertEpisodes(episodes: List<Episode>)
 

@@ -4,31 +4,35 @@ import com.yuval.podcasts.utils.LogManager
 import com.yuval.podcasts.data.Constants
 import androidx.work.*
 import com.yuval.podcasts.data.db.AppDatabase
+import com.yuval.podcasts.data.db.dao.ChapterDao
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.QueueDao
+import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
 import com.yuval.podcasts.data.db.entity.QueueState
-import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.network.PodcastApi
+import com.yuval.podcasts.data.network.RssFetchResult
 import com.yuval.podcasts.data.network.RssParser
 import com.yuval.podcasts.di.IoDispatcher
-import com.yuval.podcasts.work.DownloadWorker
-import kotlinx.coroutines.coroutineScope
+import com.yuval.podcasts.work.enqueueEpisodeDownloadIfNeeded
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,14 +40,15 @@ interface PodcastRepository {
     val allPodcasts: Flow<List<Podcast>>
     val listeningQueue: Flow<List<EpisodeWithPodcast>>
     val unplayedEpisodes: Flow<List<EpisodeWithPodcast>>
-    val downloadProgressMap: kotlinx.coroutines.flow.StateFlow<Map<String, Int>>
-    
+    val queueCount: Flow<Int>
+    val unplayedEpisodeCount: Flow<Int>
+    val downloadProgressMap: StateFlow<Map<String, Int>>
+
     fun getEpisodes(feedUrl: String): Flow<List<Episode>>
     fun getEpisodeByIdFlow(id: String): Flow<Episode?>
     fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?>
     fun getChapters(episodeId: String): Flow<List<Chapter>>
-    fun getQueueEpisodes(): Flow<List<Episode>>
-    
+
     fun getPodcastFlow(feedUrl: String): Flow<Podcast?>
     suspend fun getPodcast(feedUrl: String): Podcast?
     suspend fun insertPodcast(podcast: Podcast)
@@ -52,11 +57,7 @@ interface PodcastRepository {
     suspend fun unsubscribePodcast(feedUrl: String)
     suspend fun markAllAsPlayed()
     suspend fun markAsPlayed(id: String)
-    suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long? = null)
-    suspend fun updateLastPlayedPosition(id: String, position: Long)
-    suspend fun updateDownloadStatus(id: String, status: Int, path: String?)
     suspend fun removeFromQueue(episodeId: String)
-    suspend fun updateQueue(queue: List<QueueState>)
     suspend fun reorderQueue(newOrderIds: List<String>)
     suspend fun requeueEpisode(episode: Episode, currentlyPlayingEpisodeId: String? = null)
     suspend fun requeueMissingDownloads()
@@ -65,15 +66,6 @@ interface PodcastRepository {
         forceRefresh: Boolean = false,
         onProgress: suspend (current: Int, total: Int) -> Unit = { _, _ -> }
     ): Int
-    suspend fun smartRefreshPodcasts(
-        urls: List<String>,
-        onProgress: suspend (current: Int, total: Int) -> Unit = { _, _ -> }
-    ): Int = refreshPodcasts(urls, forceRefresh = false, onProgress = onProgress)
-
-    suspend fun forceRefreshPodcasts(
-        urls: List<String>,
-        onProgress: suspend (current: Int, total: Int) -> Unit = { _, _ -> }
-    ): Int = refreshPodcasts(urls, forceRefresh = true, onProgress = onProgress)
 }
 @Singleton
 class DefaultPodcastRepository @Inject constructor(
@@ -83,19 +75,20 @@ class DefaultPodcastRepository @Inject constructor(
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
     private val queueDao: QueueDao,
-    private val chapterDao: com.yuval.podcasts.data.db.dao.ChapterDao,
+    private val chapterDao: ChapterDao,
     private val workManager: WorkManager,
-    private val downloadProgressTracker: DownloadProgressTracker,
+    downloadProgressTracker: DownloadProgressTracker,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val logManager: LogManager
 ) : PodcastRepository {
 
-    override val downloadProgressMap: kotlinx.coroutines.flow.StateFlow<Map<String, Int>> = downloadProgressTracker.progressMap
+    override val downloadProgressMap: StateFlow<Map<String, Int>> = downloadProgressTracker.progressMap
 
     override val allPodcasts: Flow<List<Podcast>> = podcastDao.getAllPodcasts().distinctUntilChanged()
-    override val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast()
-
+    override val listeningQueue: Flow<List<EpisodeWithPodcast>> = queueDao.getQueueEpisodesWithPodcast().distinctUntilChanged()
     override val unplayedEpisodes: Flow<List<EpisodeWithPodcast>> = episodeDao.getUnplayedEpisodesWithPodcast().distinctUntilChanged()
+    override val queueCount: Flow<Int> = queueDao.getQueueCount().distinctUntilChanged()
+    override val unplayedEpisodeCount: Flow<Int> = episodeDao.getUnplayedEpisodeCount().distinctUntilChanged()
 
     override fun getEpisodes(feedUrl: String): Flow<List<Episode>> = episodeDao.getEpisodesForPodcast(feedUrl).distinctUntilChanged()
 
@@ -104,8 +97,6 @@ class DefaultPodcastRepository @Inject constructor(
     override fun getEpisodeWithPodcastFlow(id: String): Flow<EpisodeWithPodcast?> = episodeDao.getEpisodeWithPodcastFlow(id).distinctUntilChanged()
 
     override fun getChapters(episodeId: String): Flow<List<Chapter>> = chapterDao.getChaptersForEpisode(episodeId).distinctUntilChanged()
-
-    override fun getQueueEpisodes(): Flow<List<Episode>> = queueDao.getQueueEpisodes()
 
     override fun getPodcastFlow(feedUrl: String): Flow<Podcast?> {
         return podcastDao.getPodcastFlow(feedUrl)
@@ -130,11 +121,11 @@ class DefaultPodcastRepository @Inject constructor(
         val lastModified = if (forceRefresh) null else existingPodcast?.lastModified
         return podcastApi.withRssStreamConditional(feedUrl, etag, lastModified) { fetchResult ->
             when (fetchResult) {
-                is com.yuval.podcasts.data.network.RssFetchResult.NotModified -> {
+                is RssFetchResult.NotModified -> {
                     logManager.i("PodcastRepository", "Feed $feedUrl is unchanged (304 Not Modified)")
                     0
                 }
-                is com.yuval.podcasts.data.network.RssFetchResult.Success -> {
+                is RssFetchResult.Success -> {
                     val parsed = rssParser.parse(fetchResult.stream, feedUrl)
                     val updatedPodcast = parsed.podcast.copy(
                         etag = fetchResult.etag,
@@ -159,26 +150,14 @@ class DefaultPodcastRepository @Inject constructor(
         }
     }
 
-    override suspend fun markAllAsPlayed(): Unit {
+    override suspend fun markAllAsPlayed() {
         episodeDao.markAllUnplayedAsPlayed(System.currentTimeMillis())
     }
 
-    override suspend fun markAsPlayed(id: String): Unit {
+    override suspend fun markAsPlayed(id: String) {
         // Single atomic update so we never persist "played" without also resetting the
         // resume position (or vice-versa) if interrupted between two separate writes.
         episodeDao.markPlayedAndResetPosition(id, System.currentTimeMillis())
-    }
-
-    override suspend fun updatePlaybackStatus(id: String, isPlayed: Boolean, completedAt: Long?) {
-        episodeDao.updatePlaybackStatus(id, isPlayed, completedAt)
-    }
-
-    override suspend fun updateLastPlayedPosition(id: String, position: Long) {
-        episodeDao.updateLastPlayedPosition(id, position)
-    }
-
-    override suspend fun updateDownloadStatus(id: String, status: Int, path: String?) {
-        episodeDao.updateDownloadStatus(id, status, path)
     }
 
     override suspend fun removeFromQueue(episodeId: String): Unit = withContext(ioDispatcher) {
@@ -195,10 +174,6 @@ class DefaultPodcastRepository @Inject constructor(
 
         // Blocking file I/O runs on ioDispatcher (this whole function), not the caller's thread.
         episode?.localFilePath?.let { deleteLocalFile(episodeId, it) }
-    }
-
-    override suspend fun updateQueue(queue: List<QueueState>) {
-        queueDao.updateQueue(queue)
     }
 
     override suspend fun reorderQueue(newOrderIds: List<String>): Unit = withContext(ioDispatcher) {
@@ -224,10 +199,10 @@ class DefaultPodcastRepository @Inject constructor(
     override suspend fun unsubscribePodcast(feedUrl: String): Unit = withContext(ioDispatcher) {
         val episodes = episodeDao.getEpisodesForPodcastSync(feedUrl)
         val episodeIds = episodes.map { it.id }
-        
+
         // 1. Bulk remove from queue
         queueDao.removeFromQueueBulk(episodeIds)
-        
+
         // 2. Delete local files in parallel
         coroutineScope {
             episodes.map { episode ->
@@ -236,7 +211,7 @@ class DefaultPodcastRepository @Inject constructor(
                 }
             }.awaitAll()
         }
-        
+
         // 3. Delete episodes and podcast from DB
         database.withTransaction {
             episodeDao.deleteEpisodesByPodcast(feedUrl)
@@ -247,23 +222,7 @@ class DefaultPodcastRepository @Inject constructor(
     override suspend fun requeueMissingDownloads(): Unit = withContext(ioDispatcher) {
         val queuedEpisodes = queueDao.getQueueEpisodesSync()
         queuedEpisodes.forEach { episode ->
-            if (episode.isLocal) return@forEach
-
-            val fileExists = episode.localFilePath?.let { File(it).exists() } == true
-            if (episode.downloadStatus != DownloadStatus.DOWNLOADED.value || !fileExists) {
-                val downloadWorkRequest = DownloadWorker.createWorkRequest(
-                    episodeId = episode.id,
-                    audioUrl = episode.audioUrl,
-                    title = episode.title,
-                    isExpedited = false
-                )
-
-                workManager.enqueueUniqueWork(
-                    "${Constants.WORK_TAG_DOWNLOAD_PREFIX}${episode.id}",
-                    ExistingWorkPolicy.KEEP,
-                    downloadWorkRequest
-                )
-            }
+            workManager.enqueueEpisodeDownloadIfNeeded(episode, isExpedited = false)
         }
     }
 
@@ -283,8 +242,9 @@ class DefaultPodcastRepository @Inject constructor(
                 semaphore.withPermit {
                     try {
                         fetchAndStorePodcast(url, forceRefresh)
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
-                        if (e is kotlinx.coroutines.CancellationException) throw e
                         logManager.e("PodcastRepository", "Failed to refresh podcast: $url", mapOf("error" to (e.javaClass.simpleName + ": " + e.message)))
                         0
                     } finally {

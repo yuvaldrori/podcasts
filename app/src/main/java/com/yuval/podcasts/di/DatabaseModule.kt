@@ -46,6 +46,18 @@ object DatabaseModule {
             db.execSQL("ALTER TABLE `podcasts` ADD COLUMN `etag` TEXT DEFAULT NULL")
             db.execSQL("ALTER TABLE `podcasts` ADD COLUMN `lastModified` TEXT DEFAULT NULL")
 
+            // Rebuild chapters without the legacy FOREIGN KEY(episodeId) -> episodes(id)
+            // before dropping the episodes table so existing chapters are preserved.
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `chapters_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `episodeId` TEXT NOT NULL, `title` TEXT NOT NULL, `startTimeMs` INTEGER NOT NULL, `url` TEXT, `imageUrl` TEXT)"
+            )
+            db.execSQL(
+                "INSERT INTO `chapters_new` (`id`, `episodeId`, `title`, `startTimeMs`, `url`, `imageUrl`) SELECT `id`, `episodeId`, `title`, `startTimeMs`, `url`, `imageUrl` FROM `chapters`"
+            )
+            db.execSQL("DROP TABLE `chapters`")
+            db.execSQL("ALTER TABLE `chapters_new` RENAME TO `chapters`")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_chapters_episodeId` ON `chapters` (`episodeId`)")
+
             db.execSQL(
                 "CREATE TABLE IF NOT EXISTS `episodes_new` (`id` TEXT NOT NULL, `podcastFeedUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `audioUrl` TEXT NOT NULL, `imageUrl` TEXT, `episodeWebLink` TEXT DEFAULT NULL, `pubDate` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `downloadStatus` INTEGER NOT NULL DEFAULT 0, `localFilePath` TEXT, `isPlayed` INTEGER NOT NULL DEFAULT 0, `lastPlayedPosition` INTEGER NOT NULL DEFAULT 0, `completedAt` INTEGER DEFAULT NULL, PRIMARY KEY(`id`, `podcastFeedUrl`))"
             )

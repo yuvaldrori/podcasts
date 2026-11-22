@@ -59,22 +59,13 @@ class QueueViewModelTest {
     }
 
     @Test
-    fun reorderQueue_callsRepository() = runTest {
-        val newOrder = listOf("ep2", "ep1")
-        coEvery { repository.reorderQueue(newOrder) } returns Unit
-        
-        viewModel.reorderQueue(newOrder)
-
-        coVerify { repository.reorderQueue(newOrder) }
-    }
-
-    @Test
     fun removeFromQueue_nonPlayingEpisode_onlyCallsRemoveEpisodeUseCase() = runTest {
         val episodeId = "ep1"
         currentMediaIdFlow.value = "other_ep"
         coEvery { removeEpisodeUseCase(episodeId, true) } returns Unit
 
         viewModel.removeFromQueue(episodeId)
+        advanceUntilIdle()
 
         coVerify { removeEpisodeUseCase(episodeId, true) }
         verify(exactly = 0) { playerManager.seekToNextMediaItem() }
@@ -87,6 +78,7 @@ class QueueViewModelTest {
         coEvery { removeEpisodeUseCase(episodeId, true) } returns Unit
 
         viewModel.removeFromQueue(episodeId)
+        advanceUntilIdle()
 
         coVerify { removeEpisodeUseCase(episodeId, true) }
         verify { playerManager.seekToNextMediaItem() }
@@ -124,26 +116,26 @@ class QueueViewModelTest {
         val podcast = Podcast("p1", "T", "D", "I", "W")
         val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 3600L, 0, null, false, 0L, null)
         val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 7200L, 0, null, false, 0L, null)
+        val ep3 = Episode("e3", "p1", "T3", "D3", "A3", null, null, 0L, 1800L, 0, null, false, 0L, null)
         val initialQueue = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
         val reorderedQueue = listOf(EpisodeWithPodcast(ep2, podcast), EpisodeWithPodcast(ep1, podcast))
         listeningQueueFlow.value = initialQueue
 
         val uiStateJob = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
-        
+
         // Move item manually (swap e1 and e2)
         viewModel.moveItem(0, 1)
-        
+
         // Assert manual queue is in effect
         var currentState = viewModel.uiState.value as QueueUiState.Success
         assertEquals("e2", currentState.queue[0].episode.id)
 
-        // Mock repository to update the listeningQueue when reorderQueue is called
         coEvery { repository.reorderQueue(listOf("e2", "e1")) } answers {
             listeningQueueFlow.value = reorderedQueue
         }
 
-        // Commit reorder - should complete cleanly and clear manual override
+        // Commit reorder - should complete cleanly and clear manual dragging state
         viewModel.commitReorder()
         advanceUntilIdle()
 
@@ -151,14 +143,22 @@ class QueueViewModelTest {
         currentState = viewModel.uiState.value as QueueUiState.Success
         assertEquals("e2", currentState.queue[0].episode.id)
 
+        // Emit a subsequent distinct DB update to prove isDragging was actually cleared
+        listeningQueueFlow.value = listOf(EpisodeWithPodcast(ep3, podcast), EpisodeWithPodcast(ep2, podcast))
+        advanceUntilIdle()
+
+        currentState = viewModel.uiState.value as QueueUiState.Success
+        assertEquals("e3", currentState.queue[0].episode.id)
+
         uiStateJob.cancel()
     }
 
     @Test
-    fun commitReorder_clearsManualQueueEvenIfDivergentOrFails() = runTest {
+    fun commitReorder_revertsAndClearsManualQueueOnFailure() = runTest {
         val podcast = Podcast("p1", "T", "D", "I", "W")
         val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 3600L, 0, null, false, 0L, null)
         val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 7200L, 0, null, false, 0L, null)
+        val ep3 = Episode("e3", "p1", "T3", "D3", "A3", null, null, 0L, 1800L, 0, null, false, 0L, null)
         val initialQueue = listOf(EpisodeWithPodcast(ep1, podcast), EpisodeWithPodcast(ep2, podcast))
         listeningQueueFlow.value = initialQueue
 
@@ -168,16 +168,20 @@ class QueueViewModelTest {
         // Move item manually (swap e1 and e2)
         viewModel.moveItem(0, 1)
 
-        // Repository reorders, but fails or emits something divergent (never emits ["e2", "e1"])
         coEvery { repository.reorderQueue(any()) } throws RuntimeException("Database error")
 
         viewModel.commitReorder()
         advanceUntilIdle()
 
-        // Manual queue must still be cleared so the UI is not stuck in a hanging manual state
-        val currentState = viewModel.uiState.value as QueueUiState.Success
         // Reverts back to real listeningQueueFlow order
+        var currentState = viewModel.uiState.value as QueueUiState.Success
         assertEquals("e1", currentState.queue[0].episode.id)
+
+        // Subsequent DB emission must flow through (proving isDragging was cleared)
+        listeningQueueFlow.value = listOf(EpisodeWithPodcast(ep3, podcast))
+        advanceUntilIdle()
+        currentState = viewModel.uiState.value as QueueUiState.Success
+        assertEquals("e3", currentState.queue[0].episode.id)
 
         uiStateJob.cancel()
     }

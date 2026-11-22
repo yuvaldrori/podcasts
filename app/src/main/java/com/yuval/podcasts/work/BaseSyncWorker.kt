@@ -10,9 +10,8 @@ import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.utils.LogManager
 import com.yuval.podcasts.utils.WorkerNotificationHelper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 abstract class BaseSyncWorker(
     appContext: Context,
@@ -34,48 +33,32 @@ abstract class BaseSyncWorker(
             val podcasts = repository.allPodcasts.first().filter { it.feedUrl != Constants.LOCAL_PODCAST_FEED_URL }
             val total = podcasts.size
             if (total == 0) return Result.success()
-            
-            var isForegroundAllowed = true
-            try {
-                setForeground(createForegroundInfo(0, total))
-            } catch (e: Exception) {
-                isForegroundAllowed = false
-                logManager.w(workerTag, "Failed to set initial foreground status", mapOf("error" to e.message.toString()))
-            }
-            try {
-                setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
-            } catch (e: Exception) {
-                logManager.w(workerTag, "Failed to set initial progress", mapOf("error" to e.message.toString()))
-            }
-            
-            var lastForegroundUpdateMs = 0L
-            val progressMutex = Mutex()
+
+            val progressReporter = WorkerProgressReporter(
+                workerTag = workerTag,
+                logManager = logManager,
+                setForegroundFn = { setForeground(it) },
+                setProgressFn = { setProgress(it) }
+            )
+            progressReporter.setInitialForeground { createForegroundInfo(0, total) }
+            progressReporter.setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
 
             repository.refreshPodcasts(podcasts.map { it.feedUrl }, forceRefresh = forceRefresh) { current, totalCount ->
-                progressMutex.withLock {
-                    val currentTime = System.currentTimeMillis()
-                    try {
-                        setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to totalCount))
-                        if (isForegroundAllowed && (current == totalCount || currentTime - lastForegroundUpdateMs > Constants.SYNC_PROGRESS_NOTIFICATION_THROTTLE_MS)) {
-                            lastForegroundUpdateMs = currentTime
-                            try {
-                                setForeground(createForegroundInfo(current, totalCount))
-                            } catch (e: Exception) {
-                                isForegroundAllowed = false
-                            }
-                        }
-                    } catch (e: Exception) {
-                        // Ignore failures in setProgress during loop
-                    }
-                }
+                progressReporter.reportCountProgress(
+                    current = current,
+                    total = totalCount,
+                    throttleMs = Constants.SYNC_PROGRESS_NOTIFICATION_THROTTLE_MS,
+                    createForegroundInfo = ::createForegroundInfo
+                )
             }
 
             repository.requeueMissingDownloads()
-            
+
             logManager.i(workerTag, "Sync completed successfully")
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
             logManager.e(workerTag, "Sync failed", mapOf("error" to (e.javaClass.simpleName + ": " + e.message)))
             if (runAttemptCount < Constants.SYNC_RETRY_COUNT) {
                 Result.retry()

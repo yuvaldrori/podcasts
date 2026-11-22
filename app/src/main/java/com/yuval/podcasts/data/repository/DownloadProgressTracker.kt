@@ -24,8 +24,4 @@ class DownloadProgressTracker @Inject constructor() {
             current - episodeId
         }
     }
-
-    fun getProgress(episodeId: String): Int {
-        return _progressMap.value[episodeId] ?: 0
-    }
 }

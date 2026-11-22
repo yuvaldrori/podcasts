@@ -80,15 +80,16 @@ class OpmlManagerTest {
     }
 
     @Test
-    fun parse_withDoctypeEntity_doesNotCrash() {
-        // An OPML carrying a DOCTYPE/entity declaration must not crash the parser
+    fun parse_withDoctypeEntity_doesNotExpandEntityAndDoesNotCrash() {
+        // An OPML carrying a DOCTYPE/entity declaration must neither expand the entity nor crash
         // (DOCTYPE processing is disabled for XXE hardening).
         val opmlContent = """
             <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE opml [ <!ENTITY foo "bar"> ]>
+            <!DOCTYPE opml [ <!ENTITY evil "https://evil.example.com/feed.xml"> ]>
             <opml version="2.0">
               <body>
                 <outline text="Safe" type="rss" xmlUrl="https://example.com/feed.xml" />
+                <outline text="Entity" type="rss" xmlUrl="&evil;" />
               </body>
             </opml>
         """.trimIndent()
@@ -97,6 +98,7 @@ class OpmlManagerTest {
         val urls = opmlManager.parse(inputStream)
 
         assertEquals(listOf("https://example.com/feed.xml"), urls)
+        org.junit.Assert.assertFalse(urls.any { it.contains("evil.example.com") })
     }
 
     @Test

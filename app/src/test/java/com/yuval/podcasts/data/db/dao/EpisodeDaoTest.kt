@@ -136,6 +136,7 @@ class EpisodeDaoTest {
 
         assertEquals(1, unplayed.size)
         assertEquals("ep2", unplayed[0].episode.id)
+        assertEquals(1, episodeDao.getUnplayedEpisodeCount().first())
     }
 
 

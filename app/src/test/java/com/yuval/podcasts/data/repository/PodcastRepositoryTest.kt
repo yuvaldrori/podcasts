@@ -1,8 +1,9 @@
 package com.yuval.podcasts.data.repository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlin.coroutines.ContinuationInterceptor
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 
 import androidx.work.WorkManager
 import androidx.room.withTransaction
@@ -24,7 +25,9 @@ import kotlinx.coroutines.test.runTest
 import com.yuval.podcasts.data.network.PodcastApi
 import com.yuval.podcasts.data.network.RssParser
 import java.io.InputStream
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -63,7 +66,9 @@ class PodcastRepositoryTest {
         )
         every { podcastDao.getAllPodcasts() } returns flowOf(podcasts)
         every { queueDao.getQueueEpisodesWithPodcast() } returns flowOf(emptyList())
+        every { queueDao.getQueueCount() } returns flowOf(0)
         every { episodeDao.getUnplayedEpisodesWithPodcast() } returns flowOf(emptyList())
+        every { episodeDao.getUnplayedEpisodeCount() } returns flowOf(0)
 
         // withTransaction mock
         mockkStatic("androidx.room.RoomDatabaseKt")
@@ -85,6 +90,11 @@ class PodcastRepositoryTest {
             ioDispatcher = Dispatchers.Unconfined,
             logManager = logManager
         )
+    }
+
+    @After
+    fun teardown() {
+        unmockkStatic("androidx.room.RoomDatabaseKt")
     }
 
     @Test
@@ -137,36 +147,84 @@ class PodcastRepositoryTest {
     }
 
     @Test
-    fun fetchAndStorePodcast_runsOnIoDispatcher_preventsNetworkOnMainThread() = runBlocking {
+    fun fetchAndStorePodcast_runsNetworkOnIoDispatcher_preventsNetworkOnMainThread() = runBlocking {
         val feedUrl = "http://example.com/feed"
-        
-        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
-        val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
-        
-        stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, episodes))
+        val callerThreadName = Thread.currentThread().name
+        val ioExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "test-io-thread") }
+        val dedicatedIoDispatcher = ioExecutor.asCoroutineDispatcher()
+        try {
+            var networkThreadName: String? = null
+            var parseThreadName: String? = null
+            val client = okhttp3.OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    networkThreadName = Thread.currentThread().name
+                    okhttp3.Response.Builder()
+                        .request(chain.request())
+                        .protocol(okhttp3.Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body("<rss><channel><title>T</title></channel></rss>".toResponseBody("text/xml".toMediaType()))
+                        .build()
+                }
+                .build()
+            val realApi = PodcastApi(client, dedicatedIoDispatcher)
+            val repoWithRealApi = DefaultPodcastRepository(
+                database = database,
+                podcastApi = realApi,
+                rssParser = rssParser,
+                podcastDao = podcastDao,
+                episodeDao = episodeDao,
+                queueDao = queueDao,
+                chapterDao = chapterDao,
+                workManager = workManager,
+                downloadProgressTracker = DownloadProgressTracker(),
+                ioDispatcher = dedicatedIoDispatcher,
+                logManager = logManager
+            )
 
-        repository.fetchAndStorePodcast(feedUrl)
+            val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web")
+            every { rssParser.parse(any(), eq(feedUrl)) } answers {
+                parseThreadName = Thread.currentThread().name
+                ParsedPodcast(podcast, emptyList())
+            }
 
-        coVerify { podcastApi.withRssStreamConditional<Int>(eq(feedUrl), any(), any(), any()) }
+            repoWithRealApi.fetchAndStorePodcast(feedUrl)
+
+            org.junit.Assert.assertNotNull(networkThreadName)
+            org.junit.Assert.assertNotEquals("Network request must not run on caller thread", callerThreadName, networkThreadName)
+            org.junit.Assert.assertTrue(
+                "RSS stream parsing must run on ioDispatcher, got: $parseThreadName",
+                parseThreadName?.startsWith("test-io-thread") == true
+            )
+        } finally {
+            ioExecutor.shutdownNow()
+        }
     }
 
     @Test
-    fun unsubscribePodcast_deletesAllData() = runTest {
+    fun unsubscribePodcast_deletesAllDataAndLocalFiles() = runTest {
         val feedUrl = "http://test.com/feed"
-        val ep1 = Episode("ep1", feedUrl, "E1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L)
-        val ep2 = Episode("ep2", feedUrl, "E2", "D", "A", null, null, 0L, 0L, 0, null, false, 0L)
-        
-        coEvery { episodeDao.getEpisodesForPodcastSync(feedUrl) } returns listOf(ep1, ep2)
-        coEvery { queueDao.removeFromQueueBulk(any()) } returns Unit
-        coEvery { episodeDao.deleteEpisodesByPodcast(feedUrl) } returns Unit
-        coEvery { podcastDao.deletePodcast(feedUrl) } returns Unit
+        val tempFile = java.io.File.createTempFile("unsub_ep", ".mp3")
+        try {
+            val ep1 = Episode("ep1", feedUrl, "E1", "D", "A", null, null, 0L, 0L, 2, tempFile.absolutePath, false, 0L)
+            val ep2 = Episode("ep2", feedUrl, "E2", "D", "A", null, null, 0L, 0L, 0, null, false, 0L)
 
-        repository.unsubscribePodcast(feedUrl)
+            coEvery { episodeDao.getEpisodesForPodcastSync(feedUrl) } returns listOf(ep1, ep2)
+            coEvery { queueDao.removeFromQueueBulk(any()) } returns Unit
+            coEvery { episodeDao.deleteEpisodesByPodcast(feedUrl) } returns Unit
+            coEvery { podcastDao.deletePodcast(feedUrl) } returns Unit
 
-        coVerify { episodeDao.getEpisodesForPodcastSync(feedUrl) }
-        coVerify { queueDao.removeFromQueueBulk(listOf("ep1", "ep2")) }
-        coVerify { episodeDao.deleteEpisodesByPodcast(feedUrl) }
-        coVerify { podcastDao.deletePodcast(feedUrl) }
+            repository.unsubscribePodcast(feedUrl)
+
+            coVerify { database.withTransaction(any()) }
+            coVerify { episodeDao.getEpisodesForPodcastSync(feedUrl) }
+            coVerify { queueDao.removeFromQueueBulk(listOf("ep1", "ep2")) }
+            coVerify { episodeDao.deleteEpisodesByPodcast(feedUrl) }
+            coVerify { podcastDao.deletePodcast(feedUrl) }
+            assertFalse("Downloaded local file must be deleted on unsubscribe", tempFile.exists())
+        } finally {
+            tempFile.delete()
+        }
     }
 
     @Test
@@ -181,28 +239,32 @@ class PodcastRepositoryTest {
     @Test
     fun removeFromQueue_deletesFileAndUpdatesDbInTransaction() = runTest {
         val tempFile = java.io.File.createTempFile("remove_me", ".mp3")
-        val ep = Episode(
-            "ep1", "feed", "T", "D", "A", null, null, 0L, 0L,
-            com.yuval.podcasts.data.db.entity.DownloadStatus.DOWNLOADED.value,
-            tempFile.absolutePath, false, 0L
-        )
-        coEvery { episodeDao.getEpisodeById("ep1") } returns ep
-
-        repository.removeFromQueue("ep1")
-
-        // Queue removal + download-status reset must happen atomically inside a transaction.
-        coVerify { database.withTransaction(any()) }
-        coVerify { queueDao.removeFromQueue("ep1") }
-        coVerify {
-            episodeDao.updateDownloadStatus(
-                "ep1",
-                com.yuval.podcasts.data.db.entity.DownloadStatus.NOT_DOWNLOADED.value,
-                null
+        try {
+            val ep = Episode(
+                "ep1", "feed", "T", "D", "A", null, null, 0L, 0L,
+                com.yuval.podcasts.data.db.entity.DownloadStatus.DOWNLOADED.value,
+                tempFile.absolutePath, false, 0L
             )
+            coEvery { episodeDao.getEpisodeById("ep1") } returns ep
+
+            repository.removeFromQueue("ep1")
+
+            // Queue removal + download-status reset must happen atomically inside a transaction.
+            coVerify { database.withTransaction(any()) }
+            coVerify { queueDao.removeFromQueue("ep1") }
+            coVerify {
+                episodeDao.updateDownloadStatus(
+                    "ep1",
+                    com.yuval.podcasts.data.db.entity.DownloadStatus.NOT_DOWNLOADED.value,
+                    null
+                )
+            }
+            coVerify { workManager.cancelUniqueWork("${com.yuval.podcasts.data.Constants.WORK_TAG_DOWNLOAD_PREFIX}ep1") }
+            // The local file is deleted.
+            assertFalse(tempFile.exists())
+        } finally {
+            tempFile.delete()
         }
-        coVerify { workManager.cancelUniqueWork("${com.yuval.podcasts.data.Constants.WORK_TAG_DOWNLOAD_PREFIX}ep1") }
-        // The local file is deleted.
-        org.junit.Assert.assertFalse(tempFile.exists())
     }
 
     @Test
@@ -352,9 +414,10 @@ class PodcastRepositoryTest {
     @Test
     fun fetchAndStorePodcast_when200Ok_updatesEtagAndLastModifiedInDb() = runBlocking {
         val feedUrl = "http://example.com/feed"
-        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web", etag = "\"new_etag\"", lastModified = "new_lm")
+        // Parsed podcast has null etag/lastModified (as RssParser produces); repository must copy them from fetchResult.
+        val podcast = Podcast(feedUrl, "Title", "Desc", "Img", "Web", etag = null, lastModified = null)
         val episodes = listOf(NetworkEpisodeWithChapters(com.yuval.podcasts.data.db.entity.NetworkEpisode("ep1", feedUrl, "Ep1", "Desc", "audio", null, null, 0L, 0L), emptyList()))
-        
+
         stubFetchPodcastData(feedUrl, ParsedPodcast(podcast, episodes), etag = "\"new_etag\"", lastModified = "new_lm")
 
         repository.fetchAndStorePodcast(feedUrl)
@@ -439,10 +502,6 @@ class PodcastRepositoryTest {
 
     private fun stubFetchPodcastData(feedUrl: String, parsed: ParsedPodcast, etag: String? = null, lastModified: String? = null) {
         val mockInputStream = mockk<InputStream>(relaxed = true)
-        coEvery { podcastApi.withRssStream<ParsedPodcast>(eq(feedUrl), any()) } coAnswers {
-            val block = secondArg<suspend (InputStream) -> ParsedPodcast>()
-            block(mockInputStream)
-        }
         coEvery { podcastApi.withRssStreamConditional<Int>(eq(feedUrl), any(), any(), any()) } coAnswers {
             val block = arg<suspend (com.yuval.podcasts.data.network.RssFetchResult) -> Int>(3)
             block(com.yuval.podcasts.data.network.RssFetchResult.Success(mockInputStream, etag, lastModified))

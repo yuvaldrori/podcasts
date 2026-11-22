@@ -41,7 +41,6 @@ class ChapterDaoTest {
 
     @Test
     fun deleteChaptersBulk_deletesOnlyTargetedEpisodes() = runBlocking {
-        // Setup episodes (required for foreign key)
         val ep1 = Episode("ep1", "f", "T1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null)
         val ep2 = Episode("ep2", "f", "T2", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null)
         val ep3 = Episode("ep3", "f", "T3", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null)
@@ -63,20 +62,31 @@ class ChapterDaoTest {
     }
 
     @Test
-    fun updateChaptersBulk_replacesChaptersEfficiently() = runBlocking {
+    fun updateChaptersBulk_replacesOnlyTargetedEpisodesChapters() = runBlocking {
         val ep1 = Episode("ep1", "f", "T1", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null)
-        episodeDao.insertEpisodes(listOf(ep1))
+        val ep2 = Episode("ep2", "f", "T2", "D", "A", null, null, 0L, 0L, 0, null, false, 0L, null)
+        episodeDao.insertEpisodes(listOf(ep1, ep2))
 
-        // Initial chapters
-        chapterDao.insertChapters(listOf(Chapter(episodeId = "ep1", title = "Old", startTimeMs = 0)))
+        // Initial chapters for both episodes
+        chapterDao.insertChapters(
+            listOf(
+                Chapter(episodeId = "ep1", title = "Old", startTimeMs = 0),
+                Chapter(episodeId = "ep2", title = "Keep Me", startTimeMs = 500)
+            )
+        )
 
-        // Bulk update
+        // Bulk update only ep1
         val newChapters = listOf(Chapter(episodeId = "ep1", title = "New", startTimeMs = 100))
         chapterDao.updateChaptersBulk(listOf("ep1"), newChapters)
 
-        val results = chapterDao.getChaptersForEpisode("ep1").first()
-        assertEquals(1, results.size)
-        assertEquals("New", results[0].title)
-        assertEquals(100L, results[0].startTimeMs)
+        val ep1Results = chapterDao.getChaptersForEpisode("ep1").first()
+        assertEquals(1, ep1Results.size)
+        assertEquals("New", ep1Results[0].title)
+        assertEquals(100L, ep1Results[0].startTimeMs)
+
+        val ep2Results = chapterDao.getChaptersForEpisode("ep2").first()
+        assertEquals(1, ep2Results.size)
+        assertEquals("Keep Me", ep2Results[0].title)
+        assertEquals(500L, ep2Results[0].startTimeMs)
     }
 }

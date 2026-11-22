@@ -1,17 +1,24 @@
 package com.yuval.podcasts.ui.screens
 
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.Context
 import android.content.Intent
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.test.core.app.ApplicationProvider
-import android.content.Context
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.AnnotatedString
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intended
+import androidx.test.espresso.intent.Intents.intending
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasExtra
+import androidx.test.espresso.intent.matcher.IntentMatchers.hasType
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.yuval.podcasts.R
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
@@ -35,6 +42,9 @@ class EpisodeDetailScreenShareTest {
     @Before
     fun setup() {
         Intents.init()
+        // Stub ACTION_CHOOSER so the real Android share sheet doesn't steal focus
+        intending(hasAction(Intent.ACTION_CHOOSER))
+            .respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
     }
 
     @After
@@ -43,17 +53,18 @@ class EpisodeDetailScreenShareTest {
     }
 
     @Test
-    fun shareLocalEpisode_sharesOnlyTextMetadata() {
-        val podcast = Podcast(com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL, "Local Files", "", "", "")
+    fun shareLocalEpisode_sharesOnlyTextMetadataEvenIfWebLinkPresent() {
+        val podcast = Podcast(Constants.LOCAL_PODCAST_FEED_URL, "Local Files", "", "", "")
+        // Provide a non-null episodeWebLink so passing requires the `!episode.isLocal` guard
         val episode = Episode(
-            "id1", com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL, "My Recording", "Desc", "path/to/file",
-            null, null, 0L, 0L, 2, "path/to/file", false, 0L, null
+            "id1", Constants.LOCAL_PODCAST_FEED_URL, "My Recording", "Desc", "path/to/file",
+            null, "https://should-not-be-shared.example.com", 0L, 0L, 2, "path/to/file", false, 0L, null
         )
         val uiState = EpisodeDetailUiState.Success(
             episodeWithPodcast = EpisodeWithPodcast(episode, podcast),
             isInQueue = false,
             chapters = emptyList(),
-            annotatedDescription = androidx.compose.ui.text.AnnotatedString("Desc")
+            annotatedDescription = AnnotatedString("Desc")
         )
 
         composeTestRule.setContent {
@@ -65,18 +76,22 @@ class EpisodeDetailScreenShareTest {
             )
         }
 
-        val shareText = context.getString(com.yuval.podcasts.R.string.share)
+        val shareText = context.getString(R.string.share)
         composeTestRule.onNodeWithText(shareText).performClick()
 
-        val expectedText = context.getString(com.yuval.podcasts.R.string.listening_to, "My Recording")
+        val expectedText = context.getString(R.string.listening_to, "My Recording")
 
         intended(
             allOf(
                 hasAction(Intent.ACTION_CHOOSER),
-                hasExtra(Intent.EXTRA_INTENT, allOf(
-                    hasAction(Intent.ACTION_SEND),
-                    hasExtra(Intent.EXTRA_TEXT, expectedText)
-                ))
+                hasExtra(
+                    Intent.EXTRA_INTENT,
+                    allOf(
+                        hasAction(Intent.ACTION_SEND),
+                        hasType(Constants.MIME_TYPE_TEXT_PLAIN),
+                        hasExtra(Intent.EXTRA_TEXT, expectedText)
+                    )
+                )
             )
         )
     }
@@ -92,7 +107,7 @@ class EpisodeDetailScreenShareTest {
             episodeWithPodcast = EpisodeWithPodcast(episode, podcast),
             isInQueue = false,
             chapters = emptyList(),
-            annotatedDescription = androidx.compose.ui.text.AnnotatedString("Desc")
+            annotatedDescription = AnnotatedString("Desc")
         )
 
         composeTestRule.setContent {
@@ -104,19 +119,22 @@ class EpisodeDetailScreenShareTest {
             )
         }
 
-        val shareText = context.getString(com.yuval.podcasts.R.string.share)
+        val shareText = context.getString(R.string.share)
         composeTestRule.onNodeWithText(shareText).performClick()
 
-        // Match the implementation in EpisodeDetailScreen.kt
-        val expectedText = "Remote Episode\n\nhttp://weblink"
+        val expectedText = context.getString(R.string.share_episode_format, "Remote Episode", "http://weblink")
 
         intended(
             allOf(
                 hasAction(Intent.ACTION_CHOOSER),
-                hasExtra(Intent.EXTRA_INTENT, allOf(
-                    hasAction(Intent.ACTION_SEND),
-                    hasExtra(Intent.EXTRA_TEXT, expectedText)
-                ))
+                hasExtra(
+                    Intent.EXTRA_INTENT,
+                    allOf(
+                        hasAction(Intent.ACTION_SEND),
+                        hasType(Constants.MIME_TYPE_TEXT_PLAIN),
+                        hasExtra(Intent.EXTRA_TEXT, expectedText)
+                    )
+                )
             )
         )
     }

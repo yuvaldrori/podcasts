@@ -130,26 +130,6 @@ class QueueViewModel @Inject constructor(
         }
     }
 
-    fun reorderQueue(newOrderIds: List<String>) {
-        isDragging = false
-        reorderJob?.cancel()
-        _queue.update { current ->
-            if (current == null) return@update null
-            val itemMap = current.associateBy { it.episode.id }
-            val reordered = newOrderIds.mapNotNull { itemMap[it] }
-            val remaining = current.filter { it.episode.id !in newOrderIds }
-            (reordered + remaining).toImmutableList()
-        }
-        reorderJob = viewModelScope.launch {
-            try {
-                repository.reorderQueue(newOrderIds)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _queue.value = repository.listeningQueue.first().toImmutableList()
-            }
-        }
-    }
-
     fun removeFromQueue(episodeId: String) {
         viewModelScope.launch {
             val isPlayingDismissed = playerManager.currentMediaId.value == episodeId

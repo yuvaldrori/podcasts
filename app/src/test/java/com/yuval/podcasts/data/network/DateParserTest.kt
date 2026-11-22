@@ -45,8 +45,10 @@ class DateParserTest {
     }
 
     @Test
-    fun parsePubDate_monthContainingTimezoneSubstring_doesNotCorruptDate() {
-        val dateStr = "15 August 2023 12:00:00 GMT"
+    fun parsePubDate_timezoneContainingUtSubstring_doesNotCorruptDate() {
+        // "UTC" contains the "UT" legacy timezone abbreviation; word boundaries in
+        // DateParser.TIMEZONE_REGEXES must prevent corrupting "UTC" into "+0000C".
+        val dateStr = "Tue, 15 Aug 2023 12:00:00 UTC"
         val millis = DateParser.parsePubDate(dateStr)
         assertEquals(1692100800000L, millis)
     }

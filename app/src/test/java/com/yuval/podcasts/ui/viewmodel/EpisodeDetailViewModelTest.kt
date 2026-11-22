@@ -53,7 +53,7 @@ class EpisodeDetailViewModelTest {
         // A hack for unit tests is needed since toRoute() is an inline function that tries to read from a Bundle.
         // We will just change EpisodeDetailViewModel to optionally take the ID directly for testing, or we just use Robolectric.
         // Actually, let's just make EpisodeDetailViewModelTest use Robolectric.
-        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")), mainDispatcherRule.testDispatcher)
         
         // Start collection to trigger stateIn
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
@@ -71,14 +71,10 @@ class EpisodeDetailViewModelTest {
         every { repository.listeningQueue } returns flowOf(emptyList())
         every { repository.getChapters(any()) } returns flowOf(emptyList())
 
-        val savedStateHandle = androidx.lifecycle.SavedStateHandle()
-        // Mock toRoute behavior manually because it relies on Bundle and Android internals which break in pure local unit tests without Robolectric
-        // A hack for unit tests is needed since toRoute() is an inline function that tries to read from a Bundle.
-        // We will just change EpisodeDetailViewModel to optionally take the ID directly for testing, or we just use Robolectric.
-        // Actually, let's just make EpisodeDetailViewModelTest use Robolectric.
-        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")), mainDispatcherRule.testDispatcher)
 
         viewModel.addToQueue(episode)
+        advanceUntilIdle()
 
         coVerify { enqueueEpisodeUseCase(episode) }
     }
@@ -98,7 +94,7 @@ class EpisodeDetailViewModelTest {
         // A hack for unit tests is needed since toRoute() is an inline function that tries to read from a Bundle.
         // We will just change EpisodeDetailViewModel to optionally take the ID directly for testing, or we just use Robolectric.
         // Actually, let's just make EpisodeDetailViewModelTest use Robolectric.
-        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")), mainDispatcherRule.testDispatcher)
 
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
@@ -121,7 +117,7 @@ class EpisodeDetailViewModelTest {
         // A hack for unit tests is needed since toRoute() is an inline function that tries to read from a Bundle.
         // We will just change EpisodeDetailViewModel to optionally take the ID directly for testing, or we just use Robolectric.
         // Actually, let's just make EpisodeDetailViewModelTest use Robolectric.
-        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")), mainDispatcherRule.testDispatcher)
 
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
@@ -141,7 +137,7 @@ class EpisodeDetailViewModelTest {
         every { repository.listeningQueue } returns flowOf(emptyList())
         every { repository.getChapters(any()) } returns flowOf(emptyList())
 
-        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")))
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")), mainDispatcherRule.testDispatcher)
 
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
@@ -152,6 +148,36 @@ class EpisodeDetailViewModelTest {
         assertEquals(1, urlAnnotations.size)
         assertEquals("https://example.com", urlAnnotations[0].item)
 
+        job.cancel()
+    }
+
+    @Test
+    fun queueUpdates_doNotReparseUnchangedDescription() = runTest {
+        val htmlDescription = "Hello <b>world</b>"
+        val episode = Episode("ep1", "url", "title", htmlDescription, "url", null, null, 0L, 0L, 0, null, false, 0L, null)
+        val podcast = Podcast("url", "podTitle", "podDesc", "img", "web")
+        val episodeWithPodcast = EpisodeWithPodcast(episode, podcast)
+        val queueFlow = kotlinx.coroutines.flow.MutableStateFlow<List<EpisodeWithPodcast>>(emptyList())
+
+        every { repository.getEpisodeWithPodcastFlow("ep1") } returns flowOf(episodeWithPodcast)
+        every { repository.listeningQueue } returns queueFlow
+        every { repository.getChapters(any()) } returns flowOf(emptyList())
+
+        val viewModel = EpisodeDetailViewModel(repository, enqueueEpisodeUseCase, SavedStateHandle(mapOf("episodeId" to "ep1")), mainDispatcherRule.testDispatcher)
+
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        val first = viewModel.uiState.value as EpisodeDetailUiState.Success
+        queueFlow.value = listOf(episodeWithPodcast)
+        advanceUntilIdle()
+        val second = viewModel.uiState.value as EpisodeDetailUiState.Success
+
+        org.junit.Assert.assertSame(
+            "Unchanged description should reuse the previously parsed AnnotatedString across queue updates",
+            first.annotatedDescription,
+            second.annotatedDescription
+        )
         job.cancel()
     }
 }

@@ -5,7 +5,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
-import com.yuval.podcasts.data.db.entity.DownloadStatus
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.QueueState
@@ -21,12 +20,8 @@ interface QueueDao {
     """)
     fun getQueueEpisodesWithPodcast(): Flow<List<EpisodeWithPodcast>>
 
-    @Query("""
-        SELECT episodes.* FROM episodes 
-        INNER JOIN queue ON episodes.id = queue.episodeId 
-        ORDER BY queue.position ASC
-    """)
-    fun getQueueEpisodes(): Flow<List<Episode>>
+    @Query("SELECT COUNT(*) FROM queue")
+    fun getQueueCount(): Flow<Int>
 
     @Query("""
         SELECT episodes.* FROM episodes 
@@ -42,8 +37,6 @@ interface QueueDao {
         ORDER BY queue.position ASC
     """)
     suspend fun getQueueEpisodesWithPodcastSync(): List<EpisodeWithPodcast>
-
-
 
     @Transaction
     suspend fun updateQueue(queue: List<QueueState>) {
@@ -62,13 +55,4 @@ interface QueueDao {
 
     @Query("DELETE FROM queue WHERE episodeId IN (:episodeIds)")
     suspend fun removeFromQueueBulk(episodeIds: List<String>)
-
-
-
-    @Query("""
-        SELECT episodes.* FROM episodes 
-        INNER JOIN queue ON episodes.id = queue.episodeId 
-        WHERE episodes.downloadStatus != :downloadedStatus
-    """)
-    suspend fun getQueuedEpisodesNotDownloaded(downloadedStatus: Int = DownloadStatus.DOWNLOADED.value): List<Episode>
 }

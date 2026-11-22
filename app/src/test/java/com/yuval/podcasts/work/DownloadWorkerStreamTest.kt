@@ -21,6 +21,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.spyk
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.Call
 import okhttp3.Callback
@@ -107,7 +108,8 @@ class DownloadWorkerStreamTest {
                 episodeDao,
                 okHttpClient,
                 mockk(relaxed = true), // logManager
-                Dispatchers.IO
+                Dispatchers.IO,
+                com.yuval.podcasts.data.repository.DownloadProgressTracker()
             )
         )
         // Avoid building a real notification (and the resource lookups it needs).
@@ -121,30 +123,30 @@ class DownloadWorkerStreamTest {
     }
 
     @Test
-    fun downloadWorker_whenStoppedMidStream_revertsDownloadStatus() = runBlocking {
+    fun downloadWorker_whenStoppedMidStream_revertsDownloadStatusAndDeletesPartFile() = runBlocking {
         stubSuccessfulResponse(ByteArray(1024))
 
         val worker = createWorker()
-        // Simulate WorkManager stopping the worker (cancellation / constraint loss) before
-        // the first chunk is written.
         every { worker.isStopped } returns true
 
         val result = worker.doWork()
 
         assertEquals(ListenableWorker.Result.failure(), result)
 
-        // The status was set to DOWNLOADING at the start; on a mid-stream stop it must be
-        // reverted to NOT_DOWNLOADED, otherwise the episode is stuck showing "Downloading".
+        coVerify(exactly = 1) {
+            episodeDao.updateDownloadStatus(episodeId, DownloadStatus.DOWNLOADING.value, null)
+        }
         coVerify(exactly = 1) {
             episodeDao.updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
         }
+        val outputFile = StorageUtils.getFileForEpisode(context, episodeId)
+        val partFile = java.io.File("${outputFile.absolutePath}.part")
+        org.junit.Assert.assertFalse("Final output file must not exist after mid-stream stop", outputFile.exists())
+        org.junit.Assert.assertFalse("Partial download file must be cleaned up after mid-stream stop", partFile.exists())
     }
 
     @Test
     fun downloadWorker_throttlesProgressUpdates_byElapsedTime() = runBlocking {
-        // A body of 100 buffer-sized chunks produces 100 distinct integer percentages,
-        // all read from memory in well under the throttle window. A correct time-based
-        // throttle should therefore emit only a handful of WorkManager progress updates.
         val bodySize = Constants.DOWNLOAD_BUFFER_SIZE_BYTES * 100
         stubSuccessfulResponse(ByteArray(bodySize))
 
@@ -155,11 +157,58 @@ class DownloadWorkerStreamTest {
 
         assertEquals(ListenableWorker.Result.success(), result)
 
-        // Buggy throttle (comparing wall-clock against a percentage) fires on every percent
-        // step (~100 times). A correct throttle keeps this to just a few updates.
-        // We set atMost = 25 to allow for varying I/O performance on slow host test environments.
-        coVerify(atMost = 25) {
+        val outputFile = StorageUtils.getFileForEpisode(context, episodeId)
+        org.junit.Assert.assertTrue("Downloaded file must exist on success", outputFile.exists())
+        assertEquals(bodySize.toLong(), outputFile.length())
+
+        // Must emit at least 1 progress update (proving progress reporting is active),
+        // while staying far below the 100 distinct percentage steps (proving time throttling).
+        coVerify(atLeast = 1, atMost = 25) {
             progressUpdater.updateProgress(any(), any(), any())
         }
+    }
+
+    @Test
+    fun downloadWorker_whenCancelledDuringRequest_revertsStatusAndClearsProgress() = runBlocking {
+        val tracker = com.yuval.podcasts.data.repository.DownloadProgressTracker()
+        tracker.updateProgress(episodeId, 35)
+
+        val requestStarted = java.util.concurrent.CountDownLatch(1)
+        val call = mockk<Call>(relaxed = true)
+        every { okHttpClient.newCall(any()) } returns call
+        every { call.enqueue(any()) } answers {
+            requestStarted.countDown()
+            // Hold the request open until cancelled
+        }
+
+        val worker = spyk(
+            DownloadWorker(
+                context,
+                workerParams,
+                episodeDao,
+                okHttpClient,
+                mockk(relaxed = true),
+                Dispatchers.IO,
+                tracker
+            )
+        )
+        val foregroundInfo = ForegroundInfo(
+            Constants.NOTIFICATION_ID_DOWNLOAD,
+            mockk<Notification>(relaxed = true),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+        every { worker.createForegroundInfo(any(), any(), any()) } returns foregroundInfo
+
+        val job = launch(Dispatchers.IO) {
+            worker.doWork()
+        }
+        org.junit.Assert.assertTrue(requestStarted.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        job.cancel()
+        job.join()
+
+        coVerify(exactly = 1) {
+            episodeDao.updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED.value, null)
+        }
+        assertEquals(emptyMap<String, Int>(), tracker.progressMap.value)
     }
 }

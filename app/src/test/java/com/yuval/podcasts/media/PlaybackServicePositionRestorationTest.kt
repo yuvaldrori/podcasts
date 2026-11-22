@@ -6,9 +6,10 @@ import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import com.yuval.podcasts.utils.LogManager
-import io.mockk.*
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -20,9 +21,8 @@ import org.robolectric.RobolectricTestRunner
 class PlaybackServicePositionRestorationTest {
 
     @Test
-    fun onMediaItemTransition_whenPlayerSwitchedToNewTrackBeforeAsyncDaoReturns_doesNotSeekNewTrackToOldTrackPosition() = runTest {
+    fun onMediaItemTransition_whenCurrentPlayerItemDiffersFromTransitionItem_doesNotSeek() = runTest {
         val testDispatcher = UnconfinedTestDispatcher(testScheduler)
-        val testScope = TestScope(testDispatcher)
 
         val player = mockk<Player>(relaxed = true)
         val removeEpisodeUseCase = mockk<RemoveEpisodeUseCase>(relaxed = true)
@@ -34,7 +34,7 @@ class PlaybackServicePositionRestorationTest {
 
         val episodeA = Episode("epA", "feedUrl", "Title A", "Desc", "http://audioA.mp3", null, null, 0L, 1000L, 0, null, false, 30000L, null)
 
-        // Player has switched to Track B
+        // Player is already on Track B
         every { player.currentMediaItem } returns mediaItemB
         every { player.currentPosition } returns 0L
 
@@ -42,17 +42,16 @@ class PlaybackServicePositionRestorationTest {
             removeEpisodeUseCase = removeEpisodeUseCase,
             settingsRepository = settingsRepository,
             logManager = logManager,
-            serviceScope = testScope,
+            serviceScope = this,
             ioDispatcher = testDispatcher,
             getCurrentPlayer = { player }
         )
         listener.updateCachedPositions(listOf(episodeA))
 
-        // Trigger transition for Track A
+        // Trigger transition for Track A while currentMediaItem is Track B
         listener.onMediaItemTransition(mediaItemA, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
 
-        // Should NOT seek track B to 30000L (track A's position)
-        verify(exactly = 0) { player.seekTo(30000L) }
+        // Must NOT seek track B to any position
+        verify(exactly = 0) { player.seekTo(any<Long>()) }
     }
 }
-

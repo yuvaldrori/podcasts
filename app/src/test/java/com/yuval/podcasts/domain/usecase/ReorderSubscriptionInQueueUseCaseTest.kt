@@ -31,10 +31,12 @@ class ReorderSubscriptionInQueueUseCaseTest {
         val ep3 = createEpisode("ep3", feedUrl, 3000L) // Subscription, newer
         val ep4 = createEpisode("ep4", otherUrl, 4000L) // Other
 
+        // Place newer subscription episode (ep3) BEFORE older (ep1) so passing requires
+        // actual chronological sorting by pubDate ascending, not just partition order.
         val currentQueue = listOf(
-            EpisodeWithPodcast(ep1, p1),
-            EpisodeWithPodcast(ep2, p2),
             EpisodeWithPodcast(ep3, p1),
+            EpisodeWithPodcast(ep2, p2),
+            EpisodeWithPodcast(ep1, p1),
             EpisodeWithPodcast(ep4, p2)
         )
 

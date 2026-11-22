@@ -7,7 +7,6 @@ import com.yuval.podcasts.data.repository.PodcastRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -20,11 +19,9 @@ class NavBadgeViewModel @Inject constructor(
     repository: PodcastRepository
 ) : ViewModel() {
 
-    val queueCount: StateFlow<Int> = repository.listeningQueue
-        .map { it.size }
+    val queueCount: StateFlow<Int> = repository.queueCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), 0)
 
-    val newEpisodeCount: StateFlow<Int> = repository.unplayedEpisodes
-        .map { it.size }
+    val newEpisodeCount: StateFlow<Int> = repository.unplayedEpisodeCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(Constants.FLOW_STOP_TIMEOUT_MS), 0)
 }

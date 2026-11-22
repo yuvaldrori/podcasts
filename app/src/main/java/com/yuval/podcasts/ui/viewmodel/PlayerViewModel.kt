@@ -3,20 +3,26 @@ package com.yuval.podcasts.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yuval.podcasts.data.Constants
+import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.repository.PodcastRepository
+import com.yuval.podcasts.di.IoDispatcher
+import com.yuval.podcasts.di.MainDispatcher
+import com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase
 import com.yuval.podcasts.media.PlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
-import kotlinx.coroutines.flow.first
 import kotlin.time.Duration.Companion.seconds
 
 data class PlayerUiState(
@@ -40,10 +46,13 @@ private data class PlaybackStatus(
 class PlayerViewModel @Inject constructor(
     private val repository: PodcastRepository,
     private val playerManager: PlayerManager,
-    private val enqueueEpisodeUseCase: com.yuval.podcasts.domain.usecase.EnqueueEpisodeUseCase,
-    @param:com.yuval.podcasts.di.IoDispatcher private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher,
-    @param:com.yuval.podcasts.di.MainDispatcher private val mainDispatcher: kotlinx.coroutines.CoroutineDispatcher
+    private val enqueueEpisodeUseCase: EnqueueEpisodeUseCase,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    @param:MainDispatcher private val mainDispatcher: CoroutineDispatcher
 ) : ViewModel() {
+
+    val isPlaying: StateFlow<Boolean> = playerManager.isPlaying
+    val currentMediaId: StateFlow<String?> = playerManager.currentMediaId
 
     private val playbackStatusFlow = combine(
         playerManager.isPlaying,
@@ -65,7 +74,7 @@ class PlayerViewModel @Inject constructor(
         currentEpisodeFlow
     ) { status, currentEpisode ->
         val finalDuration = if (status.duration > 0) status.duration else (currentEpisode?.duration?.seconds?.inWholeMilliseconds ?: 0L)
-        
+
         PlayerUiState(
             isPlaying = status.isPlaying,
             isConnected = status.isConnected,
@@ -90,7 +99,7 @@ class PlayerViewModel @Inject constructor(
 
     fun play(episode: Episode, startPositionMs: Long = episode.lastPlayedPosition) {
         viewModelScope.launch(ioDispatcher) {
-            val uri = episode.playableUri
+            val uri = episode.resolvePlayableUri()
             if (episode.localFilePath != null) {
                 verifyAndEnqueueLocalFile(episode)
             }
@@ -110,10 +119,10 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun playQueue(episodes: List<Episode>, startIndex: Int, startPositionMs: Long = 0L) {
+    fun playQueue(episodes: List<EpisodeWithPodcast>, startIndex: Int, startPositionMs: Long = 0L) {
         viewModelScope.launch(ioDispatcher) {
-            episodes.forEach { episode ->
-                verifyAndEnqueueLocalFile(episode)
+            episodes.forEach { item ->
+                verifyAndEnqueueLocalFile(item.episode)
             }
             withContext(mainDispatcher) {
                 playerManager.playQueue(episodes, startIndex, startPositionMs)
@@ -143,10 +152,7 @@ class PlayerViewModel @Inject constructor(
         playerManager.seekBackward()
     }
 
-    fun seekToChapter(episode: Episode, chapter: com.yuval.podcasts.data.db.entity.Chapter) {
-        // Only an in-place seek if this chapter's episode is the one currently loaded;
-        // otherwise start that episode from the chapter offset instead of seeking whatever
-        // happens to be playing.
+    fun seekToChapter(episode: Episode, chapter: Chapter) {
         if (playerManager.currentMediaId.value == episode.id) {
             playerManager.seekTo(chapter.startTimeMs)
         } else {
@@ -155,7 +161,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     private suspend fun verifyAndEnqueueLocalFile(episode: Episode) {
-        if (episode.localFilePath != null && !java.io.File(episode.localFilePath).exists()) {
+        if (episode.localFilePath != null && !File(episode.localFilePath).exists()) {
             enqueueEpisodeUseCase(episode)
         }
     }

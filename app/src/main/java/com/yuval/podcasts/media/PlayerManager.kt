@@ -2,45 +2,42 @@ package com.yuval.podcasts.media
 
 import android.content.ComponentName
 import android.content.Context
-import android.net.Uri
-import androidx.core.net.toUri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
-import androidx.media3.session.MediaController
 import androidx.media3.session.MediaBrowser
+import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.common.util.concurrent.MoreExecutors
-import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.data.Constants
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
+import com.yuval.podcasts.data.repository.SettingsRepository
+import com.yuval.podcasts.di.IoDispatcher
+import com.yuval.podcasts.di.MainDispatcher
+import com.yuval.podcasts.utils.LogManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.SupervisorJob
-import com.yuval.podcasts.di.MainDispatcher
-import com.yuval.podcasts.di.IoDispatcher
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.guava.await
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.seconds
-
-import com.yuval.podcasts.utils.LogManager
 
 @Singleton
 class PlayerManager @Inject constructor(
@@ -81,8 +78,6 @@ class PlayerManager @Inject constructor(
 
     private val _currentMediaId = MutableStateFlow<String?>(null)
     val currentMediaId: StateFlow<String?> = _currentMediaId.asStateFlow()
-
-
 
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
@@ -158,7 +153,7 @@ class PlayerManager @Inject constructor(
                     stopAndClear()
                 } else {
                     val d = player.duration
-                    if (d != androidx.media3.common.C.TIME_UNSET) {
+                    if (d != C.TIME_UNSET) {
                         _duration.update { d }
                     }
                 }
@@ -176,24 +171,28 @@ class PlayerManager @Inject constructor(
                 reason: Int
             ) {
                 _currentPosition.update { newPosition.positionMs }
-                positionTrigger.update { newPosition.positionMs }
+                positionTrigger.update { it + 1 }
             }
 
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                logManager.e("PlayerManager", "Playback error: ${error.message}", mapOf(
-                    "errorCode" to error.errorCodeName,
-                    "mediaId" to (player.currentMediaItem?.mediaId ?: "none")
-                ))
+            override fun onPlayerError(error: PlaybackException) {
+                logManager.e(
+                    "PlayerManager",
+                    "Playback error: ${error.message}",
+                    mapOf(
+                        "errorCode" to error.errorCodeName,
+                        "mediaId" to (player.currentMediaItem?.mediaId ?: "none")
+                    )
+                )
             }
         })
 
-        // Initial states
         updatePlayingState(player)
         val currentSpeed = _playbackSpeed.value
         player.setPlaybackParameters(PlaybackParameters(currentSpeed))
         _duration.update { player.duration.coerceAtLeast(0L) }
         _currentMediaId.update { player.currentMediaItem?.mediaId }
         _currentPosition.update { player.currentPosition }
+        positionTrigger.update { it + 1 }
     }
 
     fun play(
@@ -210,30 +209,14 @@ class PlayerManager @Inject constructor(
         scope.launch {
             val browser = awaitController()
             browser?.let {
-                val extras = android.os.Bundle().apply {
-                    if (uri.startsWith("http://", ignoreCase = true) ||
-                        uri.startsWith("https://", ignoreCase = true)
-                    ) {
-                        putString(Constants.EXTRA_REMOTE_AUDIO_URL, uri)
-                    }
-                }
-                val metadata = MediaMetadata.Builder()
-                    .setTitle(title)
-                    .setDisplayTitle(title)
-                    .setArtist(artist)
-                    .setAlbumTitle(albumTitle)
-                    .setArtworkUri(imageUrl?.toUri())
-                    .setIsPlayable(true)
-                    .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
-                    .setExtras(extras)
-                    .build()
-
-                val mediaItem = MediaItem.Builder()
-                    .setMediaId(mediaId)
-                    .setUri(uri)
-                    .setMimeType(MediaItemMapper.inferAudioMimeType(uri))
-                    .setMediaMetadata(metadata)
-                    .build()
+                val mediaItem = MediaItemMapper.buildMediaItem(
+                    mediaId = mediaId,
+                    playableUri = uri,
+                    title = title,
+                    artist = artist,
+                    albumTitle = albumTitle,
+                    artworkUrl = imageUrl
+                )
                 it.setMediaItem(mediaItem)
                 if (startPositionMs > 0) {
                     it.seekTo(startPositionMs)
@@ -245,41 +228,28 @@ class PlayerManager @Inject constructor(
         }
     }
 
-    fun prepareQueue(episodes: List<com.yuval.podcasts.data.db.entity.Episode>, startIndex: Int, startPositionMs: Long = 0L) {
-        setupQueueInternal(episodes, startIndex, startPositionMs, playWhenReady = false)
-    }
-
-    fun playQueue(episodes: List<com.yuval.podcasts.data.db.entity.Episode>, startIndex: Int, startPositionMs: Long = 0L) {
-        setupQueueInternal(episodes, startIndex, startPositionMs, playWhenReady = true)
-    }
-
-    private fun setupQueueInternal(
-        episodes: List<com.yuval.podcasts.data.db.entity.Episode>,
+    fun playQueue(
+        episodes: List<EpisodeWithPodcast>,
         startIndex: Int,
-        startPositionMs: Long,
-        playWhenReady: Boolean
+        startPositionMs: Long = 0L
     ) {
         if (episodes.isEmpty() || startIndex !in episodes.indices) return
-        val currentEp = episodes[startIndex]
+        val currentEp = episodes[startIndex].episode
         _currentMediaId.update { currentEp.id }
         _currentPosition.update { startPositionMs }
 
         scope.launch {
             val browser = awaitController()
             browser?.let {
-                val mediaItems = mapEpisodesToMediaItems(episodes)
+                val mediaItems = withContext(ioDispatcher) {
+                    episodes.mapNotNull(MediaItemMapper::fromEpisodeWithPodcast)
+                }
                 it.setMediaItems(mediaItems, startIndex, startPositionMs)
                 it.prepare()
-                if (playWhenReady) {
-                    logManager.i("PlayerManager", "Starting queue playback at $startIndex")
-                    it.play()
-                }
+                logManager.i("PlayerManager", "Starting queue playback at $startIndex")
+                it.play()
             }
         }
-    }
-
-    private suspend fun mapEpisodesToMediaItems(episodes: List<com.yuval.podcasts.data.db.entity.Episode>): List<MediaItem> = withContext(ioDispatcher) {
-        episodes.mapNotNull { MediaItemMapper.fromEpisode(it) }
     }
 
     fun play() {
@@ -372,12 +342,14 @@ class PlayerManager @Inject constructor(
         _isPlaying.update { false }
         _currentPosition.update { 0L }
         _duration.update { 0L }
+        positionTrigger.update { it + 1 }
 
         scope.launch {
             val browser = awaitController()
             browser?.let {
                 it.stop()
                 it.clearMediaItems()
+                positionTrigger.update { count -> count + 1 }
             }
         }
     }

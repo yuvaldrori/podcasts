@@ -1,7 +1,6 @@
 package com.yuval.podcasts.work
 
 import android.content.Context
-import android.net.Uri
 import androidx.core.net.toUri
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -14,12 +13,12 @@ import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.utils.LogManager
+import com.yuval.podcasts.utils.WorkerNotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-import java.util.concurrent.atomic.AtomicLong
-
 
 @HiltWorker
 class OpmlImportWorker @AssistedInject constructor(
@@ -48,52 +47,36 @@ class OpmlImportWorker @AssistedInject constructor(
                 return@withContext Result.success()
             }
 
-            val lastForegroundUpdate = AtomicLong(0L)
+            val progressReporter = WorkerProgressReporter(
+                workerTag = "OpmlImportWorker",
+                logManager = logManager,
+                setForegroundFn = { setForeground(it) },
+                setProgressFn = { setProgress(it) }
+            )
+            progressReporter.setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
+            progressReporter.setInitialForeground { createForegroundInfo(0, total) }
 
-            var isForegroundAllowed = true
-            try {
-                setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to 0, Constants.WORK_KEY_TOTAL to total))
-            } catch (e: Exception) {
-                logManager.w("OpmlImportWorker", "Failed to set initial progress", mapOf("error" to e.message.toString()))
-            }
-            try {
-                setForeground(createForegroundInfo(0, total))
-            } catch (e: Exception) {
-                isForegroundAllowed = false
-                logManager.w("OpmlImportWorker", "Failed to set initial foreground status", mapOf("error" to e.message.toString()))
-            }
-            
             repository.refreshPodcasts(urls) { current, totalCount ->
-                try {
-                    setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to current, Constants.WORK_KEY_TOTAL to totalCount))
-                } catch (e: Exception) {
-                    logManager.w("OpmlImportWorker", "Failed to set progress", mapOf("error" to e.message.toString()))
-                }
-                
-                val currentTime = System.currentTimeMillis()
-                val lastUpdate = lastForegroundUpdate.get()
-                if (isForegroundAllowed && (current == totalCount || currentTime - lastUpdate > Constants.OPML_IMPORT_PROGRESS_NOTIFICATION_THROTTLE_MS)) {
-                    lastForegroundUpdate.set(currentTime)
-                    try {
-                        setForeground(createForegroundInfo(current, totalCount))
-                    } catch (e: Exception) {
-                        isForegroundAllowed = false
-                        logManager.w("OpmlImportWorker", "Failed to set foreground status progress", mapOf("error" to e.message.toString()))
-                    }
-                }
+                progressReporter.reportCountProgress(
+                    current = current,
+                    total = totalCount,
+                    throttleMs = Constants.OPML_IMPORT_PROGRESS_NOTIFICATION_THROTTLE_MS,
+                    createForegroundInfo = ::createForegroundInfo
+                )
             }
 
             logManager.i("OpmlImportWorker", "OPML import completed: $total podcasts processed")
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
             logManager.e("OpmlImportWorker", "Import failed", mapOf("error" to e.message.toString()))
             Result.failure()
         }
     }
 
     private fun createForegroundInfo(progress: Int, total: Int): ForegroundInfo {
-        return com.yuval.podcasts.utils.WorkerNotificationHelper.createForegroundInfo(
+        return WorkerNotificationHelper.createForegroundInfo(
             context = appContext,
             notificationId = Constants.NOTIFICATION_ID_IMPORT,
             channelId = Constants.NOTIFICATION_CHANNEL_ID_IMPORT,

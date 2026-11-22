@@ -2,14 +2,18 @@ package com.yuval.podcasts.ui.screens
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -18,9 +22,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -29,10 +33,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.yuval.podcasts.R
-import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.components.LoadingBox
-import com.yuval.podcasts.ui.components.RefreshProgressIndicator
+import com.yuval.podcasts.ui.components.RefreshableContent
 import com.yuval.podcasts.ui.components.emptyStateItem
 import com.yuval.podcasts.ui.utils.Formatter
 import com.yuval.podcasts.ui.viewmodel.QueueUiState
@@ -52,7 +56,7 @@ fun QueueScreen(
     onRemoveFromQueue: (String) -> Unit,
     onMoveItem: (Int, Int) -> Unit,
     onCommitReorder: () -> Unit,
-    onPlayQueue: (List<Episode>, Int, Long) -> Unit,
+    onPlayQueue: (List<EpisodeWithPodcast>, Int, Long) -> Unit,
     onPause: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
@@ -63,7 +67,6 @@ fun QueueScreen(
 
     val successState = uiState as? QueueUiState.Success ?: return
     val lazyListState = rememberLazyListState()
-    
     val queue = successState.queue
 
     val dragDropState = rememberDragDropState(
@@ -91,32 +94,25 @@ fun QueueScreen(
             )
         }
     ) { padding ->
-        val pullToRefreshState = rememberPullToRefreshState()
-        PullToRefreshBox(
+        RefreshableContent(
             isRefreshing = isRefreshing,
+            refreshProgress = refreshProgress,
             onRefresh = onRefreshAll,
-            state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            indicator = {}
+            modifier = Modifier.padding(padding)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                RefreshProgressIndicator(isRefreshing = isRefreshing, refreshProgress = refreshProgress)
-                
-                LazyColumn(
-                    state = lazyListState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .testTag("queue_list"),
-                    contentPadding = PaddingValues(
-                        top = 16.dp,
-                        bottom = contentPadding.calculateBottomPadding() + 16.dp,
-                        start = 16.dp,
-                        end = 16.dp
-                    )
-                ) {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .testTag("queue_list"),
+                contentPadding = PaddingValues(
+                    top = 16.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                )
+            ) {
                 if (queue.isEmpty()) {
                     emptyStateItem(R.string.empty_queue_message)
                 } else {
@@ -124,7 +120,7 @@ fun QueueScreen(
                         val episode = episodeWithPodcast.episode
                         val isDragging = dragDropState.draggedItemIndex == index
                         val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "elevation")
-                        
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -146,7 +142,7 @@ fun QueueScreen(
                                 MaterialTheme.colorScheme.surfaceVariant
                             }
 
-                            val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
+                            val clickHandler = remember(episode.id, onEpisodeClick) { { onEpisodeClick(episode.id) } }
                             EpisodeItem(
                                 episode = episode,
                                 modifier = Modifier.clickable(onClick = clickHandler),
@@ -156,11 +152,11 @@ fun QueueScreen(
                                 trailingContent = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         val isThisEpisodePlaying = isPlaying && currentMediaId == episode.id
-                                        IconButton(onClick = { 
+                                        IconButton(onClick = {
                                             if (isThisEpisodePlaying) {
                                                 onPause()
                                             } else {
-                                                onPlayQueue(queue.map { it.episode }, index, episode.lastPlayedPosition)
+                                                onPlayQueue(queue, index, episode.lastPlayedPosition)
                                             }
                                         }) {
                                             val playIcon = if (isThisEpisodePlaying) Icons.Default.Pause else Icons.Default.PlayArrow
@@ -187,5 +183,4 @@ fun QueueScreen(
             }
         }
     }
-}
 }

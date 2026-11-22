@@ -56,8 +56,7 @@ class FeedsViewModelTest {
         viewModel = FeedsViewModel(
             repository,
             enqueueEpisodeUseCase,
-            workManager,
-            DefaultMessageDelegate()
+            workManager
         )
     }
 
@@ -115,8 +114,7 @@ class FeedsViewModelTest {
         val localViewModel = FeedsViewModel(
             repository,
             enqueueEpisodeUseCase,
-            workManager,
-            DefaultMessageDelegate()
+            workManager
         )
 
         assertEquals(progressMap, localViewModel.downloadProgressMap.value)

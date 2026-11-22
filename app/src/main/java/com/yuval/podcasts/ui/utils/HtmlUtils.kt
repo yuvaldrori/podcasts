@@ -12,32 +12,71 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextDecoration
 
 object HtmlUtils {
-    private val TAG_REGEX = Regex("<[^>]*>", RegexOption.DOT_MATCHES_ALL)
+    private val ANY_TAG_REGEX = Regex("<[^>]*>", RegexOption.DOT_MATCHES_ALL)
+    private val KNOWN_HTML_TAG_REGEX = Regex(
+        "</?(?:p|div|span|strong|b|em|i|u|a|br|hr|h[1-6]|ul|ol|li|img|blockquote|code|pre|table|tr|td|th|tbody|thead|font|center)\\b[^>]*>",
+        RegexOption.IGNORE_CASE
+    )
     private val NUMERIC_ENTITY_REGEX = Regex("&#(\\d+);|&#x([0-9a-fA-F]+);")
     private val WHITESPACE_REGEX = Regex("[\\s\\u00A0]+")
+    private const val MAX_ENTITY_DECODE_PASSES = 3
 
     /**
-     * Strips HTML tags and decodes HTML entities into clean plain text.
+     * Strips all HTML tags and decodes HTML entities into clean single-spaced plain text.
      */
     fun stripHtml(html: String?): String {
         if (html.isNullOrBlank()) return ""
         if (!html.contains('<') && !html.contains('&')) return html.trim()
 
-        val withoutTags = html.replace(TAG_REGEX, " ")
-        val decodedNamed = withoutTags
-            .replace("&nbsp;", " ")
+        val withoutTags = html.replace(ANY_TAG_REGEX, " ")
+        val decoded = decodeEntities(withoutTags)
+        return WHITESPACE_REGEX.replace(decoded, " ").trim()
+    }
+
+    /**
+     * Sanitizes RSS metadata text (titles, podcast descriptions, chapter titles):
+     * strips known HTML tags while preserving non-HTML angle-bracket text (e.g. `<Special>`),
+     * and decodes nested/double-encoded XML/HTML entities.
+     */
+    fun sanitizeRssText(input: String): String {
+        if (input.isBlank()) return ""
+        var text = stripKnownHtmlTags(input)
+
+        var passes = 0
+        while (text.contains('&') && text.contains(';') && passes < MAX_ENTITY_DECODE_PASSES) {
+            val prev = text
+            text = decodeEntities(text)
+            text = stripKnownHtmlTags(text)
+            if (prev == text) break
+            passes++
+        }
+
+        return text.replace('\u00A0', ' ').trim()
+    }
+
+    private fun stripKnownHtmlTags(text: String): String =
+        if (text.contains('<') && text.contains('>')) {
+            text.replace(KNOWN_HTML_TAG_REGEX, "")
+        } else {
+            text
+        }
+
+    private fun decodeEntities(input: String): String {
+        val decodedNamed = input
+            .replace("&amp;", "&")
             .replace("&quot;", "\"")
             .replace("&apos;", "'")
             .replace("&#39;", "'")
             .replace("&lt;", "<")
             .replace("&gt;", ">")
-            .replace("&amp;", "&")
+            .replace("&nbsp;", " ")
 
-        val decodedNumeric = NUMERIC_ENTITY_REGEX.replace(decodedNamed) { matchResult ->
+        if (!decodedNamed.contains("&#")) return decodedNamed
+
+        return NUMERIC_ENTITY_REGEX.replace(decodedNamed) { matchResult ->
             val decimalStr = matchResult.groupValues[1]
             val hexStr = matchResult.groupValues[2]
             try {
@@ -55,8 +94,6 @@ object HtmlUtils {
                 matchResult.value
             }
         }
-
-        return WHITESPACE_REGEX.replace(decodedNumeric, " ").trim()
     }
 }
 

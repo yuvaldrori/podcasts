@@ -9,7 +9,6 @@ import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import com.yuval.podcasts.utils.LogManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)

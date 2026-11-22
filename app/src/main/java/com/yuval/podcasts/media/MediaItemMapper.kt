@@ -7,6 +7,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import java.util.Locale
 
 object MediaItemMapper {
@@ -23,43 +24,65 @@ object MediaItemMapper {
         }
     }
 
+    fun buildMediaItem(
+        mediaId: String,
+        playableUri: String,
+        remoteAudioUrl: String? = null,
+        title: String? = null,
+        artist: String? = null,
+        albumTitle: String? = null,
+        artworkUrl: String? = null
+    ): MediaItem {
+        val extras = Bundle().apply {
+            val remote = remoteAudioUrl ?: playableUri
+            if (remote.startsWith("http://", ignoreCase = true) ||
+                remote.startsWith("https://", ignoreCase = true)
+            ) {
+                putString(Constants.EXTRA_REMOTE_AUDIO_URL, remote)
+            }
+        }
+        val metadata = MediaMetadata.Builder()
+            .setTitle(title)
+            .setDisplayTitle(title)
+            .setArtist(artist)
+            .setAlbumTitle(albumTitle)
+            .setArtworkUri(artworkUrl?.toUri())
+            .setIsPlayable(true)
+            .setIsBrowsable(false)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
+            .setExtras(extras)
+            .build()
+
+        val mimeType = inferAudioMimeType(remoteAudioUrl?.ifBlank { playableUri } ?: playableUri)
+
+        return MediaItem.Builder()
+            .setMediaId(mediaId)
+            .setUri(playableUri.toUri())
+            .setMimeType(mimeType)
+            .setMediaMetadata(metadata)
+            .build()
+    }
+
     fun fromEpisode(
         ep: Episode,
         podcastImageUrl: String? = null,
         podcastTitle: String? = null
     ): MediaItem? {
         return try {
-            val uri = ep.playableUri.toUri()
-            val artworkUrl = ep.imageUrl ?: podcastImageUrl
-            val extras = Bundle().apply {
-                if (ep.audioUrl.startsWith("http://", ignoreCase = true) ||
-                    ep.audioUrl.startsWith("https://", ignoreCase = true)
-                ) {
-                    putString(Constants.EXTRA_REMOTE_AUDIO_URL, ep.audioUrl)
-                }
-            }
-            val metadata = MediaMetadata.Builder()
-                .setTitle(ep.title)
-                .setArtist(podcastTitle ?: ep.podcastFeedUrl)
-                .setAlbumTitle(podcastTitle)
-                .setDisplayTitle(ep.title)
-                .setArtworkUri(artworkUrl?.toUri())
-                .setIsPlayable(true)
-                .setIsBrowsable(false)
-                .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
-                .setExtras(extras)
-                .build()
-
-            val mimeType = inferAudioMimeType(ep.audioUrl.ifBlank { ep.playableUri })
-
-            MediaItem.Builder()
-                .setMediaId(ep.id)
-                .setUri(uri)
-                .setMimeType(mimeType)
-                .setMediaMetadata(metadata)
-                .build()
-        } catch (e: Exception) {
+            buildMediaItem(
+                mediaId = ep.id,
+                playableUri = ep.resolvePlayableUri(),
+                remoteAudioUrl = ep.audioUrl,
+                title = ep.title,
+                artist = podcastTitle ?: ep.podcastFeedUrl,
+                albumTitle = podcastTitle,
+                artworkUrl = ep.imageUrl ?: podcastImageUrl
+            )
+        } catch (_: Exception) {
             null
         }
     }
+
+    fun fromEpisodeWithPodcast(item: EpisodeWithPodcast): MediaItem? =
+        fromEpisode(item.episode, item.podcast.imageUrl, item.podcast.title)
 }

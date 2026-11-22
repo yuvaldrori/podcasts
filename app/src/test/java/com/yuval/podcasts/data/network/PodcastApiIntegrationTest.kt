@@ -1,41 +1,71 @@
 package com.yuval.podcasts.data.network
 
-import io.mockk.mockk
+import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.net.InetSocketAddress
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class PodcastApiIntegrationTest {
 
     @Test
-    fun fetchRss_respectsCancellation() = runTest {
-        val okHttpClient = OkHttpClient()
-        val api = PodcastApi(okHttpClient, kotlinx.coroutines.Dispatchers.IO)
-        var cancelled = false
-
-        val job = launch {
+    fun fetchRss_respectsCancellation() = runBlocking {
+        val requestReceived = CountDownLatch(1)
+        val releaseServer = CountDownLatch(1)
+        val executor = Executors.newSingleThreadExecutor()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.executor = executor
+        server.createContext("/slow.xml") { exchange ->
+            requestReceived.countDown()
+            // Hold the HTTP response open until the client cancels (or timeout guard fires)
+            releaseServer.await(5, TimeUnit.SECONDS)
             try {
-                // Using a known large/slow feed to ensure we catch it inflight
-                api.withRssStream("https://feeds.npr.org/510289/podcast.xml") { 
-                    // consume a bit to ensure it's open
-                    it.read()
-                }
-            } catch (e: Exception) {
-                // When using okhttp, cancellation manifests as an IOException
-                if (e is CancellationException || e is java.io.IOException || e.cause is CancellationException) {
-                    cancelled = true
-                }
+                exchange.close()
+            } catch (_: Exception) {
             }
         }
+        server.start()
 
-        // Allow some time for the network connection to start
-        kotlinx.coroutines.delay(100)
-        job.cancel()
-        job.join()
+        try {
+            val port = server.address.port
+            val okHttpClient = OkHttpClient.Builder()
+                .readTimeout(10, TimeUnit.SECONDS)
+                .build()
+            val api = PodcastApi(okHttpClient, Dispatchers.IO)
+            var sawCancellation = false
 
-        assertTrue("Fetch should have been cancelled or aborted via network disconnect", cancelled)
+            val job = launch(Dispatchers.Default) {
+                try {
+                    api.withRssStreamConditional("http://127.0.0.1:$port/slow.xml") { result ->
+                        if (result is RssFetchResult.Success) {
+                            result.stream.read()
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    sawCancellation = true
+                    throw e
+                }
+            }
+
+            assertTrue(
+                "Local test server should have received the in-flight HTTP request",
+                requestReceived.await(5, TimeUnit.SECONDS)
+            )
+            job.cancel()
+            job.join()
+
+            assertTrue("In-flight fetch should have been cancelled via CancellationException", sawCancellation)
+        } finally {
+            releaseServer.countDown()
+            server.stop(0)
+            executor.shutdownNow()
+        }
     }
 }

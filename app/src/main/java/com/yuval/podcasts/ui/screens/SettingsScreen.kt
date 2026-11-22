@@ -17,10 +17,10 @@ import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.ui.viewmodel.SettingsUiState
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.work.WorkInfo
+import com.yuval.podcasts.BuildConfig
+import com.yuval.podcasts.ui.components.RefreshableContent
 import kotlinx.coroutines.delay
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import com.yuval.podcasts.ui.components.RefreshProgressIndicator
 
 
 private const val KEYBOARD_ANIMATION_DELAY_PART1_MS = 150L
@@ -102,28 +102,21 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        val pullToRefreshState = rememberPullToRefreshState()
-        PullToRefreshBox(
+        RefreshableContent(
             isRefreshing = isRefreshing,
+            refreshProgress = refreshProgress,
             onRefresh = onRefreshAll,
-            state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            indicator = {}
+            modifier = Modifier.padding(padding)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                RefreshProgressIndicator(isRefreshing = isRefreshing, refreshProgress = refreshProgress)
-                
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f)
-                        .padding(bottom = contentPadding.calculateBottomPadding())
-                        .imePadding()
-                        .verticalScroll(scrollState)
-                        .padding(16.dp)
-                ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+                    .padding(bottom = contentPadding.calculateBottomPadding())
+                    .imePadding()
+                    .verticalScroll(scrollState)
+                    .padding(16.dp)
+            ) {
             Text(text = stringResource(R.string.add_podcast), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
@@ -146,7 +139,7 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
-            val isImporting = uiState.importWorkInfo?.state == androidx.work.WorkInfo.State.RUNNING
+            val isImporting = uiState.importWorkInfo?.state == WorkInfo.State.RUNNING
             val progress = uiState.importWorkInfo?.progress?.getInt(Constants.WORK_KEY_PROGRESS, 0) ?: 0
             val total = uiState.importWorkInfo?.progress?.getInt(Constants.WORK_KEY_TOTAL, 0) ?: 0
 
@@ -244,9 +237,9 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(32.dp))
             Text(
                 text = stringResource(
-                    R.string.app_version, 
-                    com.yuval.podcasts.BuildConfig.VERSION_NAME, 
-                    com.yuval.podcasts.BuildConfig.BUILD_DATE
+                    R.string.app_version,
+                    BuildConfig.VERSION_NAME,
+                    BuildConfig.BUILD_DATE
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
@@ -255,5 +248,4 @@ fun SettingsScreen(
             }
         }
     }
-}
 }

@@ -1,39 +1,29 @@
-@file:SuppressLint("RestrictedApi")
-
 package com.yuval.podcasts
 
-import android.annotation.SuppressLint
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.yuval.podcasts.appfunctions.PodcastAppFunctions
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.work.CleanupWorker
 import com.yuval.podcasts.work.HardRefreshWorker
 import dagger.hilt.android.HiltAndroidApp
-import java.util.concurrent.TimeUnit
-import javax.inject.Inject
-
-import com.yuval.podcasts.data.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
 @HiltAndroidApp
 class PodcastApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
-    
-    @Inject
-    lateinit var settingsRepository: SettingsRepository
-
-    @Inject
-    lateinit var podcastAppFunctions: PodcastAppFunctions
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -52,14 +42,14 @@ class PodcastApplication : Application(), Configuration.Provider {
             .build()
 
         val cleanupRequest = PeriodicWorkRequestBuilder<CleanupWorker>(
-            com.yuval.podcasts.data.Constants.PERIODIC_CLEANUP_INTERVAL_HOURS, 
+            Constants.PERIODIC_CLEANUP_INTERVAL_HOURS,
             TimeUnit.HOURS
         )
             .setConstraints(constraints)
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            com.yuval.podcasts.data.Constants.WORK_NAME_CLEANUP,
+            Constants.WORK_NAME_CLEANUP,
             ExistingPeriodicWorkPolicy.KEEP,
             cleanupRequest
         )
@@ -67,19 +57,19 @@ class PodcastApplication : Application(), Configuration.Provider {
 
     private fun scheduleHardRefresh() {
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+            .setRequiredNetworkType(NetworkType.CONNECTED)
             .setRequiresBatteryNotLow(true)
             .build()
 
         val hardRefreshRequest = PeriodicWorkRequestBuilder<HardRefreshWorker>(
-            com.yuval.podcasts.data.Constants.PERIODIC_HARD_REFRESH_INTERVAL_DAYS,
+            Constants.PERIODIC_HARD_REFRESH_INTERVAL_DAYS,
             TimeUnit.DAYS
         )
             .setConstraints(constraints)
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            com.yuval.podcasts.data.Constants.WORK_NAME_HARD_REFRESH_ALL,
+            Constants.WORK_NAME_HARD_REFRESH_ALL,
             ExistingPeriodicWorkPolicy.KEEP,
             hardRefreshRequest
         )

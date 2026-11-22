@@ -1,9 +1,10 @@
 package com.yuval.podcasts.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
-import androidx.room.PrimaryKey
-import androidx.room.ColumnInfo
+import com.yuval.podcasts.data.Constants
+import java.io.File
 import kotlin.time.Duration.Companion.seconds
 
 enum class DownloadStatus(val value: Int) {
@@ -46,7 +47,7 @@ data class Episode(
     val completedAt: Long? = null
 ) {
     val isLocal: Boolean
-        get() = podcastFeedUrl == com.yuval.podcasts.data.Constants.LOCAL_PODCAST_FEED_URL ||
+        get() = podcastFeedUrl == Constants.LOCAL_PODCAST_FEED_URL ||
                 (!audioUrl.startsWith("http") && episodeWebLink == null)
 
     val progress: Float
@@ -54,6 +55,10 @@ data class Episode(
             lastPlayedPosition.toFloat() / duration.seconds.inWholeMilliseconds.toFloat().coerceAtLeast(1f)
         } else 0f
 
-    val playableUri: String
-        get() = localFilePath?.takeIf { java.io.File(it).exists() } ?: audioUrl
+    /**
+     * Resolves the playable URI by checking whether [localFilePath] exists on disk.
+     * Performs file I/O; call only from a background/IO dispatcher.
+     */
+    fun resolvePlayableUri(): String =
+        localFilePath?.takeIf { File(it).exists() } ?: audioUrl
 }

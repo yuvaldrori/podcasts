@@ -4,14 +4,15 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.yuval.podcasts.data.db.dao.QueueDao
 import com.yuval.podcasts.data.db.dao.EpisodeDao
+import com.yuval.podcasts.data.db.dao.QueueDao
 import com.yuval.podcasts.di.IoDispatcher
+import com.yuval.podcasts.utils.LogManager
 import com.yuval.podcasts.utils.StorageUtils
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 @HiltWorker
@@ -20,7 +21,7 @@ class CleanupWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val queueDao: QueueDao,
     private val episodeDao: EpisodeDao,
-    private val logManager: com.yuval.podcasts.utils.LogManager,
+    private val logManager: LogManager,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(appContext, workerParams) {
 
@@ -54,8 +55,9 @@ class CleanupWorker @AssistedInject constructor(
 
             logManager.i("CleanupWorker", "Cleaned up $deletedCount orphaned podcast files.")
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
             logManager.e("CleanupWorker", "Cleanup failed", mapOf("error" to (e.message ?: "unknown")))
             Result.failure()
         }

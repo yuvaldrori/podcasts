@@ -30,10 +30,13 @@ class RssParserCrashTest {
             parser.parse(inputStream, "http://test.com")
             fail("Expected an exception for malformed XML, but parse() returned normally")
         } catch (e: Exception) {
-            // Success — we caught the error instead of letting it crash
             assertTrue(
                 "Exception message should mention parse failure, got: ${e.message}",
                 e.message?.contains("Failed to parse RSS feed") == true
+            )
+            assertTrue(
+                "Expected XmlPullParserException cause, got: ${e.cause}",
+                e.cause is org.xmlpull.v1.XmlPullParserException
             )
         }
     }

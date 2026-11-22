@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.collect
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.utils.MainDispatcherRule
@@ -81,7 +82,6 @@ class SettingsViewModelTest {
             opmlManager = opmlManager,
             importLocalFileUseCase = importLocalFileUseCase,
             logManager = logManager,
-            messageDelegate = DefaultMessageDelegate(),
             ioDispatcher = mainDispatcherRule.testDispatcher
         )
     }
@@ -90,24 +90,30 @@ class SettingsViewModelTest {
     fun addPodcast_success() = runTest {
         val url = "http://example.com/feed"
         coEvery { repository.fetchAndStorePodcast(url) } returns 1
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.addPodcast(url)
+        advanceUntilIdle()
 
         coVerify { repository.fetchAndStorePodcast(url) }
         assertNull(viewModel.uiState.value.errorMessage)
+        job.cancel()
     }
 
     @Test
     fun addPodcast_failure_setsErrorMessage() = runTest {
         val url = "http://example.com/feed"
         coEvery { repository.fetchAndStorePodcast(url) } throws Exception("Invalid URL")
-        
+
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.addPodcast(url)
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
+        val error = viewModel.uiState.value.errorMessage as? UiText.StringResource
+        assertTrue(error != null)
+        assertEquals(R.string.error_add_podcast, error!!.resId)
+        assertEquals(listOf("Invalid URL"), error.args.toList())
         job.cancel()
     }
 
@@ -120,23 +126,29 @@ class SettingsViewModelTest {
     @Test
     fun importLocalAudio_success() = runTest {
         coEvery { importLocalFileUseCase(uri) } returns Result.success(Unit)
-
-        viewModel.importLocalAudio(uri)
-
-        coVerify { importLocalFileUseCase(uri) }
-        assertNull(viewModel.uiState.value.errorMessage)
-    }
-
-    @Test
-    fun importLocalAudio_failure_setsErrorMessage() = runTest {
-        coEvery { importLocalFileUseCase(uri) } returns Result.failure(Exception("Import failed"))
-        
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.importLocalAudio(uri)
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
+        coVerify { importLocalFileUseCase(uri) }
+        assertNull(viewModel.uiState.value.errorMessage)
+        job.cancel()
+    }
+
+    @Test
+    fun importLocalAudio_failure_setsErrorMessage() = runTest {
+        coEvery { importLocalFileUseCase(uri) } returns Result.failure(Exception("Import failed"))
+
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.importLocalAudio(uri)
+        advanceUntilIdle()
+
+        val error = viewModel.uiState.value.errorMessage as? UiText.StringResource
+        assertTrue(error != null)
+        assertEquals(R.string.error_import_local, error!!.resId)
+        assertEquals(listOf("Import failed"), error.args.toList())
         job.cancel()
     }
 
@@ -200,7 +212,9 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         verify { logManager.e("SettingsViewModel", "Failed to export logs", any()) }
-        assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
+        val error = viewModel.uiState.value.errorMessage as? UiText.StringResource
+        assertTrue(error != null)
+        assertEquals(R.string.error_export_failed, error!!.resId)
         job.cancel()
     }
 
@@ -213,7 +227,10 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         verify { logManager.e("SettingsViewModel", "Failed to export OPML", any()) }
-        assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
+        val error = viewModel.uiState.value.errorMessage as? UiText.StringResource
+        assertTrue(error != null)
+        assertEquals(R.string.error_export_opml, error!!.resId)
+        assertEquals(listOf("Disk full"), error.args.toList())
         job.cancel()
     }
 }

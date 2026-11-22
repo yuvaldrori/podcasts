@@ -52,50 +52,84 @@ class PodcastApiConditionalTest {
 
     @Test
     fun withRssStreamConditional_when200OkWithHeaders_returnsSuccessWithHeaders() = runTest {
+        var capturedIfNoneMatch: String? = "sentinel"
+        var capturedIfModifiedSince: String? = "sentinel"
+        val expectedXml = "<rss><channel><title>Podcast</title></channel></rss>"
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
+                val request = chain.request()
+                capturedIfNoneMatch = request.header("If-None-Match")
+                capturedIfModifiedSince = request.header("If-Modified-Since")
                 Response.Builder()
-                    .request(chain.request())
+                    .request(request)
                     .protocol(Protocol.HTTP_1_1)
                     .code(200)
                     .message("OK")
                     .addHeader("ETag", "\"new_etag_456\"")
                     .addHeader("Last-Modified", "Thu, 22 Oct 2025 08:00:00 GMT")
-                    .body("<rss><channel><title>Podcast</title></channel></rss>".toResponseBody("text/xml".toMediaType()))
+                    .body(expectedXml.toResponseBody("text/xml".toMediaType()))
                     .build()
             }
             .build()
 
         val podcastApi = PodcastApi(client, Dispatchers.Unconfined)
-        val result = podcastApi.withRssStreamConditional("http://example.com/feed.xml") { it }
+        var capturedBody: String? = null
+        var capturedEtag: String? = null
+        var capturedLastModified: String? = null
 
-        assertTrue(result is RssFetchResult.Success)
-        val success = result as RssFetchResult.Success
-        assertEquals("\"new_etag_456\"", success.etag)
-        assertEquals("Thu, 22 Oct 2025 08:00:00 GMT", success.lastModified)
+        podcastApi.withRssStreamConditional("http://example.com/feed.xml") { result ->
+            assertTrue(result is RssFetchResult.Success)
+            val success = result as RssFetchResult.Success
+            capturedEtag = success.etag
+            capturedLastModified = success.lastModified
+            capturedBody = success.stream.bufferedReader().readText()
+        }
+
+        assertNull(capturedIfNoneMatch)
+        assertNull(capturedIfModifiedSince)
+        assertEquals("\"new_etag_456\"", capturedEtag)
+        assertEquals("Thu, 22 Oct 2025 08:00:00 GMT", capturedLastModified)
+        assertEquals(expectedXml, capturedBody)
     }
 
     @Test
     fun withRssStreamConditional_when200OkWithoutHeaders_returnsSuccessWithNullHeaders() = runTest {
+        var capturedIfNoneMatch: String? = "sentinel"
+        var capturedIfModifiedSince: String? = "sentinel"
+        val expectedXml = "<rss><channel><title>Podcast</title></channel></rss>"
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
+                val request = chain.request()
+                capturedIfNoneMatch = request.header("If-None-Match")
+                capturedIfModifiedSince = request.header("If-Modified-Since")
                 Response.Builder()
-                    .request(chain.request())
+                    .request(request)
                     .protocol(Protocol.HTTP_1_1)
                     .code(200)
                     .message("OK")
-                    .body("<rss><channel><title>Podcast</title></channel></rss>".toResponseBody("text/xml".toMediaType()))
+                    .body(expectedXml.toResponseBody("text/xml".toMediaType()))
                     .build()
             }
             .build()
 
         val podcastApi = PodcastApi(client, Dispatchers.Unconfined)
-        val result = podcastApi.withRssStreamConditional("http://example.com/feed.xml") { it }
+        var capturedBody: String? = null
+        var capturedEtag: String? = "sentinel"
+        var capturedLastModified: String? = "sentinel"
 
-        assertTrue(result is RssFetchResult.Success)
-        val success = result as RssFetchResult.Success
-        assertNull(success.etag)
-        assertNull(success.lastModified)
+        podcastApi.withRssStreamConditional("http://example.com/feed.xml") { result ->
+            assertTrue(result is RssFetchResult.Success)
+            val success = result as RssFetchResult.Success
+            capturedEtag = success.etag
+            capturedLastModified = success.lastModified
+            capturedBody = success.stream.bufferedReader().readText()
+        }
+
+        assertNull(capturedIfNoneMatch)
+        assertNull(capturedIfModifiedSince)
+        assertNull(capturedEtag)
+        assertNull(capturedLastModified)
+        assertEquals(expectedXml, capturedBody)
     }
 
     @Test(expected = IOException::class)

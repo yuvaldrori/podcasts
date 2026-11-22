@@ -18,7 +18,7 @@ import org.robolectric.annotation.Config
 class CastOptionsProviderTest {
 
     @Test
-    fun getCastOptions_disablesCastMediaSessionAndEnablesRemoteToLocal() {
+    fun getCastOptions_disablesCastMediaSessionAndConfiguresOutputSwitcher() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val provider = CastOptionsProvider()
 
@@ -34,5 +34,6 @@ class CastOptionsProviderTest {
         assertNotNull(mediaOptions)
         assertFalse(mediaOptions.mediaSessionEnabled)
         assertNull(mediaOptions.notificationOptions)
+        assertNull(provider.getAdditionalSessionProviders(context))
     }
 }

@@ -1,14 +1,12 @@
 package com.yuval.podcasts.benchmark
 
 import androidx.benchmark.macro.CompilationMode
+import androidx.benchmark.macro.ExperimentalMetricApi
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.StartupTimingMetric
 import androidx.benchmark.macro.TraceSectionMetric
-import androidx.benchmark.macro.ExperimentalMetricApi
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.uiautomator.By
-import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,11 +24,15 @@ class StartupBenchmark {
             StartupTimingMetric(),
             TraceSectionMetric("MainActivity_onCreate")
         ),
-        iterations = 5, // Run 5 iterations for statistical significance
+        iterations = 5,
         startupMode = StartupMode.COLD,
-        compilationMode = CompilationMode.DEFAULT
+        compilationMode = CompilationMode.DEFAULT,
+        setupBlock = {
+            // Prevent POST_NOTIFICATIONS runtime dialog from interrupting cold startup timing
+            device.executeShellCommand("pm grant com.yuval.podcasts android.permission.POST_NOTIFICATIONS")
+            pressHome()
+        }
     ) {
-        pressHome()
         startActivityAndWait()
     }
 }

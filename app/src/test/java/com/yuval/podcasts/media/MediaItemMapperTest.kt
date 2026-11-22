@@ -183,65 +183,51 @@ class MediaItemMapperTest {
     }
 
     @Test
-    fun testFromEpisodeWithPodcastMetadata() {
-        val episode = Episode(
-            id = "test-id",
-            podcastFeedUrl = "https://feed.url",
-            title = "Episode Title",
-            description = "Description",
-            audioUrl = "https://audio.url",
-            pubDate = 123456789L,
-            duration = 3600L,
-            imageUrl = null,
-            localFilePath = null,
-            downloadStatus = 0
-        )
-
-        val mediaItem = MediaItemMapper.fromEpisode(
-            ep = episode,
-            podcastTitle = "Podcast Name & Show"
-        )
-
-        assertNotNull(mediaItem)
-        assertEquals("Episode Title", mediaItem?.mediaMetadata?.title)
-        assertEquals("Podcast Name & Show", mediaItem?.mediaMetadata?.artist)
-        assertEquals("Podcast Name & Show", mediaItem?.mediaMetadata?.albumTitle)
+    fun testInferAudioMimeTypeRecognizesNonDefaultAudioExtensions() {
+        assertEquals(androidx.media3.common.MimeTypes.AUDIO_MP4, MediaItemMapper.inferAudioMimeType("https://cdn.example.com/ep.m4a?token=123"))
+        assertEquals(androidx.media3.common.MimeTypes.AUDIO_AAC, MediaItemMapper.inferAudioMimeType("https://cdn.example.com/ep.aac"))
+        assertEquals(androidx.media3.common.MimeTypes.AUDIO_OGG, MediaItemMapper.inferAudioMimeType("https://cdn.example.com/ep.ogg"))
+        assertEquals(androidx.media3.common.MimeTypes.AUDIO_WAV, MediaItemMapper.inferAudioMimeType("https://cdn.example.com/ep.wav"))
+        assertEquals(androidx.media3.common.MimeTypes.AUDIO_FLAC, MediaItemMapper.inferAudioMimeType("https://cdn.example.com/ep.flac"))
+        assertEquals(androidx.media3.common.MimeTypes.AUDIO_MPEG, MediaItemMapper.inferAudioMimeType("https://cdn.example.com/ep.unknown"))
     }
 
     @Test
     fun testFromEpisodePopulatesRemoteAudioUrlExtraAndMimeTypeAndPodcastEpisodeMediaType() {
-        val tempFile = java.io.File.createTempFile("temp_cast_audio", ".mp3").apply { deleteOnExit() }
-        val episode = Episode(
-            id = "cast-ep-id",
-            podcastFeedUrl = "https://feed.url",
-            title = "Cast Episode",
-            description = "Description",
-            audioUrl = "https://cdn.example.com/cast_episode.mp3",
-            pubDate = 123456789L,
-            duration = 3600L,
-            imageUrl = "https://image.url",
-            localFilePath = tempFile.absolutePath,
-            downloadStatus = 2
-        )
+        val tempFile = java.io.File.createTempFile("temp_cast_audio", ".m4a").apply { deleteOnExit() }
+        try {
+            val episode = Episode(
+                id = "cast-ep-id",
+                podcastFeedUrl = "https://feed.url",
+                title = "Cast Episode",
+                description = "Description",
+                audioUrl = "https://cdn.example.com/cast_episode.m4a",
+                pubDate = 123456789L,
+                duration = 3600L,
+                imageUrl = "https://image.url",
+                localFilePath = tempFile.absolutePath,
+                downloadStatus = 2
+            )
 
-        val mediaItem = MediaItemMapper.fromEpisode(episode)
+            val mediaItem = MediaItemMapper.fromEpisode(episode)
 
-        assertNotNull(mediaItem)
-        assertEquals(tempFile.absolutePath, mediaItem?.localConfiguration?.uri?.toString())
-        assertEquals(
-            "https://cdn.example.com/cast_episode.mp3",
-            mediaItem?.mediaMetadata?.extras?.getString(com.yuval.podcasts.data.Constants.EXTRA_REMOTE_AUDIO_URL)
-        )
-        assertEquals(
-            androidx.media3.common.MimeTypes.AUDIO_MPEG,
-            mediaItem?.localConfiguration?.mimeType
-        )
-        assertEquals(
-            androidx.media3.common.MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE,
-            mediaItem?.mediaMetadata?.mediaType
-        )
-
-        tempFile.delete()
+            assertNotNull(mediaItem)
+            assertEquals(tempFile.absolutePath, mediaItem?.localConfiguration?.uri?.toString())
+            assertEquals(
+                "https://cdn.example.com/cast_episode.m4a",
+                mediaItem?.mediaMetadata?.extras?.getString(com.yuval.podcasts.data.Constants.EXTRA_REMOTE_AUDIO_URL)
+            )
+            assertEquals(
+                androidx.media3.common.MimeTypes.AUDIO_MP4,
+                mediaItem?.localConfiguration?.mimeType
+            )
+            assertEquals(
+                androidx.media3.common.MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE,
+                mediaItem?.mediaMetadata?.mediaType
+            )
+        } finally {
+            tempFile.delete()
+        }
     }
 }
 

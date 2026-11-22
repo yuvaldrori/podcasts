@@ -16,7 +16,6 @@ class SettingsRepository @Inject constructor(
     private object PreferencesKeys {
         val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
         val SKIP_SILENCE = booleanPreferencesKey("skip_silence")
-        val CLEANUP_SCHEDULED = booleanPreferencesKey("cleanup_scheduled")
         val VOLUME_BOOST = booleanPreferencesKey("volume_boost")
         val LAST_PLAYED_EPISODE_ID = stringPreferencesKey("last_played_episode_id")
     }
@@ -37,14 +36,6 @@ class SettingsRepository @Inject constructor(
     private val DEFAULT_PLAYBACK_SPEED = Constants.DEFAULT_PLAYBACK_SPEED
     private val DEFAULT_SKIP_SILENCE = true
     private val DEFAULT_VOLUME_BOOST = true
-
-    suspend fun isCleanupScheduled(): Boolean = dataStore.data.first()[PreferencesKeys.CLEANUP_SCHEDULED] ?: false
-
-    suspend fun setCleanupScheduled(scheduled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CLEANUP_SCHEDULED] = scheduled
-        }
-    }
 
     suspend fun getPlaybackSpeed(): Float = dataStore.data.first()[PreferencesKeys.PLAYBACK_SPEED] ?: DEFAULT_PLAYBACK_SPEED
 

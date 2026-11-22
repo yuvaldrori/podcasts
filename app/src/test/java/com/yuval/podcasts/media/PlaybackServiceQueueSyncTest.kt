@@ -11,6 +11,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -29,61 +30,76 @@ class PlaybackServiceQueueSyncTest {
     @Test
     fun testSurgicalObserveQueueLogic() {
         val player = ExoPlayer.Builder(ApplicationProvider.getApplicationContext()).build()
-        val service = PlaybackService()
+        try {
+            val service = PlaybackService()
 
-        val epA = createEpisode("A")
-        val epB = createEpisode("B")
-        val epC = createEpisode("C")
+            val epA = createEpisode("A")
+            val epB = createEpisode("B")
+            val epC = createEpisode("C")
 
-        val itemA = MediaItem.Builder().setMediaId("A").setUri("http://a.com").build()
-        val itemB = MediaItem.Builder().setMediaId("B").setUri("http://b.com").build()
-        val itemC = MediaItem.Builder().setMediaId("C").setUri("http://c.com").build()
+            val itemA = MediaItem.Builder().setMediaId("A").setUri("http://a.com").build()
+            val itemB = MediaItem.Builder().setMediaId("B").setUri("http://b.com").build()
+            val itemC = MediaItem.Builder().setMediaId("C").setUri("http://c.com").build()
 
-        player.setMediaItems(listOf(itemA, itemB, itemC), 0, 0L)
-        player.prepare()
+            player.setMediaItems(listOf(itemA, itemB, itemC), 0, 0L)
+            player.prepare()
 
-        val epD = createEpisode("D")
-        val epE = createEpisode("E")
-        val itemD = MediaItem.Builder().setMediaId("D").setUri("http://d.com").build()
-        val itemE = MediaItem.Builder().setMediaId("E").setUri("http://e.com").build()
+            val epD = createEpisode("D")
+            val epE = createEpisode("E")
+            val itemD = MediaItem.Builder().setMediaId("D").setUri("http://d.com").build()
+            val itemE = MediaItem.Builder().setMediaId("E").setUri("http://e.com").build()
 
-        val newEpisodes = listOf(epD, epE, epA, epB, epC)
-        val newMediaItems = listOf(itemD, itemE, itemA, itemB, itemC)
+            val newEpisodes = listOf(epD, epE, epA, epB, epC)
+            val newMediaItems = listOf(itemD, itemE, itemA, itemB, itemC)
 
-        service.updatePlayerFromQueue(player, newEpisodes, newMediaItems)
+            service.updatePlayerFromQueue(player, newEpisodes, newMediaItems)
 
-        assertEquals("A", player.currentMediaItem?.mediaId)
-        assertEquals(5, player.mediaItemCount)
-        assertEquals("D", player.getMediaItemAt(0).mediaId)
-        assertEquals("E", player.getMediaItemAt(1).mediaId)
-        assertEquals("A", player.getMediaItemAt(2).mediaId)
-        assertEquals("B", player.getMediaItemAt(3).mediaId)
-        assertEquals("C", player.getMediaItemAt(4).mediaId)
+            assertEquals("A", player.currentMediaItem?.mediaId)
+            assertEquals(2, player.currentMediaItemIndex)
+            assertEquals(5, player.mediaItemCount)
+            assertEquals("D", player.getMediaItemAt(0).mediaId)
+            assertEquals("E", player.getMediaItemAt(1).mediaId)
+            assertEquals("A", player.getMediaItemAt(2).mediaId)
+            assertEquals("B", player.getMediaItemAt(3).mediaId)
+            assertEquals("C", player.getMediaItemAt(4).mediaId)
+        } finally {
+            player.release()
+        }
     }
 
     @Test
     fun testRemovePlayingEpisode_transitionsToNextItem() {
         val player = ExoPlayer.Builder(ApplicationProvider.getApplicationContext()).build()
-        val service = PlaybackService()
+        try {
+            val service = PlaybackService()
 
-        val epA = createEpisode("A")
-        val epB = createEpisode("B")
-        val epC = createEpisode("C")
+            val epA = createEpisode("A")
+            val epB = createEpisode("B")
+            val epC = createEpisode("C")
 
-        val itemA = MediaItem.Builder().setMediaId("A").setUri("http://a.com").build()
-        val itemB = MediaItem.Builder().setMediaId("B").setUri("http://b.com").build()
-        val itemC = MediaItem.Builder().setMediaId("C").setUri("http://c.com").build()
+            val itemA = MediaItem.Builder().setMediaId("A").setUri("http://a.com").build()
+            val itemB = MediaItem.Builder().setMediaId("B").setUri("http://b.com").build()
+            val itemC = MediaItem.Builder().setMediaId("C").setUri("http://c.com").build()
 
-        player.setMediaItems(listOf(itemA, itemB, itemC), 0, 0L)
-        player.prepare()
+            // Start playing middle item B (index 1) so removing B must advance to C (index 1 in [A, C]),
+            // proving it transitions to the next episode rather than resetting to index 0 (A).
+            player.setMediaItems(listOf(itemA, itemB, itemC), 1, 0L)
+            player.prepare()
+            player.play()
 
-        val newEpisodes = listOf(epB, epC)
-        val newMediaItems = listOf(itemB, itemC)
+            val newEpisodes = listOf(epA, epC)
+            val newMediaItems = listOf(itemA, itemC)
 
-        service.updatePlayerFromQueue(player, newEpisodes, newMediaItems)
+            service.updatePlayerFromQueue(player, newEpisodes, newMediaItems)
 
-        assertEquals(2, player.mediaItemCount)
-        assertEquals("B", player.currentMediaItem?.mediaId)
+            assertEquals(2, player.mediaItemCount)
+            assertEquals("C", player.currentMediaItem?.mediaId)
+            assertEquals(1, player.currentMediaItemIndex)
+            assertEquals(0L, player.currentPosition)
+            assertTrue("Removing playing episode should keep playback running on the next episode", player.playWhenReady)
+        } finally {
+            player.release()
+        }
     }
 
     @Test
@@ -135,8 +151,38 @@ class PlaybackServiceQueueSyncTest {
 
         service.updatePlayerFromQueue(castPlayer, listOf(epA, epB), listOf(updatedItemA, updatedItemB))
 
-        // Since B is playing on a remote Cast receiver, local file paths cannot be cast and
-        // remote stream URL and title are unchanged. replaceMediaItem MUST NOT be called.
         verify(exactly = 0) { castPlayer.replaceMediaItem(any(), any()) }
+    }
+
+    @Test
+    fun updatePlayerFromQueue_whenMediaItemsOmitsUnmappableEpisode_alignsRemainingItemsById() {
+        val player = ExoPlayer.Builder(ApplicationProvider.getApplicationContext()).build()
+        try {
+            val service = PlaybackService()
+            val epA = createEpisode("A")
+            val epBad = createEpisode("BAD")
+            val epB = createEpisode("B")
+
+            val itemA = MediaItem.Builder().setMediaId("A").setUri("http://a.com").build()
+            val itemB = MediaItem.Builder().setMediaId("B").setUri("http://b.com")
+                .setMediaMetadata(MediaMetadata.Builder().setTitle("Old B").build())
+                .build()
+            val updatedItemB = MediaItem.Builder().setMediaId("B").setUri("http://b.com")
+                .setMediaMetadata(MediaMetadata.Builder().setTitle("New B").build())
+                .build()
+
+            player.setMediaItems(listOf(itemA, itemB), 0, 0L)
+            player.prepare()
+
+            // Simulate epBad failing MediaItemMapper (absent from mediaItems list)
+            service.updatePlayerFromQueue(player, listOf(epA, epBad, epB), listOf(itemA, updatedItemB))
+
+            assertEquals(2, player.mediaItemCount)
+            assertEquals("A", player.getMediaItemAt(0).mediaId)
+            assertEquals("B", player.getMediaItemAt(1).mediaId)
+            assertEquals("New B", player.getMediaItemAt(1).mediaMetadata.title)
+        } finally {
+            player.release()
+        }
     }
 }

@@ -4,14 +4,19 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 object Formatter {
+    private val dateFormatterCache = ConcurrentHashMap<Pair<Locale, ZoneId>, DateTimeFormatter>()
+
     fun formatDate(timestamp: Long): String {
         if (timestamp == 0L) return ""
-        val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault())
-            .withZone(ZoneId.systemDefault())
+        val key = Locale.getDefault() to ZoneId.systemDefault()
+        val dateFormatter = dateFormatterCache.computeIfAbsent(key) { (locale, zone) ->
+            DateTimeFormatter.ofPattern("MMM dd, yyyy", locale).withZone(zone)
+        }
         return dateFormatter.format(Instant.ofEpochMilli(timestamp))
     }
 

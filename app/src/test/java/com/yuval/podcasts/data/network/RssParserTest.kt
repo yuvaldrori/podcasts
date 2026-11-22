@@ -83,16 +83,17 @@ class RssParserTest {
     }
 
     @Test
-    fun parse_withMixedImageTags_prefersItunesImage() {
-        // This tests the logic order in the parser
+    fun parse_withMixedImageTags_prefersItunesImageRegardlessOfTagOrder() {
+        // Place <itunes:image> BEFORE <image> so a naive "last tag wins" parser fails;
+        // RssParser must keep the iTunes image instead of overwriting it with <image>.
         val xml = """
             <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
                 <channel>
                     <title>Mixed Image Test</title>
+                    <itunes:image href="http://test.com/itunes.jpg" />
                     <image>
                         <url>http://test.com/standard.jpg</url>
                     </image>
-                    <itunes:image href="http://test.com/itunes.jpg" />
                     <item>
                         <title>Episode 1</title>
                         <guid>ep1</guid>
@@ -100,11 +101,10 @@ class RssParserTest {
                 </channel>
             </rss>
         """.trimIndent()
-        
+
         val inputStream = ByteArrayInputStream(xml.toByteArray())
         val parsed = parser.parse(inputStream, "http://test.com")
-        
-        // Since itunes:image usually preferred if present
+
         assertEquals("https://test.com/itunes.jpg", parsed.podcast.imageUrl)
     }
 
@@ -210,31 +210,6 @@ class RssParserTest {
         assertEquals("https://test.com/podcast.jpg", parsed.podcast.imageUrl)
         assertEquals("https://test.com/episode1.mp3", parsed.episodes[0].episode.audioUrl)
         assertEquals("https://test.com/episode1.jpg", parsed.episodes[0].episode.imageUrl)
-    }
-
-    @Test
-    fun parse_withStandardRssHttpImage_upgradesToHttps() {
-        val xml = """
-            <rss version="2.0">
-                <channel>
-                    <title>Standard Image Test</title>
-                    <image>
-                        <url>http://test.com/podcast_std.jpg</url>
-                        <title>Standard Image Test</title>
-                        <link>http://test.com</link>
-                    </image>
-                    <item>
-                        <title>Episode 1</title>
-                        <guid>ep1</guid>
-                    </item>
-                </channel>
-            </rss>
-        """.trimIndent()
-        
-        val inputStream = ByteArrayInputStream(xml.toByteArray())
-        val parsed = parser.parse(inputStream, "http://test.com")
-        
-        assertEquals("https://test.com/podcast_std.jpg", parsed.podcast.imageUrl)
     }
 
     @Test

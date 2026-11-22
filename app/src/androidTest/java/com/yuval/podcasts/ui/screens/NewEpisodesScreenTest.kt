@@ -1,57 +1,72 @@
 package com.yuval.podcasts.ui.screens
 
-import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
+import android.content.Context
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
-import com.yuval.podcasts.ui.viewmodel.FeedsUiState
-
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.yuval.podcasts.R
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.db.entity.Podcast
+import com.yuval.podcasts.ui.utils.UiText
+import com.yuval.podcasts.ui.viewmodel.FeedsUiState
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
 
+@RunWith(AndroidJUnit4::class)
 class NewEpisodesScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    @Test
-    fun testSnackbarIsShown() {
-        // ... (existing test code)
-    }
+    private val context: Context
+        get() = ApplicationProvider.getApplicationContext()
+
+    private fun sampleEpisode(index: Int): EpisodeWithPodcast = EpisodeWithPodcast(
+        episode = Episode(
+            id = "ep$index",
+            podcastFeedUrl = "feed",
+            title = "Episode $index",
+            description = "Desc",
+            audioUrl = "url",
+            imageUrl = null,
+            episodeWebLink = null,
+            pubDate = 1000L * index,
+            duration = 300L,
+            downloadStatus = 0,
+            localFilePath = null,
+            isPlayed = false,
+            lastPlayedPosition = 0L,
+            completedAt = null
+        ),
+        podcast = Podcast("feed", "Podcast", "Desc", "url", "web")
+    )
 
     @Test
-    fun testSwipeStatePersistsAfterScrolling() {
-        // Create a list of episodes large enough to require scrolling
-        val episodes = (1..20).map { i ->
-            EpisodeWithPodcast(
-                episode = Episode(
-                    id = "ep$i",
-                    podcastFeedUrl = "feed",
-                    title = "Episode $i",
-                    description = "Desc",
-                    audioUrl = "url",
-                    imageUrl = null,
-                    episodeWebLink = null,
-                    pubDate = 1000L * i,
-                    duration = 300L,
-                    downloadStatus = 0,
-                    localFilePath = null,
-                    isPlayed = false,
-                    lastPlayedPosition = 0L,
-                    completedAt = null
-                ),
-                podcast = Podcast("feed", "Podcast", "Desc", "url", "web")
-            )
-        }.toImmutableList()
-
-        val uiState = FeedsUiState.Success(unplayedEpisodes = episodes)
+    fun testSnackbarIsShown_whenErrorMessagePresent() {
+        val errorText = "Network refresh failed"
+        val uiState = FeedsUiState.Success(
+            unplayedEpisodes = persistentListOf(sampleEpisode(1)),
+            errorMessage = UiText.DynamicString(errorText)
+        )
 
         composeTestRule.setContent {
-            androidx.compose.material3.MaterialTheme {
+            MaterialTheme {
                 NewEpisodesScreen(
                     uiState = uiState,
                     onEpisodeClick = {},
@@ -64,60 +79,59 @@ class NewEpisodesScreenTest {
             }
         }
 
-        // 1. Find the first item and perform a partial swipe (start to end)
-        // We use a swipe action that doesn't trigger the full dismiss
-        composeTestRule.onNodeWithText("Episode 1")
-            .performTouchInput {
-                swipeRight(startX = 0f, endX = 200f, durationMillis = 500)
+        composeTestRule.onNodeWithText(errorText).assertIsDisplayed()
+    }
+
+    @Test
+    fun testScrollAndEpisodeActionButtons() {
+        val episodes = (1..20).map { sampleEpisode(it) }.toImmutableList()
+        val uiState = FeedsUiState.Success(unplayedEpisodes = episodes)
+        var dismissedEpisodeId: String? = null
+        var queuedEpisodeId: String? = null
+
+        composeTestRule.setContent {
+            MaterialTheme {
+                NewEpisodesScreen(
+                    uiState = uiState,
+                    onEpisodeClick = {},
+                    onRefreshAll = {},
+                    onDismissAll = {},
+                    onDismissEpisode = { dismissedEpisodeId = it.id },
+                    onAddToQueue = { queuedEpisodeId = it.id },
+                    onClearError = {}
+                )
             }
+        }
 
-        // 2. Scroll down so Episode 1 is off-screen
-        composeTestRule.onNodeWithTag("episode_list")
-            .performScrollToIndex(19)
-        
+        // Scroll to bottom and verify Episode 20 is rendered
+        composeTestRule.onNodeWithTag("episode_list").performScrollToIndex(19)
         composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Episode 20").assertIsDisplayed()
 
-        // 3. Scroll back to top
-        composeTestRule.onNodeWithTag("episode_list")
-            .performScrollToIndex(0)
-
+        // Scroll back to top and invoke Dismiss and Add to Queue buttons on Episode 1
+        composeTestRule.onNodeWithTag("episode_list").performScrollToIndex(0)
         composeTestRule.waitForIdle()
-
-        // 4. Verify Episode 1 still shows the partial swipe (background should be visible)
-        // Note: This is tricky to verify exactly without custom semantics, but we can 
-        // check that the node still exists and hasn't crashed. 
-        // A more robust check would involve checking the offset or background color if possible.
         composeTestRule.onNodeWithText("Episode 1").assertIsDisplayed()
+
+        composeTestRule.onAllNodesWithContentDescription(context.getString(R.string.dismiss))
+            .onFirst()
+            .performClick()
+        composeTestRule.onAllNodesWithContentDescription(context.getString(R.string.add_to_queue))
+            .onFirst()
+            .performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals("ep1", dismissedEpisodeId)
+        assertEquals("ep1", queuedEpisodeId)
     }
 
     @Test
     fun testPullToRefreshTriggers_whenListIsNotEmpty() {
-        val episodes = kotlinx.collections.immutable.persistentListOf(
-            EpisodeWithPodcast(
-                episode = Episode(
-                    id = "ep1",
-                    podcastFeedUrl = "feed",
-                    title = "Episode 1",
-                    description = "Desc",
-                    audioUrl = "url",
-                    imageUrl = null,
-                    episodeWebLink = null,
-                    pubDate = 1000L,
-                    duration = 300L,
-                    downloadStatus = 0,
-                    localFilePath = null,
-                    isPlayed = false,
-                    lastPlayedPosition = 0L,
-                    completedAt = null
-                ),
-                podcast = Podcast("feed", "Podcast", "Desc", "url", "web")
-            )
-        )
-        val uiState = FeedsUiState.Success(unplayedEpisodes = episodes)
+        val uiState = FeedsUiState.Success(unplayedEpisodes = persistentListOf(sampleEpisode(1)))
         var refreshCalled = false
 
         composeTestRule.setContent {
-            androidx.compose.material3.MaterialTheme {
+            MaterialTheme {
                 NewEpisodesScreen(
                     uiState = uiState,
                     onEpisodeClick = {},
@@ -130,21 +144,19 @@ class NewEpisodesScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("episode_list")
-            .performTouchInput {
-                swipeDown()
-            }
+        composeTestRule.onNodeWithTag("episode_list").performTouchInput { swipeDown() }
+        composeTestRule.waitForIdle()
 
-        org.junit.Assert.assertTrue("onRefreshAll should be called when non-empty list is pulled down", refreshCalled)
+        assertTrue("onRefreshAll should be called when non-empty list is pulled down", refreshCalled)
     }
 
     @Test
     fun testPullToRefreshTriggers_whenListIsEmpty() {
-        val uiState = FeedsUiState.Success(unplayedEpisodes = kotlinx.collections.immutable.persistentListOf())
+        val uiState = FeedsUiState.Success(unplayedEpisodes = persistentListOf())
         var refreshCalled = false
 
         composeTestRule.setContent {
-            androidx.compose.material3.MaterialTheme {
+            MaterialTheme {
                 NewEpisodesScreen(
                     uiState = uiState,
                     onEpisodeClick = {},
@@ -157,11 +169,9 @@ class NewEpisodesScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("episode_list")
-            .performTouchInput {
-                swipeDown()
-            }
+        composeTestRule.onNodeWithTag("episode_list").performTouchInput { swipeDown() }
+        composeTestRule.waitForIdle()
 
-        org.junit.Assert.assertTrue("onRefreshAll should be called when empty list is pulled down", refreshCalled)
+        assertTrue("onRefreshAll should be called when empty list is pulled down", refreshCalled)
     }
 }

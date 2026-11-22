@@ -51,14 +51,14 @@ class DragDropStateTest {
         val drag = DragDropState(listState, onMove = { from, to -> moves.add(from to to) })
 
         drag.onDragStart("a")
-        // A fast drag of 250px in one event: center = 0 + 250 + 50 = 300, which lands in item
-        // "c" (index 2) -> a two-position jump.
-        drag.onDrag(250f)
+        // A fast drag of 240px in one event: center = 0 + 240 + 50 = 290, strictly inside item
+        // "c" [200, 300] (index 2) -> a two-position jump.
+        drag.onDrag(240f)
 
         assertEquals(listOf(0 to 2), moves)
         // After moving to index 2 the dragged item's layout offset becomes 200. To stay pinned to
-        // the finger (at +250) the translation must be 250 - 200 = 50. The old single-item-size
-        // compensation produced 150 here (a full row of drift).
-        assertEquals(50f, drag.draggingItemOffset, 0.001f)
+        // the finger (at +240) the translation must be 240 - 200 = 40. The old single-item-size
+        // compensation produced 140 here (a full row of drift).
+        assertEquals(40f, drag.draggingItemOffset, 0.001f)
     }
 }

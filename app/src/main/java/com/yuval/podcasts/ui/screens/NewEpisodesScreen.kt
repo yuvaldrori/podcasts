@@ -1,7 +1,12 @@
 package com.yuval.podcasts.ui.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -9,23 +14,27 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.components.LoadingBox
-import com.yuval.podcasts.ui.components.RefreshProgressIndicator
+import com.yuval.podcasts.ui.components.RefreshableContent
 import com.yuval.podcasts.ui.components.emptyStateItem
 import com.yuval.podcasts.ui.viewmodel.FeedsUiState
 
@@ -47,13 +56,14 @@ fun NewEpisodesScreen(
         return
     }
 
-    val pullToRefreshState = rememberPullToRefreshState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
-    // State hoisting for swipe-to-dismiss
-    val episodesData = (uiState as? FeedsUiState.Success)?.unplayedEpisodes ?: emptyList()
-    val errorMessage = (uiState as? FeedsUiState.Success)?.errorMessage
+    val successState = uiState as? FeedsUiState.Success
+    val episodesData = successState?.unplayedEpisodes ?: emptyList()
+    val errorMessage = successState?.errorMessage
+    val isRefreshing = successState?.isRefreshing ?: false
+    val refreshProgress = successState?.refreshProgress
 
     LaunchedEffect(errorMessage) {
         errorMessage?.let { error ->
@@ -61,7 +71,7 @@ fun NewEpisodesScreen(
             onClearError()
         }
     }
-    
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -78,66 +88,55 @@ fun NewEpisodesScreen(
             )
         }
     ) { padding ->
-        val successState = uiState as? FeedsUiState.Success
-        val isRefreshing = successState?.isRefreshing ?: false
-        val refreshProgress = successState?.refreshProgress
-
-        PullToRefreshBox(
+        RefreshableContent(
             isRefreshing = isRefreshing,
+            refreshProgress = refreshProgress,
             onRefresh = onRefreshAll,
-            state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            indicator = {}
+            modifier = Modifier.padding(padding)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                RefreshProgressIndicator(isRefreshing = isRefreshing, refreshProgress = refreshProgress)
-                
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .testTag("episode_list"),
-                    contentPadding = PaddingValues(
-                        top = 8.dp,
-                        bottom = contentPadding.calculateBottomPadding() + 16.dp,
-                        start = 16.dp,
-                        end = 16.dp
-                    )
-                ) {
-                    if (episodesData.isEmpty()) {
-                        emptyStateItem(R.string.empty_new_episodes_message)
-                    } else {
-                        items(
-                            items = episodesData,
-                            key = { it.episode.id }
-                        ) { episodeWithPodcast ->
-                            val episode = episodeWithPodcast.episode
-                            val podcast = episodeWithPodcast.podcast
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("episode_list"),
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                )
+            ) {
+                if (episodesData.isEmpty()) {
+                    emptyStateItem(R.string.empty_new_episodes_message)
+                } else {
+                    items(
+                        items = episodesData,
+                        key = { it.episode.id }
+                    ) { episodeWithPodcast ->
+                        val episode = episodeWithPodcast.episode
+                        val podcast = episodeWithPodcast.podcast
 
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .animateItem()
-                            ) {
-                                val clickHandler = remember(episode.id) { { onEpisodeClick(episode.id) } }
-                                EpisodeItem(
-                                    episode = episode,
-                                    modifier = Modifier.clickable(onClick = clickHandler),
-                                    imageUrl = podcast.imageUrl,
-                                    downloadProgress = downloadProgressMap[episode.id] ?: 0,
-                                    trailingContent = {
-                                        Row {
-                                            IconButton(onClick = { onDismissEpisode(episode) }) {
-                                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.dismiss))
-                                            }
-                                            IconButton(onClick = { onAddToQueue(episode) }) {
-                                                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
-                                            }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem()
+                        ) {
+                            val clickHandler = remember(episode.id, onEpisodeClick) { { onEpisodeClick(episode.id) } }
+                            EpisodeItem(
+                                episode = episode,
+                                modifier = Modifier.clickable(onClick = clickHandler),
+                                imageUrl = podcast.imageUrl,
+                                downloadProgress = downloadProgressMap[episode.id] ?: 0,
+                                trailingContent = {
+                                    Row {
+                                        IconButton(onClick = { onDismissEpisode(episode) }) {
+                                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.dismiss))
+                                        }
+                                        IconButton(onClick = { onAddToQueue(episode) }) {
+                                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_queue))
                                         }
                                     }
-                                )
-                            }
+                                }
+                            )
                         }
                     }
                 }

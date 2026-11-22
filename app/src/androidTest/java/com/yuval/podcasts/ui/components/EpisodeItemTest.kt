@@ -1,11 +1,12 @@
 package com.yuval.podcasts.ui.components
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.yuval.podcasts.data.db.entity.Episode
 import com.yuval.podcasts.data.db.entity.Podcast
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,12 +37,13 @@ class EpisodeItemTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Description with bold text", substring = true)
-            .assertExists()
+        // Exact match (substring = false) ensures leading/trailing HTML tags & entities were stripped
+        composeTestRule.onNodeWithText("Description with bold text", substring = false)
+            .assertIsDisplayed()
     }
 
     @Test
-    fun podcastItem_rendersCleanDescription() {
+    fun podcastItem_rendersTitleAndDescription() {
         val podcast = Podcast(
             feedUrl = "https://feed.url",
             title = "Sample Podcast",
@@ -56,7 +58,9 @@ class EpisodeItemTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Channel italic & text", substring = true)
-            .assertExists()
+        composeTestRule.onNodeWithText("Sample Podcast", substring = false)
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Channel italic & text", substring = false)
+            .assertIsDisplayed()
     }
 }

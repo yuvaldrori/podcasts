@@ -2,57 +2,58 @@ package com.yuval.podcasts.media
 
 import android.app.PendingIntent
 import android.content.Intent
-import androidx.media3.common.MediaItem
-import androidx.media3.common.AudioAttributes
-import androidx.media3.common.C
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
+import android.media.audiofx.LoudnessEnhancer
+import android.os.Bundle
+import android.view.KeyEvent
+import androidx.annotation.OptIn
+import androidx.core.content.IntentCompat
 import androidx.media3.cast.CastPlayer
 import androidx.media3.cast.SessionAvailabilityListener
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
-import android.os.Bundle
-import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaLibraryService
-import androidx.media3.session.MediaLibraryService.MediaLibrarySession
-import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.yuval.podcasts.MainActivity
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.QueueDao
-import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
-import java.io.File
-import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
+import com.yuval.podcasts.data.db.entity.Episode
+import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.di.IoDispatcher
 import com.yuval.podcasts.di.MainDispatcher
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Job
-import com.yuval.podcasts.data.db.entity.Episode
-import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
+import com.yuval.podcasts.domain.usecase.RemoveEpisodeUseCase
 import com.yuval.podcasts.utils.LogManager
-import javax.inject.Inject
-import androidx.core.content.IntentCompat
-import androidx.media3.session.SessionCommand
-import androidx.media3.session.SessionResult
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
-import android.view.KeyEvent
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.first
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.isActive
-import androidx.media3.common.MediaMetadata
-import com.yuval.podcasts.data.Constants
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.asListenableFuture
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class PlaybackService : MediaLibraryService() {
 
@@ -66,18 +67,16 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var removeEpisodeUseCase: RemoveEpisodeUseCase
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var logManager: LogManager
-    
+
     @Inject @IoDispatcher lateinit var ioDispatcher: CoroutineDispatcher
     @Inject @MainDispatcher lateinit var mainDispatcher: CoroutineDispatcher
 
     private var mediaSession: MediaLibrarySession? = null
-    private var lastResumedId: String? = null
     private lateinit var serviceScope: CoroutineScope
-    private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
-    private var currentAudioSessionId: Int = androidx.media3.common.C.AUDIO_SESSION_ID_UNSET
+    private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var loudnessEnhancerJob: Job? = null
+    private var currentAudioSessionId: Int = C.AUDIO_SESSION_ID_UNSET
     private var playerListener: PlaybackServicePlayerListener? = null
-
-
 
     private val mediaSessionCallback = object : MediaLibrarySession.Callback {
         override fun onConnect(
@@ -88,16 +87,13 @@ class PlaybackService : MediaLibraryService() {
                 .add(SessionCommand(Constants.COMMAND_REWIND_10, Bundle.EMPTY))
                 .add(SessionCommand(Constants.COMMAND_SKIP_30, Bundle.EMPTY))
                 .build()
-            
+
             val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
                 .remove(Player.COMMAND_SET_REPEAT_MODE)
                 .remove(Player.COMMAND_SET_SHUFFLE_MODE)
                 .build()
-            
-            return MediaSession.ConnectionResult.accept(
-                sessionCommands,
-                playerCommands
-            )
+
+            return MediaSession.ConnectionResult.accept(sessionCommands, playerCommands)
         }
 
         override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
@@ -146,13 +142,12 @@ class PlaybackService : MediaLibraryService() {
             mediaItems: MutableList<MediaItem>
         ): ListenableFuture<MutableList<MediaItem>> {
             return serviceScope.async(ioDispatcher) {
-                val resolvedItems = mediaItems.map { item ->
+                mediaItems.map { item ->
                     if (item.localConfiguration != null) return@map item
-                    
-                    val episodeWithPodcast = episodeDao.getEpisodeWithPodcast(item.mediaId)
-                    episodeWithPodcast?.let { MediaItemMapper.fromEpisode(it.episode, it.podcast.imageUrl, it.podcast.title) } ?: item
+                    episodeDao.getEpisodeWithPodcast(item.mediaId)
+                        ?.let(MediaItemMapper::fromEpisodeWithPodcast)
+                        ?: item
                 }.toMutableList()
-                resolvedItems
             }.asListenableFuture()
         }
 
@@ -163,25 +158,7 @@ class PlaybackService : MediaLibraryService() {
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             return serviceScope.async(ioDispatcher) {
                 val queueWithPodcast = queueDao.getQueueEpisodesWithPodcast().first()
-                val lastPlayedId = settingsRepository.getLastPlayedEpisodeId()
-                if (queueWithPodcast.isNotEmpty()) {
-                    var startIndex = queueWithPodcast.indexOfFirst { it.episode.id == lastPlayedId }
-                    if (startIndex == -1) startIndex = 0
-                    val currentEp = queueWithPodcast[startIndex].episode
-                    val mediaItems = queueWithPodcast.mapNotNull { MediaItemMapper.fromEpisode(it.episode, it.podcast.imageUrl, it.podcast.title) }
-                    MediaSession.MediaItemsWithStartPosition(
-                        mediaItems,
-                        startIndex,
-                        currentEp.lastPlayedPosition
-                    )
-                } else {
-                    // Fallback or empty result if no queue
-                    MediaSession.MediaItemsWithStartPosition(
-                        mutableListOf(),
-                        0,
-                        0
-                    )
-                }
+                buildResumptionItems(queueWithPodcast)
             }.asListenableFuture()
         }
 
@@ -225,10 +202,8 @@ class PlaybackService : MediaLibraryService() {
                         listOf(queueFolder)
                     }
                     Constants.MEDIA_LIBRARY_QUEUE_ID -> {
-                        val episodes = queueDao.getQueueEpisodesWithPodcastSync()
-                        episodes.mapNotNull { epWithPodcast ->
-                            MediaItemMapper.fromEpisode(epWithPodcast.episode, epWithPodcast.podcast.imageUrl, epWithPodcast.podcast.title)
-                        }
+                        queueDao.getQueueEpisodesWithPodcastSync()
+                            .mapNotNull(MediaItemMapper::fromEpisodeWithPodcast)
                     }
                     else -> emptyList()
                 }
@@ -248,29 +223,27 @@ class PlaybackService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         serviceScope = CoroutineScope(mainDispatcher + SupervisorJob())
-        
 
-        
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH)
             .build()
-            
+
         exoPlayer.setAudioAttributes(audioAttributes, true)
         exoPlayer.setHandleAudioBecomingNoisy(true)
         exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
-        
+
         serviceScope.launch(ioDispatcher) {
             val speed = settingsRepository.getPlaybackSpeed()
             val skipSilence = settingsRepository.isSkipSilenceEnabled()
             withContext(mainDispatcher) {
-                exoPlayer.setPlaybackParameters(androidx.media3.common.PlaybackParameters(speed))
+                exoPlayer.setPlaybackParameters(PlaybackParameters(speed))
                 exoPlayer.skipSilenceEnabled = skipSilence
             }
         }
-        
+
         currentPlayer = exoPlayer
-            
+
         val intent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -278,7 +251,7 @@ class PlaybackService : MediaLibraryService() {
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-            
+
         mediaSession = MediaLibrarySession.Builder(this, currentPlayer, mediaSessionCallback)
             .setSessionActivity(pendingIntent)
             .build()
@@ -300,14 +273,18 @@ class PlaybackService : MediaLibraryService() {
             }
         )
         playerListener = listener
-        
         exoPlayer.addListener(listener)
 
+        scheduleLazyCastInit(listener)
+        observeSkipSilence(serviceScope, mainDispatcher, settingsRepository, exoPlayer)
+        observeVolumeBoost()
+        startPeriodicPositionSaver()
+        observeQueue()
+    }
+
+    private fun scheduleLazyCastInit(listener: PlaybackServicePlayerListener) {
         serviceScope.launch {
-            // Delay CastPlayer initialization to allow main thread to remain fully responsive
-            // during app startup and focus processing. Media3's RemoteCastPlayer initializes
-            // CastContext asynchronously on a single-flight background executor.
-            kotlinx.coroutines.delay(Constants.CAST_INIT_DELAY_MS)
+            delay(Constants.CAST_INIT_DELAY_MS)
             withContext(mainDispatcher) {
                 if (!serviceScope.isActive) return@withContext
                 try {
@@ -325,15 +302,9 @@ class PlaybackService : MediaLibraryService() {
                 }
             }
         }
+    }
 
-        // Live Silence Toggle
-        serviceScope.launch(mainDispatcher) {
-            settingsRepository.skipSilenceFlow.collect { enabled ->
-                exoPlayer.skipSilenceEnabled = enabled
-            }
-        }
-
-        // Live Volume Boost Toggle
+    private fun observeVolumeBoost() {
         serviceScope.launch(mainDispatcher) {
             settingsRepository.volumeBoostFlow.collect { enabled ->
                 try {
@@ -343,54 +314,73 @@ class PlaybackService : MediaLibraryService() {
                 }
             }
         }
+    }
 
-        // Initialize state from queue for playback resumption
-        serviceScope.launch(mainDispatcher) {
-            val queueWithPodcast = queueDao.getQueueEpisodesWithPodcast().first()
-            if (queueWithPodcast.isNotEmpty() && currentPlayer.mediaItemCount == 0) {
-                val lastPlayedId = settingsRepository.getLastPlayedEpisodeId()
-                var startIndex = queueWithPodcast.indexOfFirst { it.episode.id == lastPlayedId }
-                if (startIndex == -1) startIndex = 0
-                val currentEp = queueWithPodcast[startIndex].episode
-                val mediaItems = withContext(ioDispatcher) {
-                    queueWithPodcast.mapNotNull { ep -> MediaItemMapper.fromEpisode(ep.episode, ep.podcast.imageUrl, ep.podcast.title) }
-                }
-                if (mediaItems.isNotEmpty()) {
-                    currentPlayer.setMediaItems(mediaItems)
-                    currentPlayer.seekTo(startIndex, currentEp.lastPlayedPosition)
-                    currentPlayer.prepare()
-                }
-            }
-        }
-
-        // Periodic position saver
+    private fun startPeriodicPositionSaver() {
         serviceScope.launch(mainDispatcher) {
             while (isActive) {
-                kotlinx.coroutines.delay(Constants.SAVE_POSITION_INTERVAL_MS)
+                delay(Constants.SAVE_POSITION_INTERVAL_MS)
                 if (currentPlayer.isPlaying) {
                     saveCurrentPosition()
                 }
             }
         }
-
-        observeQueue()
     }
-    
+
     private fun setCurrentPlayer(newPlayer: Player) {
         if (currentPlayer == newPlayer) return
-        
-        // No manual state transfer needed as CastPlayer.setLocalPlayer handles it
         currentPlayer = newPlayer
         mediaSession?.player = newPlayer
     }
 
+    private suspend fun buildResumptionItems(
+        queueWithPodcast: List<EpisodeWithPodcast>
+    ): MediaSession.MediaItemsWithStartPosition {
+        if (queueWithPodcast.isEmpty()) {
+            return MediaSession.MediaItemsWithStartPosition(mutableListOf(), 0, 0L)
+        }
+        val mapped = queueWithPodcast.mapNotNull { item ->
+            MediaItemMapper.fromEpisodeWithPodcast(item)?.let { item.episode to it }
+        }
+        if (mapped.isEmpty()) {
+            return MediaSession.MediaItemsWithStartPosition(mutableListOf(), 0, 0L)
+        }
+        val lastPlayedId = settingsRepository.getLastPlayedEpisodeId()
+        val startIndex = mapped.indexOfFirst { (ep, _) -> ep.id == lastPlayedId }.takeIf { it != -1 } ?: 0
+        val currentEp = mapped[startIndex].first
+        return MediaSession.MediaItemsWithStartPosition(
+            mapped.map { it.second },
+            startIndex,
+            currentEp.lastPlayedPosition
+        )
+    }
+
     private fun observeQueue() {
         serviceScope.launch {
+            var isInitialEmission = true
             queueDao.getQueueEpisodesWithPodcast().distinctUntilChanged().collect { queueWithPodcast ->
                 val episodes = queueWithPodcast.map { it.episode }
                 playerListener?.updateCachedPositions(episodes)
+
+                if (isInitialEmission) {
+                    isInitialEmission = false
+                    if (queueWithPodcast.isNotEmpty() && currentPlayer.mediaItemCount == 0) {
+                        val resumption = withContext(ioDispatcher) { buildResumptionItems(queueWithPodcast) }
+                        if (resumption.mediaItems.isNotEmpty()) {
+                            withContext(mainDispatcher) {
+                                if (currentPlayer.mediaItemCount == 0) {
+                                    currentPlayer.setMediaItems(resumption.mediaItems)
+                                    currentPlayer.seekTo(resumption.startIndex, resumption.startPositionMs)
+                                    currentPlayer.prepare()
+                                }
+                            }
+                            return@collect
+                        }
+                    }
+                }
+
                 val mediaItems = withContext(ioDispatcher) {
-                    queueWithPodcast.mapNotNull { MediaItemMapper.fromEpisode(it.episode, it.podcast.imageUrl, it.podcast.title) }
+                    queueWithPodcast.mapNotNull(MediaItemMapper::fromEpisodeWithPodcast)
                 }
                 withContext(mainDispatcher) {
                     updatePlayerFromQueue(currentPlayer, episodes, mediaItems, logManager)
@@ -439,134 +429,7 @@ class PlaybackService : MediaLibraryService() {
         mediaItems: List<MediaItem>,
         logManager: LogManager? = null
     ) {
-        if (episodes.isEmpty()) {
-            if (currentPlayer.mediaItemCount > 0) {
-                currentPlayer.stop()
-                currentPlayer.clearMediaItems()
-            }
-            return
-        }
-
-        val currentMediaId = currentPlayer.currentMediaItem?.mediaId
-
-        if (currentMediaId == null) {
-            currentPlayer.setMediaItems(mediaItems)
-            return
-        }
-
-        val newIds = episodes.map { it.id }
-
-        val currentInNewIndex = episodes.indexOfFirst { it.id == currentMediaId }
-        if (currentInNewIndex == -1) {
-            val playerIds = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
-            val hasQueueItems = playerIds.any { newIds.contains(it) }
-            if (!hasQueueItems) {
-                return
-            }
-
-            var nextEpisodeId: String? = null
-            val currentIndex = currentPlayer.currentMediaItemIndex
-            for (i in currentIndex + 1 until currentPlayer.mediaItemCount) {
-                val id = currentPlayer.getMediaItemAt(i).mediaId
-                if (newIds.contains(id)) {
-                    nextEpisodeId = id
-                    break
-                }
-            }
-
-            if (nextEpisodeId != null) {
-                val nextIndexInNew = episodes.indexOfFirst { it.id == nextEpisodeId }
-                if (nextIndexInNew != -1) {
-                    logManager?.i("PlaybackService", "Current item $currentMediaId removed from queue, transitioning to next item $nextEpisodeId")
-                    currentPlayer.setMediaItems(mediaItems, nextIndexInNew, 0L)
-                    currentPlayer.prepare()
-                    currentPlayer.play()
-                    return
-                }
-            }
-
-            logManager?.i("PlaybackService", "Current item $currentMediaId removed from queue and no next item found, stopping player")
-            currentPlayer.stop()
-            currentPlayer.clearMediaItems()
-            return
-        }
-
-        val currentIds = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
-
-        if (currentIds != newIds) {
-            var i = 0
-            while (i < currentPlayer.mediaItemCount) {
-                val id = currentPlayer.getMediaItemAt(i).mediaId
-                if (id != currentMediaId && !newIds.contains(id)) {
-                    currentPlayer.removeMediaItem(i)
-                } else {
-                    i++
-                }
-            }
-
-            val existingIdsInPlayer = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it).mediaId }
-            episodes.forEachIndexed { index, episode ->
-                if (!existingIdsInPlayer.contains(episode.id)) {
-                    val newItem = mediaItems.getOrNull(index)
-                    if (newItem != null) {
-                        currentPlayer.addMediaItem(newItem)
-                    }
-                }
-            }
-
-            for (index in episodes.indices) {
-                if (index >= currentPlayer.mediaItemCount) break
-
-                val expectedId = episodes[index].id
-                val actualId = currentPlayer.getMediaItemAt(index).mediaId
-                if (expectedId != actualId) {
-                    for (searchIndex in index + 1 until currentPlayer.mediaItemCount) {
-                        if (currentPlayer.getMediaItemAt(searchIndex).mediaId == expectedId) {
-                            currentPlayer.moveMediaItem(searchIndex, index)
-                            break
-                        }
-                    }
-                }
-            }
-        }
-
-        episodes.forEachIndexed { index, episode ->
-            if (index < currentPlayer.mediaItemCount) {
-                val itemInPlayer = currentPlayer.getMediaItemAt(index)
-                if (itemInPlayer.mediaId == episode.id) {
-                    val updatedItem = mediaItems.getOrNull(index)
-                    if (updatedItem != null) {
-                        @Suppress("DEPRECATION")
-                        val isCasting = (currentPlayer as? CastPlayer)?.isCastSessionAvailable == true
-                        val needsReplacement = if (isCasting) {
-                            // On CastPlayer, localConfiguration.uri points to remote URL on Cast receiver,
-                            // while downloaded episodes have a local file path. RemoteCastPlayer cannot play local files.
-                            // Only update if remote audio URL or title has changed.
-                            val playerRemoteUrl = itemInPlayer.mediaMetadata.extras?.getString(Constants.EXTRA_REMOTE_AUDIO_URL)
-                                ?: itemInPlayer.localConfiguration?.uri?.toString()
-                            val updatedRemoteUrl = updatedItem.mediaMetadata.extras?.getString(Constants.EXTRA_REMOTE_AUDIO_URL)
-                                ?: updatedItem.localConfiguration?.uri?.toString()
-                            val titleChanged = updatedItem.mediaMetadata.title != null &&
-                                updatedItem.mediaMetadata.title != itemInPlayer.mediaMetadata.title
-                            titleChanged || (updatedRemoteUrl != null && updatedRemoteUrl != playerRemoteUrl)
-                        } else {
-                            val uriChanged = updatedItem.localConfiguration?.uri != itemInPlayer.localConfiguration?.uri
-                            val titleChanged = updatedItem.mediaMetadata.title != null &&
-                                updatedItem.mediaMetadata.title != itemInPlayer.mediaMetadata.title
-                            val artistChanged = updatedItem.mediaMetadata.artist != null &&
-                                updatedItem.mediaMetadata.artist != itemInPlayer.mediaMetadata.artist
-                            val albumTitleChanged = updatedItem.mediaMetadata.albumTitle != null &&
-                                updatedItem.mediaMetadata.albumTitle != itemInPlayer.mediaMetadata.albumTitle
-                            val artworkChanged = updatedItem.mediaMetadata.artworkUri != itemInPlayer.mediaMetadata.artworkUri
-                            uriChanged || titleChanged || artistChanged || albumTitleChanged || artworkChanged
-                        }
-                        if (needsReplacement && currentPlayer.currentMediaItemIndex != index) {
-                            currentPlayer.replaceMediaItem(index, updatedItem)
-                        }
-                    }
-                }
-            }
-        }
+        QueuePlaylistSynchronizer.sync(currentPlayer, episodes, mediaItems, logManager)
     }
 
     private fun saveCurrentPosition(mediaId: String, position: Long) {
@@ -583,27 +446,30 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun setupLoudnessEnhancer(audioSessionId: Int) {
-        if (audioSessionId == androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) return
+        if (audioSessionId == C.AUDIO_SESSION_ID_UNSET) return
 
         currentAudioSessionId = audioSessionId
+        loudnessEnhancerJob?.cancel()
         try {
             loudnessEnhancer?.release()
+            loudnessEnhancer = null
+        } catch (e: Exception) {
+            logManager.e("PlaybackService", "Failed to release previous LoudnessEnhancer", mapOf("error" to e.message.toString()))
+        }
 
-            serviceScope.launch(mainDispatcher) {
+        loudnessEnhancerJob = serviceScope.launch(ioDispatcher) {
+            val enabled = settingsRepository.isVolumeBoostEnabled()
+            withContext(mainDispatcher) {
+                if (currentAudioSessionId != audioSessionId) return@withContext
                 try {
-                    val enabled = settingsRepository.isVolumeBoostEnabled()
-                    if (currentAudioSessionId == audioSessionId) {
-                        loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(audioSessionId).apply {
-                            setTargetGain(if (enabled) Constants.VOLUME_BOOST_GAIN_MB else 0)
-                            setEnabled(true)
-                        }
+                    loudnessEnhancer = LoudnessEnhancer(audioSessionId).apply {
+                        setTargetGain(if (enabled) Constants.VOLUME_BOOST_GAIN_MB else 0)
+                        setEnabled(true)
                     }
                 } catch (e: Exception) {
-                    logManager.e("PlaybackService", "Failed to setup LoudnessEnhancer inside coroutine", mapOf("error" to e.message.toString()))
+                    logManager.e("PlaybackService", "Failed to setup LoudnessEnhancer", mapOf("error" to e.message.toString()))
                 }
             }
-        } catch (e: Exception) {
-            logManager.e("PlaybackService", "Failed to setup LoudnessEnhancer", mapOf("error" to e.message.toString()))
         }
     }
 

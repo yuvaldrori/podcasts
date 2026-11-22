@@ -8,10 +8,8 @@ import com.yuval.podcasts.data.db.entity.Chapter
 import com.yuval.podcasts.data.db.entity.NetworkEpisodeWithChapters
 import com.yuval.podcasts.data.db.entity.ParsedPodcast
 import com.yuval.podcasts.data.Constants
+import com.yuval.podcasts.ui.utils.HtmlUtils
 import java.io.InputStream
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration
@@ -255,58 +253,9 @@ class RssParser @Inject constructor() {
         }
     }
 
-    internal fun sanitizeText(input: String): String {
-        if (input.isBlank()) return ""
-        var text = input
-
-        // Strip initial HTML tags (e.g. <p dir="rtl">, <b>, </i>, <br/>)
-        if (text.contains('<') && text.contains('>')) {
-            text = text.replace(TAG_REGEX, "")
-        }
-
-        // Decode XML/HTML entities (up to 3 passes for nested/double-encoded entities)
-        var passes = 0
-        while (text.contains('&') && text.contains(';') && passes < 3) {
-            val prev = text
-            text = text
-                .replace("&amp;", "&")
-                .replace("&quot;", "\"")
-                .replace("&apos;", "'")
-                .replace("&lt;", "<")
-                .replace("&gt;", ">")
-                .replace("&nbsp;", " ")
-            if (text.contains("&#")) {
-                text = text.replace(HEX_ENTITY_REGEX) { match ->
-                    try {
-                        val codePoint = match.groupValues[1].toInt(16)
-                        String(Character.toChars(codePoint))
-                    } catch (e: Exception) {
-                        match.value
-                    }
-                }.replace(DEC_ENTITY_REGEX) { match ->
-                    try {
-                        val codePoint = match.groupValues[1].toInt()
-                        String(Character.toChars(codePoint))
-                    } catch (e: Exception) {
-                        match.value
-                    }
-                }
-            }
-            // Strip any newly unmasked HTML tags from decoded entities (e.g. &lt;b&gt; -> <b>)
-            if (text.contains('<') && text.contains('>')) {
-                text = text.replace(TAG_REGEX, "")
-            }
-            if (prev == text) break
-            passes++
-        }
-
-        return text.replace('\u00A0', ' ').trim()
-    }
+    internal fun sanitizeText(input: String): String = HtmlUtils.sanitizeRssText(input)
 
     companion object {
         private const val MAX_DURATION_PARTS = 3
-        private val TAG_REGEX = Regex("</?(?:p|div|span|strong|b|em|i|u|a|br|hr|h[1-6]|ul|ol|li|img|blockquote|code|pre|table|tr|td|th|tbody|thead|font|center)\\b[^>]*>", RegexOption.IGNORE_CASE)
-        private val HEX_ENTITY_REGEX = Regex("&#x([0-9a-fA-F]+);")
-        private val DEC_ENTITY_REGEX = Regex("&#(\\d+);")
     }
 }

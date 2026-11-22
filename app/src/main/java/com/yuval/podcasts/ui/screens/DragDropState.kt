@@ -67,8 +67,14 @@ fun rememberDragDropState(
     onMove: (Int, Int) -> Unit,
     onDragEnd: () -> Unit = {}
 ): DragDropState {
+    val currentOnMove by rememberUpdatedState(onMove)
+    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
     return remember(lazyListState) {
-        DragDropState(lazyListState, onMove, onDragEnd)
+        DragDropState(
+            lazyListState = lazyListState,
+            onMove = { from, to -> currentOnMove(from, to) },
+            onDragEndAction = { currentOnDragEnd() }
+        )
     }
 }
 

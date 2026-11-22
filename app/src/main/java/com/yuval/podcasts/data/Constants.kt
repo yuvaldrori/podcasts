@@ -1,6 +1,5 @@
 package com.yuval.podcasts.data
 
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 object Constants {
@@ -13,7 +12,6 @@ object Constants {
     val SEEK_BACKWARD_MS = 15.seconds.inWholeMilliseconds
     val SAVE_POSITION_INTERVAL_MS = 15.seconds.inWholeMilliseconds
     val NETWORK_TIMEOUT_MS = 30.seconds.inWholeMilliseconds.toInt()
-    val NETWORK_CALL_TIMEOUT_MS = 60.seconds.inWholeMilliseconds.toInt()
     const val SEEK_POSITION_RESTORATION_THRESHOLD_MS = 2000L
     const val CAST_INIT_DELAY_MS = 2000L
     
@@ -139,8 +137,6 @@ object Constants {
     const val MIN_LOG_LEVEL = 4
 
     object Rss {
-        const val RSS = "rss"
-        const val CHANNEL = "channel"
         const val ITEM = "item"
         const val TITLE = "title"
         const val DESCRIPTION = "description"
@@ -148,7 +144,6 @@ object Constants {
         const val PUB_DATE = "pubDate"
         const val IMAGE = "image"
         const val IMAGE_HREF = "href"
-        const val IMAGE_URL = "url"
         const val URL = "url"
         const val GUID = "guid"
         const val ENCLOSURE = "enclosure"

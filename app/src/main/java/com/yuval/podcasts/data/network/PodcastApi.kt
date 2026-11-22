@@ -56,16 +56,6 @@ class PodcastApi @Inject constructor(
             }
         }
     }
-
-    suspend fun <T> withRssStream(urlString: String, block: suspend (InputStream) -> T): T =
-        withRssStreamConditional(urlString) { result ->
-            when (result) {
-                is RssFetchResult.Success -> block(result.stream)
-                // This branch should be unreachable: withRssStream sends no conditional headers,
-                // so a server should never respond with 304. Treat it as a programming error.
-                is RssFetchResult.NotModified -> throw IllegalStateException("Received 304 Not Modified on an unconditional request to $urlString")
-            }
-        }
 }
 
 /**

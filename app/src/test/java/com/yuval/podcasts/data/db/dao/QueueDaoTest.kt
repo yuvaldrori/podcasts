@@ -43,104 +43,82 @@ class QueueDaoTest {
         database.close()
     }
 
-    private fun getQueueDirect(): List<QueueState> {
-        val cursor = database.openHelper.readableDatabase.query("SELECT * FROM queue ORDER BY position ASC")
-        val list = mutableListOf<QueueState>()
-        cursor.use {
-            val idIndex = cursor.getColumnIndex("episodeId")
-            val posIndex = cursor.getColumnIndex("position")
-            while (cursor.moveToNext()) {
-                val episodeId = cursor.getString(idIndex)
-                val position = cursor.getInt(posIndex)
-                list.add(QueueState(episodeId, position))
-            }
-        }
-        return list
-    }
-
     @Test
-    fun updateQueue_and_getQueue_returnsOrderedList() = runBlocking {
-        val queueItem1 = QueueState("ep1", position = 1)
-        val queueItem2 = QueueState("ep2", position = 0) // Should be first
-        
-        queueDao.updateQueue(listOf(queueItem1, queueItem2))
+    fun updateQueue_replacesExistingAndReturnsOrderedListViaDao() = runBlocking {
+        val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
+        podcastDao.insertPodcast(podcast)
+        val ep1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
+        val ep2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
+        val epOld = Episode("epOld", "url1", "Old", "D", "A", null, null, 500L, 0L, 0, null, false, 0L, null)
+        episodeDao.insertEpisodes(listOf(ep1, ep2, epOld))
 
-        val queue = getQueueDirect()
+        // Seed initial queue so updateQueue must replace it
+        queueDao.updateQueue(listOf(QueueState("epOld", position = 0)))
 
-        assertEquals(2, queue.size)
-        assertEquals("ep2", queue[0].episodeId)
-        assertEquals("ep1", queue[1].episodeId)
+        // Replace with reversed positions
+        queueDao.updateQueue(listOf(QueueState("ep1", position = 1), QueueState("ep2", position = 0)))
+
+        val queueSync = queueDao.getQueueEpisodesSync()
+        assertEquals(listOf("ep2", "ep1"), queueSync.map { it.id })
+        assertEquals(2, queueDao.getQueueCount().first())
     }
 
     @Test
     fun removeFromQueue_removesSpecificItem() = runBlocking {
+        val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
+        podcastDao.insertPodcast(podcast)
+        episodeDao.insertEpisodes(
+            listOf(
+                Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null),
+                Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
+            )
+        )
         queueDao.updateQueue(listOf(QueueState("ep1", 0), QueueState("ep2", 1)))
-        
+
         queueDao.removeFromQueue("ep1")
 
-        val queue = getQueueDirect()
-        assertEquals(1, queue.size)
-        assertEquals("ep2", queue[0].episodeId)
+        val queue = queueDao.getQueueEpisodesSync()
+        assertEquals(listOf("ep2"), queue.map { it.id })
     }
 
     @Test
     fun getQueueEpisodesWithPodcast_returnsJoinedDataInOrder() = runBlocking {
-        // Setup Podcast
         val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
         podcastDao.insertPodcast(podcast)
 
-        // Setup Episodes
         val episode1 = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null)
         val episode2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
         episodeDao.insertEpisodes(listOf(episode1, episode2))
 
-        // Setup Queue (Reverse order)
-        val queueItem1 = QueueState("ep1", position = 1)
-        val queueItem2 = QueueState("ep2", position = 0)
-        queueDao.updateQueue(listOf(queueItem1, queueItem2))
+        queueDao.updateQueue(listOf(QueueState("ep1", position = 1), QueueState("ep2", position = 0)))
 
         val joinedQueue = queueDao.getQueueEpisodesWithPodcast().first()
 
         assertEquals(2, joinedQueue.size)
-        // Position 0 is ep2
         assertEquals("ep2", joinedQueue[0].episode.id)
         assertEquals("P1", joinedQueue[0].podcast.title)
-        
-        // Position 1 is ep1
         assertEquals("ep1", joinedQueue[1].episode.id)
         assertEquals("P1", joinedQueue[1].podcast.title)
     }
 
     @Test
-    fun getQueuedEpisodesNotDownloaded_returnsOnlyNotDownloaded() = runBlocking {
-        // Setup Podcast
+    fun getQueueCount_reflectsInsertionsAndRemovals() = runBlocking {
         val podcast = Podcast("url1", "P1", "D1", "I1", "W1")
         podcastDao.insertPodcast(podcast)
+        episodeDao.insertEpisodes(
+            listOf(
+                Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, 0, null, false, 0L, null),
+                Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
+            )
+        )
 
-        // Setup Episodes
-        val episodeNotDownloaded = Episode("ep1", "url1", "E1", "D", "A", null, null, 1000L, 0L, DownloadStatus.NOT_DOWNLOADED.value, null, false, 0L, null)
-        val episodeDownloading = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, DownloadStatus.DOWNLOADING.value, null, false, 0L, null)
-        val episodeDownloaded = Episode("ep3", "url1", "E3", "D", "A", null, null, 3000L, 0L, DownloadStatus.DOWNLOADED.value, "/path", false, 0L, null)
-        episodeDao.insertEpisodes(listOf(episodeNotDownloaded, episodeDownloading, episodeDownloaded))
+        assertEquals(0, queueDao.getQueueCount().first())
 
-        // Setup Queue
-        queueDao.updateQueue(listOf(
-            QueueState("ep1", position = 0),
-            QueueState("ep2", position = 1),
-            QueueState("ep3", position = 2)
-        ))
+        queueDao.updateQueue(listOf(QueueState("ep1", 0), QueueState("ep2", 1)))
+        assertEquals(2, queueDao.getQueueCount().first())
 
-        // By default, should return episodes that are NOT Downloaded (i.e. downloadStatus != DOWNLOADED)
-        val notDownloaded = queueDao.getQueuedEpisodesNotDownloaded()
-        assertEquals(2, notDownloaded.size)
-        assertEquals("ep1", notDownloaded[0].id)
-        assertEquals("ep2", notDownloaded[1].id)
-
-        // With custom filter (e.g. filter out NOT_DOWNLOADED), should return the other ones
-        val notDownloadedCustom = queueDao.getQueuedEpisodesNotDownloaded(DownloadStatus.NOT_DOWNLOADED.value)
-        assertEquals(2, notDownloadedCustom.size)
-        assertEquals("ep2", notDownloadedCustom[0].id)
-        assertEquals("ep3", notDownloadedCustom[1].id)
+        queueDao.removeFromQueue("ep1")
+        assertEquals(1, queueDao.getQueueCount().first())
     }
 
     @Test
@@ -152,9 +130,7 @@ class QueueDaoTest {
         val episode2 = Episode("ep2", "url1", "E2", "D", "A", null, null, 2000L, 0L, 0, null, false, 0L, null)
         episodeDao.insertEpisodes(listOf(episode1, episode2))
 
-        val queueItem1 = QueueState("ep1", position = 1)
-        val queueItem2 = QueueState("ep2", position = 0)
-        queueDao.updateQueue(listOf(queueItem1, queueItem2))
+        queueDao.updateQueue(listOf(QueueState("ep1", position = 1), QueueState("ep2", position = 0)))
 
         val joinedQueue = queueDao.getQueueEpisodesWithPodcastSync()
 

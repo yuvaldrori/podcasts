@@ -1,5 +1,10 @@
 package com.yuval.podcasts.data.db
 
+import com.yuval.podcasts.di.DatabaseModule
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -24,22 +29,34 @@ class DatabaseSchemaIntegrityTest {
         return path1
     }
 
+    private fun stripComments(source: String): String {
+        val withoutBlock = source.replace(Regex("/\\*.*?\\*/", RegexOption.DOT_MATCHES_ALL), "")
+        return withoutBlock.replace(Regex("//[^\\n]*"), "")
+    }
+
     private fun getDeclaredDatabaseVersion(): Int {
         val file = getAppDatabaseFile()
         assertTrue("AppDatabase.kt file must exist at ${file.absolutePath}", file.exists())
-        val text = file.readText()
-        val match = Regex("""version\s*=\s*(\d+)""").find(text)
+        val text = stripComments(file.readText())
+        val match = Regex("""@Database\s*\([^)]*?\bversion\s*=\s*(\d+)""", RegexOption.DOT_MATCHES_ALL).find(text)
         assertNotNull("version must be declared in AppDatabase.kt @Database annotation", match)
         return match!!.groupValues[1].toInt()
     }
 
     private fun getDeclaredAutoMigrationPairs(): Set<Pair<Int, Int>> {
         val file = getAppDatabaseFile()
-        val text = file.readText()
-        val matches = Regex("""AutoMigration\s*\(\s*from\s*=\s*(\d+)\s*,\s*to\s*=\s*(\d+)\s*\)""").findAll(text)
+        val text = stripComments(file.readText())
+        val matches = Regex("""AutoMigration\s*\(\s*from\s*=\s*(\d+)\s*,\s*to\s*=\s*(\d+)[^)]*\)""").findAll(text)
         return matches.map {
             Pair(it.groupValues[1].toInt(), it.groupValues[2].toInt())
         }.toSet()
+    }
+
+    private fun getManualMigrationPairs(): Set<Pair<Int, Int>> {
+        return setOf(
+            DatabaseModule.MIGRATION_5_6.startVersion to DatabaseModule.MIGRATION_5_6.endVersion,
+            DatabaseModule.MIGRATION_8_9.startVersion to DatabaseModule.MIGRATION_8_9.endVersion
+        )
     }
 
     @Test
@@ -59,37 +76,45 @@ class DatabaseSchemaIntegrityTest {
         val declaredVersion = getDeclaredDatabaseVersion()
 
         assertEquals(
-            "Declared AppDatabase version ($declaredVersion) must match the highest exported Room schema version ($highestExportedVersion). " +
-                    "If you changed an @Entity or DB schema, update version in AppDatabase.kt!",
+            "Declared AppDatabase version ($declaredVersion) must match the highest exported Room schema version ($highestExportedVersion).",
             declaredVersion,
             highestExportedVersion
         )
     }
 
     @Test
-    fun latestVersionTransition_hasAutoMigration() {
+    fun latestVersionTransition_hasMigrationPath() {
         val declaredVersion = getDeclaredDatabaseVersion()
         val previousVersion = declaredVersion - 1
 
-        val autoMigrationPairs = getDeclaredAutoMigrationPairs()
+        val allMigrationPairs = getDeclaredAutoMigrationPairs() + getManualMigrationPairs()
         val targetPair = Pair(previousVersion, declaredVersion)
 
         assertTrue(
-            "Missing AutoMigration(from = $previousVersion, to = $declaredVersion) in AppDatabase.kt! " +
-                    "When bumping database version to $declaredVersion, you must add an AutoMigration to prevent app crashes on upgraded devices.",
-            autoMigrationPairs.contains(targetPair)
+            "Missing AutoMigration or manual Migration from $previousVersion to $declaredVersion!",
+            allMigrationPairs.contains(targetPair)
         )
     }
 
     @Test
-    fun podcastTableSchemaVersion10_containsEtagAndLastModifiedColumns() {
-        val schemasDir = getSchemasDir()
-        val schema10File = File(schemasDir, "10.json")
-        assertTrue("Schema file 10.json must exist at ${schema10File.absolutePath}", schema10File.exists())
+    fun latestPodcastTableSchema_containsEtagAndLastModifiedColumns() {
+        val declaredVersion = getDeclaredDatabaseVersion()
+        val schemaFile = File(getSchemasDir(), "$declaredVersion.json")
+        assertTrue("Schema file $declaredVersion.json must exist at ${schemaFile.absolutePath}", schemaFile.exists())
 
-        val jsonText = schema10File.readText()
+        val root = Json.parseToJsonElement(schemaFile.readText()).jsonObject
+        val entities = root.getValue("database").jsonObject.getValue("entities").jsonArray
 
-        assertTrue("podcasts table in schema 10.json must contain 'etag' field", jsonText.contains("\"fieldPath\": \"etag\""))
-        assertTrue("podcasts table in schema 10.json must contain 'lastModified' field", jsonText.contains("\"fieldPath\": \"lastModified\""))
+        val podcastsEntity = entities
+            .map { it.jsonObject }
+            .firstOrNull { it.getValue("tableName").jsonPrimitive.content == "podcasts" }
+        assertNotNull("podcasts table must exist in schema $declaredVersion.json", podcastsEntity)
+
+        val columnNames = podcastsEntity!!.getValue("fields").jsonArray
+            .map { it.jsonObject.getValue("columnName").jsonPrimitive.content }
+            .toSet()
+
+        assertTrue("podcasts table in schema $declaredVersion.json must contain 'etag' column", columnNames.contains("etag"))
+        assertTrue("podcasts table in schema $declaredVersion.json must contain 'lastModified' column", columnNames.contains("lastModified"))
     }
 }

@@ -1,21 +1,18 @@
 package com.yuval.podcasts.di
 
-import com.yuval.podcasts.data.network.PodcastApi
-import com.yuval.podcasts.data.network.RssParser
+import android.content.Context
+import coil.ImageLoader
+import com.yuval.podcasts.BuildConfig
 import com.yuval.podcasts.data.Constants
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineDispatcher
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
-
-import coil.ImageLoader
-import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -24,11 +21,14 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
+        val builder = OkHttpClient.Builder()
+        if (BuildConfig.DEBUG) {
+            val loggingInterceptor = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BASIC
+            }
+            builder.addInterceptor(loggingInterceptor)
         }
-        return OkHttpClient.Builder()
-            .addInterceptor(loggingInterceptor)
+        return builder
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
                     .header("User-Agent", Constants.HTTP_USER_AGENT)
@@ -50,20 +50,5 @@ object NetworkModule {
         return ImageLoader.Builder(context)
             .okHttpClient(okHttpClient)
             .build()
-    }
-
-    @Provides
-    @Singleton
-    fun providePodcastApi(
-        okHttpClient: OkHttpClient,
-        @IoDispatcher ioDispatcher: CoroutineDispatcher
-    ): PodcastApi {
-        return PodcastApi(okHttpClient, ioDispatcher)
-    }
-
-    @Provides
-    @Singleton
-    fun provideRssParser(): RssParser {
-        return RssParser()
     }
 }
