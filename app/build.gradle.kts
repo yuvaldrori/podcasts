@@ -1,16 +1,21 @@
-import java.util.Date
 import java.text.SimpleDateFormat
-import java.util.Properties
-import java.io.FileInputStream
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
-val versionProps = Properties().apply {
-    load(FileInputStream(rootProject.file("version.properties")))
-}
+val gitCommitCount = providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
+    isIgnoreExitValue = true
+}.standardOutput.asText.map { it.trim().toIntOrNull() ?: 1 }.get()
 
-val verMajor = versionProps.getProperty("VERSION_MAJOR").toInt()
-val verMinor = versionProps.getProperty("VERSION_MINOR").toInt()
-val verPatch = versionProps.getProperty("VERSION_PATCH").toInt()
-val verCode = versionProps.getProperty("VERSION_CODE").toInt()
+val gitCommitHash = providers.exec {
+    commandLine("git", "rev-parse", "--short", "HEAD")
+    isIgnoreExitValue = true
+}.standardOutput.asText.map { it.trim().ifEmpty { "unknown" } }.get()
+
+val releaseBuildDate = SimpleDateFormat("yyyy.MM.dd-HH:mm 'UTC'", Locale.US).apply {
+    timeZone = TimeZone.getTimeZone("UTC")
+}.format(Date())
 
 plugins {
     id("com.android.application")
@@ -39,8 +44,8 @@ android {
         applicationId = "com.yuval.podcasts"
         minSdk = 37
         targetSdk = 37
-        versionCode = verCode
-        versionName = "$verMajor.$verMinor.$verPatch"
+        versionCode = gitCommitCount
+        versionName = gitCommitHash
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -82,7 +87,7 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
-            buildConfigField("String", "BUILD_DATE", "\"${SimpleDateFormat("yyyy.MM.dd-HH:mm").format(Date())}\"")
+            buildConfigField("String", "BUILD_DATE", "\"$releaseBuildDate\"")
         }
     }
     compileOptions {
@@ -210,26 +215,4 @@ dependencies {
     androidTestImplementation(libs.mockk.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-}
-
-tasks.register("incrementVersionCode") {
-    val propsFile = rootProject.file("version.properties")
-    inputs.file(propsFile)
-    outputs.file(propsFile)
-    
-    doLast {
-        val props = Properties()
-        FileInputStream(propsFile).use { props.load(it) }
-        val code = props.getProperty("VERSION_CODE").toInt()
-        props.setProperty("VERSION_CODE", (code + 1).toString())
-        propsFile.writer().use { props.store(it, "Auto-incremented Version Code") }
-        println("Version Code incremented to ${code + 1}")
-    }
-}
-
-// Automatically increment version code for release builds
-tasks.configureEach {
-    if (name == "assembleRelease" || name == "bundleRelease") {
-        dependsOn("incrementVersionCode")
-    }
 }

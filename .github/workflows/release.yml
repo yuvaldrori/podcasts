@@ -1,0 +1,94 @@
+name: Build and Publish Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK 37.2
+        run: |
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          (yes || true) | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" "platforms;android-37.2" "build-tools;37.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify (clean, lint, test, debug build)
+        run: make verify
+
+      - name: Decode release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          JKS_ALIAS: ${{ secrets.JKS_ALIAS }}
+          JKS_PASSWORD: ${{ secrets.JKS_PASSWORD }}
+        run: |
+          for var in KEYSTORE_BASE64 JKS_ALIAS JKS_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Missing required repository secret: $var"
+              exit 1
+            fi
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$HOME/android.jks"
+
+      - name: Build release APK
+        env:
+          JKS_ALIAS: ${{ secrets.JKS_ALIAS }}
+          JKS_PASSWORD: ${{ secrets.JKS_PASSWORD }}
+        run: make build-release
+
+      - name: Publish latest GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M UTC")
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          APK_NAME="podcasts-${SHORT_SHA}.apk"
+
+          cp app/build/outputs/apk/release/app-release.apk "$APK_NAME"
+
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+
+          NOTES=$(cat <<EOF
+          Automated release build from \`main\`.
+
+          - **Commit:** \`${SHORT_SHA}\` (${{ github.sha }})
+          - **Build Time:** ${BUILD_TIME}
+          - **Version Code:** ${COMMIT_COUNT}
+
+          ### Latest Commit
+          ${COMMIT_MSG}
+          EOF
+          )
+
+          gh release create latest "$APK_NAME" \
+            --target "${{ github.sha }}" \
+            --title "Latest (${BUILD_TIME} · ${SHORT_SHA})" \
+            --notes "$NOTES" \
+            --latest
