@@ -61,7 +61,7 @@ SYS_IMG_37 := system-images;android-37.0;google_apis_ps16k;x86_64
 emulator:
 	@echo "Starting emulator ($(AVD_NAME))..."
 	@if ! android emulator list | grep -qx "$(AVD_NAME)"; then \
-		echo "no" | /home/yuval/Android/Sdk/cmdline-tools/latest/bin/avdmanager create avd -n $(AVD_NAME) -k "$(SYS_IMG_37)" -d "pixel_5" --force; \
+		echo "no" | "$${ANDROID_HOME:-$$HOME/Android/Sdk}/cmdline-tools/latest/bin/avdmanager" create avd -n $(AVD_NAME) -k "$(SYS_IMG_37)" -d "pixel_5" --force; \
 		if [ -d "$$HOME/.config/.android/avd/$(AVD_NAME).avd" ]; then \
 			rm -rf "$$HOME/.android/avd/$(AVD_NAME).avd" "$$HOME/.android/avd/$(AVD_NAME).ini"; \
 			ln -s "$$HOME/.config/.android/avd/$(AVD_NAME).avd" "$$HOME/.android/avd/$(AVD_NAME).avd"; \
@@ -73,8 +73,13 @@ emulator:
 	fi
 	android emulator start $(AVD_NAME)
 	@adb wait-for-device
-	@adb shell settings put global hide_error_dialogs 0 || true
-	@adb shell settings put global anr_show_background 0 || true
+	@adb shell settings put global hide_error_dialogs 1 || true
+	@adb shell settings put secure anr_show_background 0 || true
+	@adb shell settings put global disable_window_blurs 1 || true
+	@adb shell settings put global window_animation_scale 0 || true
+	@adb shell settings put global transition_animation_scale 0 || true
+	@adb shell settings put global animator_duration_scale 0 || true
+	@adb shell 'if dumpsys window windows | grep -q "Application Not Responding"; then input keyevent KEYCODE_BACK; fi' || true
 	@adb shell pm disable-user --user 0 com.google.android.googlequicksearchbox >/dev/null 2>&1 || true
 	@adb shell pm disable-user --user 0 com.google.android.as >/dev/null 2>&1 || true
 	@adb shell pm disable-user --user 0 com.google.android.tts >/dev/null 2>&1 || true
