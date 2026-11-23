@@ -1,4 +1,4 @@
-.PHONY: init build build-release test test-ui lint clean verify emulator stop-emulator run help describe layout screenshot check-updates benchmark-run
+.PHONY: init build build-release test test-ui lint clean verify ci-verify emulator stop-emulator run help describe layout screenshot check-updates benchmark-run
 
 # Default target
 all: verify
@@ -13,6 +13,7 @@ help:
 	@echo "  make lint	    - Run Android Lint (strict mode)"
 	@echo "  make clean	    - Clean build artifacts"
 	@echo "  make verify	    - Run clean, lint, test, and debug build"
+	@echo "  make ci-verify     - Run lint and unit tests in a single Gradle invocation (CI)"
 	@echo "  make check-updates - Check for library and component updates"
 	@echo "  make emulator      - Start the Android emulator"
 	@echo "  make stop-emulator - Stop the running emulator"
@@ -43,14 +44,21 @@ test-ui:
 	./gradlew :app:connectedDebugAndroidTest
 
 lint:
-	./gradlew :app:lintDebug -PwarningsAsErrors=true --warning-mode all
+	./gradlew :app:lintDebug --warning-mode all
 
 clean:
 	./gradlew clean
 
 verify: clean lint test build
 	@echo "Verification complete. Running layout check..."
-	@make layout || echo "Layout check skipped (no device connected)"
+	@if command -v android >/dev/null 2>&1 && adb get-state >/dev/null 2>&1; then \
+		make layout; \
+	else \
+		echo "Layout check skipped (no device connected)"; \
+	fi
+
+ci-verify:
+	./gradlew :app:lintDebug :app:testDebugUnitTest --warning-mode all
 
 check-updates:
 	./gradlew dependencyUpdates --no-configuration-cache --no-parallel

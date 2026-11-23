@@ -250,7 +250,7 @@ class AppUpdateManager @Inject constructor(
         val host = httpUrl.host.lowercase()
         return (host == "github.com" && httpUrl.encodedPath.startsWith(TRUSTED_RELEASE_PATH_PREFIX)) ||
             host == "objects.githubusercontent.com" ||
-            host.endsWith(".githubusercontent.com")
+            host == "release-assets.githubusercontent.com"
     }
 
     private fun sanitizeApkFileName(rawName: String): String {
@@ -272,6 +272,6 @@ class AppUpdateManager @Inject constructor(
         val VERSION_CODE_REGEX = Regex("""\*\*Version Code:\*\*\s*(\d+)""")
         val COMMIT_HASH_REGEX = Regex("""\*\*Commit:\*\*\s*`([0-9a-fA-F]+)`""")
         val BUILD_TIME_REGEX = Regex("""\*\*Build Time:\*\*\s*(.+)""")
-        val LATEST_COMMIT_REGEX = Regex("""### Latest Commit\s*\n([\s\S]+)""")
+        val LATEST_COMMIT_REGEX = Regex("""### Latest Commit\s*\n([\s\S]*?)(?=\n###\s|\z)""")
     }
 }

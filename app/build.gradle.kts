@@ -1,7 +1,7 @@
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Locale
-import java.util.TimeZone
 
 val gitCommitCount = providers.gradleProperty("versionCodeOverride")
     .map { it.toInt() }
@@ -13,13 +13,18 @@ val gitCommitCount = providers.gradleProperty("versionCodeOverride")
     ).get()
 
 val gitCommitHash = providers.exec {
-    commandLine("git", "rev-parse", "--short", "HEAD")
+    commandLine("git", "rev-parse", "--short=7", "HEAD")
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim().ifEmpty { "unknown" } }.get()
 
-val releaseBuildDate = SimpleDateFormat("yyyy.MM.dd-HH:mm 'UTC'", Locale.US).apply {
-    timeZone = TimeZone.getTimeZone("UTC")
-}.format(Date())
+val gitCommitEpochSec = providers.exec {
+    commandLine("git", "show", "-s", "--format=%ct", "HEAD")
+    isIgnoreExitValue = true
+}.standardOutput.asText.map { it.trim().toLongOrNull() }.orNull
+
+val releaseBuildDate = DateTimeFormatter.ofPattern("yyyy.MM.dd-HH:mm 'UTC'", Locale.US)
+    .withZone(ZoneOffset.UTC)
+    .format(gitCommitEpochSec?.let(Instant::ofEpochSecond) ?: Instant.now())
 
 plugins {
     id("com.android.application")
@@ -56,10 +61,13 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file(System.getProperty("user.home") + "/android.jks")
-            storePassword = System.getenv("JKS_PASSWORD") ?: ""
-            keyAlias = System.getenv("JKS_ALIAS") ?: ""
-            keyPassword = System.getenv("JKS_PASSWORD") ?: ""
+            val keystorePath = providers.environmentVariable("JKS_PATH")
+                .orElse("${System.getProperty("user.home")}/android.jks")
+                .get()
+            storeFile = file(keystorePath)
+            storePassword = providers.environmentVariable("JKS_PASSWORD").orElse("").get()
+            keyAlias = providers.environmentVariable("JKS_ALIAS").orElse("").get()
+            keyPassword = providers.environmentVariable("JKS_PASSWORD").orElse("").get()
         }
     }
 

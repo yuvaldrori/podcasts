@@ -228,6 +228,49 @@ class AppUpdateManagerTest {
     }
 
     @Test
+    fun checkForUpdate_rawGithubusercontentHost_returnsError() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val manager = buildManager(dispatcher) { chain ->
+            jsonResponse(
+                chain.request(),
+                200,
+                sampleReleaseJson(
+                    versionCode = 215,
+                    apkUrl = "https://raw.githubusercontent.com/attacker/repo/main/fake.apk"
+                )
+            )
+        }
+
+        val result = manager.checkForUpdate(currentVersionCode = 214)
+        assertTrue(result is UpdateCheckResult.Error)
+    }
+
+    @Test
+    fun checkForUpdate_additionalMarkdownSectionAfterCommit_doesNotLeakIntoCommitMessage() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val json = """
+            {
+              "tag_name": "latest",
+              "target_commitish": "abc1234567890",
+              "published_at": "2026-11-22T23:37:00Z",
+              "body": "- **Version Code:** 215\n\n### Latest Commit\nfeat: tighten release flow\n\n### Checksums\nsha256: deadbeef",
+              "assets": [
+                {
+                  "name": "podcasts-abc1234.apk",
+                  "size": 1000,
+                  "browser_download_url": "https://github.com/yuvaldrori/podcasts/releases/download/latest/podcasts-abc1234.apk"
+                }
+              ]
+            }
+        """.trimIndent()
+        val manager = buildManager(dispatcher) { chain -> jsonResponse(chain.request(), 200, json) }
+
+        val result = manager.checkForUpdate(currentVersionCode = 214)
+        assertTrue(result is UpdateCheckResult.UpdateAvailable)
+        assertEquals("feat: tighten release flow", (result as UpdateCheckResult.UpdateAvailable).release.commitMessage)
+    }
+
+    @Test
     fun checkForUpdate_httpError_returnsError() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val manager = buildManager(dispatcher) { chain -> jsonResponse(chain.request(), 500, "{}") }
