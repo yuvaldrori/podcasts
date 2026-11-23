@@ -13,6 +13,9 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
+import com.yuval.podcasts.data.network.AppUpdateManager
+import com.yuval.podcasts.data.network.ReleaseInfo
+import com.yuval.podcasts.data.network.UpdateCheckResult
 import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.data.repository.PodcastRepository
 import com.yuval.podcasts.di.IoDispatcher
@@ -24,6 +27,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,13 +38,25 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
+
+sealed interface AppUpdateState {
+    data object Idle : AppUpdateState
+    data object Checking : AppUpdateState
+    data object UpToDate : AppUpdateState
+    data class UpdateAvailable(val release: ReleaseInfo) : AppUpdateState
+    data class Downloading(val release: ReleaseInfo, val progress: Float) : AppUpdateState
+    data class ReadyToInstall(val release: ReleaseInfo, val apkFile: File) : AppUpdateState
+}
 
 data class SettingsUiState(
     val importWorkInfo: WorkInfo? = null,
     val errorMessage: UiText? = null,
     val logNote: String = "",
-    val successMessage: UiText? = null
+    val successMessage: UiText? = null,
+    val appUpdateState: AppUpdateState = AppUpdateState.Idle,
+    val installApkTrigger: File? = null
 )
 
 @HiltViewModel
@@ -50,6 +66,7 @@ class SettingsViewModel @Inject constructor(
     private val workManager: WorkManager,
     private val opmlManager: OpmlManager,
     private val importLocalFileUseCase: ImportLocalFileUseCase,
+    private val appUpdateManager: AppUpdateManager,
     private val logManager: LogManager,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
@@ -57,18 +74,24 @@ class SettingsViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<UiText?>(null)
     private val _successMessage = MutableStateFlow<UiText?>(null)
     private val _logNote = MutableStateFlow("")
+    private val _appUpdateState = MutableStateFlow<AppUpdateState>(AppUpdateState.Idle)
+    private val _installApkTrigger = MutableStateFlow<File?>(null)
+    private var updateDownloadJob: Job? = null
 
     val uiState: StateFlow<SettingsUiState> = combine(
         workManager.getWorkInfosForUniqueWorkLiveData(Constants.WORK_NAME_OPML_IMPORT).asFlow().map { it.firstOrNull() },
         _errorMessage,
         _successMessage,
-        _logNote
-    ) { importWorkInfo, errorMsg, successMsg, note ->
+        _logNote,
+        combine(_appUpdateState, _installApkTrigger, ::Pair)
+    ) { importWorkInfo, errorMsg, successMsg, note, (updateState, installApk) ->
         SettingsUiState(
             importWorkInfo = importWorkInfo,
             errorMessage = errorMsg,
             successMessage = successMsg,
-            logNote = note
+            logNote = note,
+            appUpdateState = updateState,
+            installApkTrigger = installApk
         )
     }.stateIn(
         scope = viewModelScope,
@@ -162,6 +185,70 @@ class SettingsViewModel @Inject constructor(
                 _errorMessage.update { UiText.StringResource(R.string.error_export_opml, e.message ?: "") }
             }
         }
+    }
+
+    fun checkForUpdates() {
+        val current = _appUpdateState.value
+        if (current is AppUpdateState.Checking || current is AppUpdateState.Downloading) return
+
+        viewModelScope.launch {
+            _appUpdateState.value = AppUpdateState.Checking
+            when (val result = appUpdateManager.checkForUpdate()) {
+                is UpdateCheckResult.UpdateAvailable -> {
+                    _appUpdateState.value = AppUpdateState.UpdateAvailable(result.release)
+                }
+                is UpdateCheckResult.UpToDate -> {
+                    _appUpdateState.value = AppUpdateState.UpToDate
+                }
+                is UpdateCheckResult.Error -> {
+                    _appUpdateState.value = AppUpdateState.Idle
+                    _errorMessage.update { UiText.StringResource(R.string.error_check_updates, result.message) }
+                }
+            }
+        }
+    }
+
+    fun downloadUpdate() {
+        val release = when (val current = _appUpdateState.value) {
+            is AppUpdateState.UpdateAvailable -> current.release
+            is AppUpdateState.ReadyToInstall -> current.release
+            else -> return
+        }
+
+        updateDownloadJob?.cancel()
+        updateDownloadJob = viewModelScope.launch {
+            _appUpdateState.value = AppUpdateState.Downloading(release, 0f)
+            try {
+                val apkFile = appUpdateManager.downloadApk(release) { progress ->
+                    _appUpdateState.update { state ->
+                        if (state is AppUpdateState.Downloading) state.copy(progress = progress) else state
+                    }
+                }
+                _appUpdateState.value = AppUpdateState.ReadyToInstall(release, apkFile)
+                _installApkTrigger.value = apkFile
+            } catch (e: CancellationException) {
+                _appUpdateState.value = AppUpdateState.UpdateAvailable(release)
+                throw e
+            } catch (e: Exception) {
+                logManager.e("SettingsViewModel", "Failed to download update", mapOf("error" to (e.message ?: "")))
+                _appUpdateState.value = AppUpdateState.UpdateAvailable(release)
+                _errorMessage.update { UiText.StringResource(R.string.error_download_update, e.message ?: "") }
+            }
+        }
+    }
+
+    fun cancelUpdateDownload() {
+        updateDownloadJob?.cancel()
+        updateDownloadJob = null
+    }
+
+    fun triggerInstall() {
+        val ready = _appUpdateState.value as? AppUpdateState.ReadyToInstall ?: return
+        _installApkTrigger.value = ready.apkFile
+    }
+
+    fun onInstallLaunched() {
+        _installApkTrigger.value = null
     }
 
     fun clearMessages() {

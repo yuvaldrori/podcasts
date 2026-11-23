@@ -3,10 +3,14 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-val gitCommitCount = providers.exec {
-    commandLine("git", "rev-list", "--count", "HEAD")
-    isIgnoreExitValue = true
-}.standardOutput.asText.map { it.trim().toIntOrNull() ?: 1 }.get()
+val gitCommitCount = providers.gradleProperty("versionCodeOverride")
+    .map { it.toInt() }
+    .orElse(
+        providers.exec {
+            commandLine("git", "rev-list", "--count", "HEAD")
+            isIgnoreExitValue = true
+        }.standardOutput.asText.map { it.trim().toIntOrNull() ?: 1 }
+    ).get()
 
 val gitCommitHash = providers.exec {
     commandLine("git", "rev-parse", "--short", "HEAD")

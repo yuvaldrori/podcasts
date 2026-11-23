@@ -1,6 +1,10 @@
 package com.yuval.podcasts.ui.screens
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
+import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -11,16 +15,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import com.yuval.podcasts.R
 import com.yuval.podcasts.data.Constants
+import com.yuval.podcasts.ui.viewmodel.AppUpdateState
 import com.yuval.podcasts.ui.viewmodel.SettingsUiState
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.work.WorkInfo
 import com.yuval.podcasts.BuildConfig
 import com.yuval.podcasts.ui.components.RefreshableContent
 import kotlinx.coroutines.delay
+import java.io.File
+import kotlin.math.roundToInt
 
 
 private const val KEYBOARD_ANIMATION_DELAY_PART1_MS = 150L
@@ -38,6 +48,11 @@ fun SettingsScreen(
     onSaveLogNote: () -> Unit,
     onDownloadLogs: (Uri) -> Unit,
     onClearError: () -> Unit,
+    onCheckForUpdates: () -> Unit = {},
+    onDownloadUpdate: () -> Unit = {},
+    onCancelUpdateDownload: () -> Unit = {},
+    onInstallUpdate: () -> Unit = {},
+    onInstallLaunched: () -> Unit = {},
     isRefreshing: Boolean = false,
     refreshProgress: Pair<Int, Int>? = null,
     onRefreshAll: () -> Unit = {},
@@ -45,6 +60,7 @@ fun SettingsScreen(
 ) {
     var rssUrl by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
 
@@ -93,6 +109,42 @@ fun SettingsScreen(
         contract = ActivityResultContracts.CreateDocument(Constants.MIME_TYPE_JSONL),
         onResult = { uri -> uri?.let { onDownloadLogs(it) } }
     )
+
+    var pendingPermissionApk by remember { mutableStateOf<File?>(null) }
+    var installErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    val unknownSourcesLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+        onResult = {
+            val apk = pendingPermissionApk
+            pendingPermissionApk = null
+            if (apk != null && context.packageManager.canRequestPackageInstalls()) {
+                launchApkInstaller(context, apk)?.let { installErrorMessage = it }
+            }
+        }
+    )
+
+    LaunchedEffect(uiState.installApkTrigger) {
+        val apkFile = uiState.installApkTrigger ?: return@LaunchedEffect
+        onInstallLaunched()
+        if (context.packageManager.canRequestPackageInstalls()) {
+            launchApkInstaller(context, apkFile)?.let { installErrorMessage = it }
+        } else {
+            pendingPermissionApk = apkFile
+            val intent = Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                "package:${context.packageName}".toUri()
+            )
+            unknownSourcesLauncher.launch(intent)
+        }
+    }
+
+    LaunchedEffect(installErrorMessage) {
+        installErrorMessage?.let { error ->
+            snackbarHostState.showSnackbar(resources.getString(R.string.error_install_update, error))
+            installErrorMessage = null
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -234,7 +286,17 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+
+            AppUpdatesSection(
+                updateState = uiState.appUpdateState,
+                onCheckForUpdates = onCheckForUpdates,
+                onDownloadUpdate = onDownloadUpdate,
+                onCancelUpdateDownload = onCancelUpdateDownload,
+                onInstallUpdate = onInstallUpdate
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = stringResource(
                     R.string.app_version,
@@ -247,5 +309,180 @@ fun SettingsScreen(
             )
             }
         }
+    }
+}
+
+@Composable
+private fun AppUpdatesSection(
+    updateState: AppUpdateState,
+    onCheckForUpdates: () -> Unit,
+    onDownloadUpdate: () -> Unit,
+    onCancelUpdateDownload: () -> Unit,
+    onInstallUpdate: () -> Unit
+) {
+    val context = LocalContext.current
+    Text(
+        text = stringResource(R.string.app_updates_title),
+        style = MaterialTheme.typography.titleLarge
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+
+    when (updateState) {
+        is AppUpdateState.Idle,
+        is AppUpdateState.Checking,
+        is AppUpdateState.UpToDate -> {
+            val isChecking = updateState is AppUpdateState.Checking
+            Button(
+                onClick = onCheckForUpdates,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isChecking
+            ) {
+                if (isChecking) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.checking_for_updates))
+                } else {
+                    Text(stringResource(R.string.check_for_updates_btn))
+                }
+            }
+            if (updateState is AppUpdateState.UpToDate) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.app_up_to_date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        is AppUpdateState.UpdateAvailable -> {
+            val release = updateState.release
+            val formattedSize = remember(release.apkSizeBytes) {
+                Formatter.formatShortFileSize(context, release.apkSizeBytes)
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.update_available_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(
+                            R.string.update_available_meta,
+                            release.commitHash,
+                            release.versionCode,
+                            release.buildTime
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    if (release.commitMessage.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = release.commitMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onDownloadUpdate,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.download_and_install_btn, formattedSize))
+                    }
+                }
+            }
+        }
+
+        is AppUpdateState.Downloading -> {
+            val percent = (updateState.progress * 100f).roundToInt().coerceIn(0, 100)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.downloading_update_progress, percent),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { updateState.progress },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onCancelUpdateDownload,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.cancel_btn))
+                    }
+                }
+            }
+        }
+
+        is AppUpdateState.ReadyToInstall -> {
+            val release = updateState.release
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.update_available_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(
+                            R.string.update_available_meta,
+                            release.commitHash,
+                            release.versionCode,
+                            release.buildTime
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onInstallUpdate,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.install_update_btn))
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun launchApkInstaller(context: Context, apkFile: File): String? {
+    return try {
+        val apkUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            apkFile
+        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, Constants.MIME_TYPE_APK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+        null
+    } catch (e: Exception) {
+        e.message ?: e::class.java.simpleName
     }
 }

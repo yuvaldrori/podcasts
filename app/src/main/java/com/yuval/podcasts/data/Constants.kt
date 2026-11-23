@@ -43,6 +43,7 @@ object Constants {
     // Mime Types
     const val MIME_TYPE_OPML = "text/x-opml"
     const val MIME_TYPE_JSONL = "application/jsonl"
+    const val MIME_TYPE_APK = "application/vnd.android.package-archive"
     const val MIME_TYPE_AUDIO_ALL = "audio/*"
     const val MIME_TYPE_APPLICATION_OCTET_STREAM = "application/octet-stream"
     const val MIME_TYPE_TEXT_PLAIN = "text/plain"
@@ -89,6 +90,8 @@ object Constants {
     // Storage
     const val DOWNLOAD_DIR_NAME = "podcasts"
     const val LOCAL_UPLOAD_DIR_NAME = "local_podcasts"
+    const val UPDATE_CACHE_DIR_NAME = "updates"
+    const val GITHUB_LATEST_RELEASE_API_URL = "https://api.github.com/repos/yuvaldrori/podcasts/releases/tags/latest"
     const val SYNC_RETRY_COUNT = 3
     const val PERIODIC_CLEANUP_INTERVAL_HOURS = 24L
     const val PERIODIC_HARD_REFRESH_INTERVAL_DAYS = 7L

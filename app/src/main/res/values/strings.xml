@@ -71,4 +71,18 @@
     <string name="notification_syncing_title">Syncing Podcasts</string>
     <string name="notification_syncing_progress">Refreshing %1$d of %2$d</string>
 
+    <string name="app_updates_title">App Updates</string>
+    <string name="check_for_updates_btn">Check for Updates</string>
+    <string name="checking_for_updates">Checking for updates…</string>
+    <string name="app_up_to_date">You are on the latest version.</string>
+    <string name="update_available_title">Update Available</string>
+    <string name="update_available_meta">Commit %1$s · Build %2$d · %3$s</string>
+    <string name="download_and_install_btn">Download &amp; Install (%1$s)</string>
+    <string name="downloading_update_progress">Downloading update: %1$d%%</string>
+    <string name="cancel_btn">Cancel</string>
+    <string name="install_update_btn">Install Update</string>
+    <string name="error_check_updates">Failed to check for updates: %1$s</string>
+    <string name="error_download_update">Failed to download update: %1$s</string>
+    <string name="error_install_update">Unable to launch installer: %1$s</string>
+
 </resources>

@@ -25,10 +25,15 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.yuval.podcasts.data.network.AppUpdateManager
+import com.yuval.podcasts.data.network.ReleaseInfo
+import com.yuval.podcasts.data.network.UpdateCheckResult
 import com.yuval.podcasts.data.repository.SettingsRepository
 import com.yuval.podcasts.data.opml.OpmlManager
 import com.yuval.podcasts.domain.usecase.ImportLocalFileUseCase
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flowOf
+import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -51,6 +56,7 @@ class SettingsViewModelTest {
     private lateinit var outputStream: OutputStream
     private lateinit var opmlManager: OpmlManager
     private lateinit var importLocalFileUseCase: ImportLocalFileUseCase
+    private lateinit var appUpdateManager: AppUpdateManager
     private lateinit var logManager: com.yuval.podcasts.utils.LogManager
     private lateinit var viewModel: SettingsViewModel
 
@@ -61,6 +67,7 @@ class SettingsViewModelTest {
         workManager = mockk(relaxed = true)
         opmlManager = mockk()
         importLocalFileUseCase = mockk()
+        appUpdateManager = mockk()
         logManager = mockk(relaxed = true)
         context = mockk()
         contentResolver = mockk(relaxed = true)
@@ -81,6 +88,7 @@ class SettingsViewModelTest {
             workManager = workManager,
             opmlManager = opmlManager,
             importLocalFileUseCase = importLocalFileUseCase,
+            appUpdateManager = appUpdateManager,
             logManager = logManager,
             ioDispatcher = mainDispatcherRule.testDispatcher
         )
@@ -231,6 +239,128 @@ class SettingsViewModelTest {
         assertTrue(error != null)
         assertEquals(R.string.error_export_opml, error!!.resId)
         assertEquals(listOf("Disk full"), error.args.toList())
+        job.cancel()
+    }
+
+    private fun sampleRelease() = ReleaseInfo(
+        versionCode = 215,
+        commitHash = "abc1234",
+        buildTime = "2026-11-22 23:37 UTC",
+        commitMessage = "feat: update",
+        apkDownloadUrl = "https://github.com/yuvaldrori/podcasts/releases/download/latest/podcasts-abc1234.apk",
+        apkFileName = "podcasts-abc1234.apk",
+        apkSizeBytes = 7_500_000L
+    )
+
+    @Test
+    fun checkForUpdates_upToDate_setsUpToDateState() = runTest {
+        coEvery { appUpdateManager.checkForUpdate(any(), any()) } returns UpdateCheckResult.UpToDate
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.checkForUpdates()
+        advanceUntilIdle()
+
+        assertEquals(AppUpdateState.UpToDate, viewModel.uiState.value.appUpdateState)
+        assertNull(viewModel.uiState.value.errorMessage)
+        job.cancel()
+    }
+
+    @Test
+    fun checkForUpdates_available_setsUpdateAvailableState() = runTest {
+        val release = sampleRelease()
+        coEvery { appUpdateManager.checkForUpdate(any(), any()) } returns UpdateCheckResult.UpdateAvailable(release)
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.checkForUpdates()
+        advanceUntilIdle()
+
+        assertEquals(AppUpdateState.UpdateAvailable(release), viewModel.uiState.value.appUpdateState)
+        job.cancel()
+    }
+
+    @Test
+    fun checkForUpdates_error_resetsToIdleAndSetsErrorMessage() = runTest {
+        coEvery { appUpdateManager.checkForUpdate(any(), any()) } returns UpdateCheckResult.Error("Timeout")
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.checkForUpdates()
+        advanceUntilIdle()
+
+        assertEquals(AppUpdateState.Idle, viewModel.uiState.value.appUpdateState)
+        val error = viewModel.uiState.value.errorMessage as? UiText.StringResource
+        assertTrue(error != null)
+        assertEquals(R.string.error_check_updates, error!!.resId)
+        assertEquals(listOf("Timeout"), error.args.toList())
+        job.cancel()
+    }
+
+    @Test
+    fun downloadUpdate_success_transitionsToReadyToInstallAndTriggersInstall() = runTest {
+        val release = sampleRelease()
+        val fakeApk = File("/tmp/podcasts-abc1234.apk")
+        coEvery { appUpdateManager.checkForUpdate(any(), any()) } returns UpdateCheckResult.UpdateAvailable(release)
+        coEvery { appUpdateManager.downloadApk(release, any()) } coAnswers {
+            secondArg<(Float) -> Unit>().invoke(0.5f)
+            fakeApk
+        }
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.checkForUpdates()
+        advanceUntilIdle()
+        viewModel.downloadUpdate()
+        advanceUntilIdle()
+
+        assertEquals(AppUpdateState.ReadyToInstall(release, fakeApk), viewModel.uiState.value.appUpdateState)
+        assertEquals(fakeApk, viewModel.uiState.value.installApkTrigger)
+
+        viewModel.onInstallLaunched()
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.installApkTrigger)
+
+        viewModel.triggerInstall()
+        advanceUntilIdle()
+        assertEquals(fakeApk, viewModel.uiState.value.installApkTrigger)
+        job.cancel()
+    }
+
+    @Test
+    fun cancelUpdateDownload_returnsToUpdateAvailable() = runTest {
+        val release = sampleRelease()
+        val gate = CompletableDeferred<File>()
+        coEvery { appUpdateManager.checkForUpdate(any(), any()) } returns UpdateCheckResult.UpdateAvailable(release)
+        coEvery { appUpdateManager.downloadApk(release, any()) } coAnswers { gate.await() }
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.checkForUpdates()
+        advanceUntilIdle()
+        viewModel.downloadUpdate()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.appUpdateState is AppUpdateState.Downloading)
+
+        viewModel.cancelUpdateDownload()
+        advanceUntilIdle()
+        assertEquals(AppUpdateState.UpdateAvailable(release), viewModel.uiState.value.appUpdateState)
+        assertNull(viewModel.uiState.value.errorMessage)
+        job.cancel()
+    }
+
+    @Test
+    fun downloadUpdate_failure_returnsToUpdateAvailableAndSetsError() = runTest {
+        val release = sampleRelease()
+        coEvery { appUpdateManager.checkForUpdate(any(), any()) } returns UpdateCheckResult.UpdateAvailable(release)
+        coEvery { appUpdateManager.downloadApk(release, any()) } throws Exception("Connection reset")
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.checkForUpdates()
+        advanceUntilIdle()
+        viewModel.downloadUpdate()
+        advanceUntilIdle()
+
+        assertEquals(AppUpdateState.UpdateAvailable(release), viewModel.uiState.value.appUpdateState)
+        val error = viewModel.uiState.value.errorMessage as? UiText.StringResource
+        assertTrue(error != null)
+        assertEquals(R.string.error_download_update, error!!.resId)
+        assertEquals(listOf("Connection reset"), error.args.toList())
         job.cancel()
     }
 }
