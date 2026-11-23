@@ -78,7 +78,10 @@
     <string name="update_available_title">Update Available</string>
     <string name="update_available_meta">Commit %1$s · Build %2$d · %3$s</string>
     <string name="download_and_install_btn">Download &amp; Install (%1$s)</string>
+    <string name="download_and_install_btn_no_size">Download &amp; Install</string>
     <string name="downloading_update_progress">Downloading update: %1$d%%</string>
+    <string name="downloading_update_indeterminate">Downloading update…</string>
+    <string name="check_again_btn">Check Again</string>
     <string name="cancel_btn">Cancel</string>
     <string name="install_update_btn">Install Update</string>
     <string name="error_check_updates">Failed to check for updates: %1$s</string>

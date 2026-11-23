@@ -46,7 +46,7 @@ sealed interface AppUpdateState {
     data object Checking : AppUpdateState
     data object UpToDate : AppUpdateState
     data class UpdateAvailable(val release: ReleaseInfo) : AppUpdateState
-    data class Downloading(val release: ReleaseInfo, val progress: Float) : AppUpdateState
+    data class Downloading(val release: ReleaseInfo, val progress: Float?) : AppUpdateState
     data class ReadyToInstall(val release: ReleaseInfo, val apkFile: File) : AppUpdateState
 }
 
@@ -191,8 +191,8 @@ class SettingsViewModel @Inject constructor(
         val current = _appUpdateState.value
         if (current is AppUpdateState.Checking || current is AppUpdateState.Downloading) return
 
+        _appUpdateState.value = AppUpdateState.Checking
         viewModelScope.launch {
-            _appUpdateState.value = AppUpdateState.Checking
             when (val result = appUpdateManager.checkForUpdate()) {
                 is UpdateCheckResult.UpdateAvailable -> {
                     _appUpdateState.value = AppUpdateState.UpdateAvailable(result.release)
@@ -215,23 +215,40 @@ class SettingsViewModel @Inject constructor(
             else -> return
         }
 
+        val initialProgress = if (release.apkSizeBytes > 0L) 0f else null
         updateDownloadJob?.cancel()
+        _appUpdateState.value = AppUpdateState.Downloading(release, initialProgress)
         updateDownloadJob = viewModelScope.launch {
-            _appUpdateState.value = AppUpdateState.Downloading(release, 0f)
             try {
                 val apkFile = appUpdateManager.downloadApk(release) { progress ->
                     _appUpdateState.update { state ->
-                        if (state is AppUpdateState.Downloading) state.copy(progress = progress) else state
+                        if (state is AppUpdateState.Downloading && state.release == release) {
+                            state.copy(progress = progress)
+                        } else {
+                            state
+                        }
                     }
                 }
                 _appUpdateState.value = AppUpdateState.ReadyToInstall(release, apkFile)
                 _installApkTrigger.value = apkFile
             } catch (e: CancellationException) {
-                _appUpdateState.value = AppUpdateState.UpdateAvailable(release)
+                _appUpdateState.update { state ->
+                    if (state is AppUpdateState.Downloading && state.release == release) {
+                        AppUpdateState.UpdateAvailable(release)
+                    } else {
+                        state
+                    }
+                }
                 throw e
             } catch (e: Exception) {
                 logManager.e("SettingsViewModel", "Failed to download update", mapOf("error" to (e.message ?: "")))
-                _appUpdateState.value = AppUpdateState.UpdateAvailable(release)
+                _appUpdateState.update { state ->
+                    if (state is AppUpdateState.Downloading && state.release == release) {
+                        AppUpdateState.UpdateAvailable(release)
+                    } else {
+                        state
+                    }
+                }
                 _errorMessage.update { UiText.StringResource(R.string.error_download_update, e.message ?: "") }
             }
         }
@@ -244,11 +261,20 @@ class SettingsViewModel @Inject constructor(
 
     fun triggerInstall() {
         val ready = _appUpdateState.value as? AppUpdateState.ReadyToInstall ?: return
-        _installApkTrigger.value = ready.apkFile
+        if (ready.apkFile.exists() && ready.apkFile.length() > 0L) {
+            _installApkTrigger.value = ready.apkFile
+        } else {
+            _appUpdateState.value = AppUpdateState.UpdateAvailable(ready.release)
+            downloadUpdate()
+        }
     }
 
     fun onInstallLaunched() {
         _installApkTrigger.value = null
+    }
+
+    fun onInstallError(message: String) {
+        _errorMessage.update { UiText.StringResource(R.string.error_install_update, message) }
     }
 
     fun clearMessages() {

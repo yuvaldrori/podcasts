@@ -240,6 +240,7 @@ fun MainScreen(
                         onCancelUpdateDownload = { settingsViewModel.cancelUpdateDownload() },
                         onInstallUpdate = { settingsViewModel.triggerInstall() },
                         onInstallLaunched = { settingsViewModel.onInstallLaunched() },
+                        onInstallError = { message -> settingsViewModel.onInstallError(message) },
                         isRefreshing = isRefreshing,
                         refreshProgress = refreshProgress,
                         onRefreshAll = onRefreshAll,

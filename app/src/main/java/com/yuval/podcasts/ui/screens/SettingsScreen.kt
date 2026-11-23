@@ -1,5 +1,6 @@
 package com.yuval.podcasts.ui.screens
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -12,11 +13,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
@@ -53,6 +55,7 @@ fun SettingsScreen(
     onCancelUpdateDownload: () -> Unit = {},
     onInstallUpdate: () -> Unit = {},
     onInstallLaunched: () -> Unit = {},
+    onInstallError: (String) -> Unit = {},
     isRefreshing: Boolean = false,
     refreshProgress: Pair<Int, Int>? = null,
     onRefreshAll: () -> Unit = {},
@@ -60,7 +63,6 @@ fun SettingsScreen(
 ) {
     var rssUrl by remember { mutableStateOf("") }
     val context = LocalContext.current
-    val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
 
@@ -110,16 +112,20 @@ fun SettingsScreen(
         onResult = { uri -> uri?.let { onDownloadLogs(it) } }
     )
 
-    var pendingPermissionApk by remember { mutableStateOf<File?>(null) }
-    var installErrorMessage by remember { mutableStateOf<String?>(null) }
+    var pendingPermissionApkPath by rememberSaveable { mutableStateOf<String?>(null) }
 
     val unknownSourcesLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
         onResult = {
-            val apk = pendingPermissionApk
-            pendingPermissionApk = null
-            if (apk != null && context.packageManager.canRequestPackageInstalls()) {
-                launchApkInstaller(context, apk)?.let { installErrorMessage = it }
+            val path = pendingPermissionApkPath
+            pendingPermissionApkPath = null
+            if (path != null && context.packageManager.canRequestPackageInstalls()) {
+                val apk = File(path)
+                if (apk.exists() && apk.length() > 0L) {
+                    launchApkInstaller(context, apk)?.let(onInstallError)
+                } else {
+                    onInstallUpdate()
+                }
             }
         }
     )
@@ -128,21 +134,19 @@ fun SettingsScreen(
         val apkFile = uiState.installApkTrigger ?: return@LaunchedEffect
         onInstallLaunched()
         if (context.packageManager.canRequestPackageInstalls()) {
-            launchApkInstaller(context, apkFile)?.let { installErrorMessage = it }
+            launchApkInstaller(context, apkFile)?.let(onInstallError)
         } else {
-            pendingPermissionApk = apkFile
+            pendingPermissionApkPath = apkFile.absolutePath
             val intent = Intent(
                 Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                 "package:${context.packageName}".toUri()
             )
-            unknownSourcesLauncher.launch(intent)
-        }
-    }
-
-    LaunchedEffect(installErrorMessage) {
-        installErrorMessage?.let { error ->
-            snackbarHostState.showSnackbar(resources.getString(R.string.error_install_update, error))
-            installErrorMessage = null
+            try {
+                unknownSourcesLauncher.launch(intent)
+            } catch (e: ActivityNotFoundException) {
+                pendingPermissionApkPath = null
+                onInstallError(e.message ?: e::class.java.simpleName)
+            }
         }
     }
 
@@ -361,7 +365,7 @@ private fun AppUpdatesSection(
         is AppUpdateState.UpdateAvailable -> {
             val release = updateState.release
             val formattedSize = remember(release.apkSizeBytes) {
-                Formatter.formatShortFileSize(context, release.apkSizeBytes)
+                if (release.apkSizeBytes > 0L) Formatter.formatShortFileSize(context, release.apkSizeBytes) else null
             }
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -389,7 +393,9 @@ private fun AppUpdatesSection(
                         Text(
                             text = release.commitMessage,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -397,31 +403,56 @@ private fun AppUpdatesSection(
                         onClick = onDownloadUpdate,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(R.string.download_and_install_btn, formattedSize))
+                        Text(
+                            if (formattedSize != null) {
+                                stringResource(R.string.download_and_install_btn, formattedSize)
+                            } else {
+                                stringResource(R.string.download_and_install_btn_no_size)
+                            }
+                        )
+                    }
+                    TextButton(
+                        onClick = onCheckForUpdates,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text(stringResource(R.string.check_again_btn))
                     }
                 }
             }
         }
 
         is AppUpdateState.Downloading -> {
-            val percent = (updateState.progress * 100f).roundToInt().coerceIn(0, 100)
+            val progress = updateState.progress
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = stringResource(R.string.downloading_update_progress, percent),
+                        text = if (progress != null) {
+                            val percent = (progress * 100f).roundToInt().coerceIn(0, 100)
+                            stringResource(R.string.downloading_update_progress, percent)
+                        } else {
+                            stringResource(R.string.downloading_update_indeterminate)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { updateState.progress },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
-                    )
+                    if (progress != null) {
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedButton(
                         onClick = onCancelUpdateDownload,
@@ -462,6 +493,12 @@ private fun AppUpdatesSection(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.install_update_btn))
+                    }
+                    TextButton(
+                        onClick = onCheckForUpdates,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text(stringResource(R.string.check_again_btn))
                     }
                 }
             }

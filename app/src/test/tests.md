@@ -28,7 +28,7 @@ These tests verify RSS fetching, conditional caching, cancellation, and XML/date
 *   **`RssParserTest`**: Verifies extracting podcast/episode metadata, CDATA & entities, schemeless & HTTP→HTTPS URL upgrades, `<itunes:image>` precedence regardless of tag order, invalid duration resilience, and HTML/entity sanitization of titles, podcast descriptions, and chapters.
 *   **`RssParserCrashTest`**: Feeds malformed XML to `RssParser` and verifies it throws a wrapped exception whose cause is `XmlPullParserException`.
 *   **`DateParserTest`**: Verifies RSS publication date parsing across RFC-1123, single-digit days, legacy timezone abbreviations (`EST`, `UT`), word-boundary preservation for `"UTC"`, ISO-8601 fallback, and invalid date fallback to `0L`.
-*   **`AppUpdateManagerTest`**: Verifies GitHub Releases API JSON parsing (`Version Code`, commit hash, build time, commit message, APK asset), newer vs. equal/older `versionCode` comparison, HTTP/network/missing-asset error handling, APK streaming with progress updates and filename sanitization, stale APK cleanup, and temp-file deletion on failure.
+*   **`AppUpdateManagerTest`**: Verifies GitHub Releases API JSON parsing (`Version Code`, hex SHA vs. branch-name commit hash fallback, null `body` resilience, build time, commit message, trusted GitHub APK host validation), newer vs. equal/older `versionCode` comparison (including post-upgrade cache cleanup), HTTP/network/missing-asset error handling, APK streaming with progress updates, dotfile/path-traversal filename sanitization, truncated-stream rejection, mid-stream failure `.tmp` cleanup (preserving prior valid APKs), and mid-stream coroutine cancellation aborting the OkHttp call and deleting `.tmp`.
 
 ## 📁 Data, OPML & Repository Tests
 *Located in: `app/src/test/java/com/yuval/podcasts/data/`*
@@ -105,7 +105,7 @@ These tests verify RSS fetching, conditional caching, cancellation, and XML/date
 *   **`QueueViewModelTimeTest`**: Verifies live playback position ticks update `queueTimeRemaining` without re-emitting `uiState` and override DB duration/position for the active episode.
 *   **`EpisodeDetailViewModelTest`**: Verifies loading episode details, pre-parsing HTML descriptions into clickable `AnnotatedString`s (and reusing them without re-parsing across queue updates), queue membership state, and `addToQueue` delegation.
 *   **`PodcastDetailViewModelTest`**: Verifies loading episodes for a podcast feed URL and adding episodes to the queue.
-*   **`SettingsViewModelTest`**: Verifies adding podcasts, importing/exporting OPML (excluding local pseudo-subscriptions), importing local audio, exporting logs, clearing messages, exact error string resource IDs, and the in-app update state machine (check for updates, up-to-date/available/error transitions, APK download progress, install trigger, and download cancellation).
+*   **`SettingsViewModelTest`**: Verifies adding podcasts, importing/exporting OPML (excluding local pseudo-subscriptions), importing local audio, exporting logs, clearing messages, exact error string resource IDs, and the in-app update state machine (concurrent check guard, up-to-date/available/error transitions, mid-flight download progress, evicted-APK re-download on install, install error routing, download failure logging, and download cancellation).
 
 ## 🤖 Android UI Tests (Instrumented)
 *Located in: `app/src/androidTest/java/com/yuval/podcasts/ui/`*

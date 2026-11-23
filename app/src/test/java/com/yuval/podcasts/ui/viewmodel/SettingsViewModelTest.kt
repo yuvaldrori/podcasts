@@ -295,19 +295,47 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun downloadUpdate_success_transitionsToReadyToInstallAndTriggersInstall() = runTest {
+    fun checkForUpdates_ignoresConcurrentCallWhileChecking() = runTest {
+        val gate = CompletableDeferred<UpdateCheckResult>()
+        coEvery { appUpdateManager.checkForUpdate(any(), any()) } coAnswers { gate.await() }
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.checkForUpdates()
+        viewModel.checkForUpdates()
+        advanceUntilIdle()
+
+        assertEquals(AppUpdateState.Checking, viewModel.uiState.value.appUpdateState)
+        coVerify(exactly = 1) { appUpdateManager.checkForUpdate(any(), any()) }
+
+        gate.complete(UpdateCheckResult.UpToDate)
+        advanceUntilIdle()
+        assertEquals(AppUpdateState.UpToDate, viewModel.uiState.value.appUpdateState)
+        job.cancel()
+    }
+
+    @Test
+    fun downloadUpdate_success_emitsProgress_transitionsToReadyToInstall_andTriggersInstall() = runTest {
         val release = sampleRelease()
-        val fakeApk = File("/tmp/podcasts-abc1234.apk")
+        val fakeApk = File.createTempFile("podcasts-test", ".apk").apply {
+            writeText("apk-content")
+            deleteOnExit()
+        }
+        val gate = CompletableDeferred<File>()
         coEvery { appUpdateManager.checkForUpdate(any(), any()) } returns UpdateCheckResult.UpdateAvailable(release)
         coEvery { appUpdateManager.downloadApk(release, any()) } coAnswers {
-            secondArg<(Float) -> Unit>().invoke(0.5f)
-            fakeApk
+            secondArg<(Float?) -> Unit>().invoke(0.5f)
+            gate.await()
         }
         val job = backgroundScope.launch { viewModel.uiState.collect {} }
 
         viewModel.checkForUpdates()
         advanceUntilIdle()
         viewModel.downloadUpdate()
+        advanceUntilIdle()
+
+        assertEquals(AppUpdateState.Downloading(release, 0.5f), viewModel.uiState.value.appUpdateState)
+
+        gate.complete(fakeApk)
         advanceUntilIdle()
 
         assertEquals(AppUpdateState.ReadyToInstall(release, fakeApk), viewModel.uiState.value.appUpdateState)
@@ -320,6 +348,36 @@ class SettingsViewModelTest {
         viewModel.triggerInstall()
         advanceUntilIdle()
         assertEquals(fakeApk, viewModel.uiState.value.installApkTrigger)
+        fakeApk.delete()
+        job.cancel()
+    }
+
+    @Test
+    fun triggerInstall_missingCachedApk_retriggersDownload() = runTest {
+        val release = sampleRelease()
+        val evictedApk = File("/tmp/nonexistent-podcasts-evicted.apk").apply { delete() }
+        val freshApk = File.createTempFile("podcasts-fresh", ".apk").apply {
+            writeText("fresh-apk")
+            deleteOnExit()
+        }
+        coEvery { appUpdateManager.checkForUpdate(any(), any()) } returns UpdateCheckResult.UpdateAvailable(release)
+        coEvery { appUpdateManager.downloadApk(release, any()) } returnsMany listOf(evictedApk, freshApk)
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.checkForUpdates()
+        advanceUntilIdle()
+        viewModel.downloadUpdate()
+        advanceUntilIdle()
+        viewModel.onInstallLaunched()
+        advanceUntilIdle()
+
+        viewModel.triggerInstall()
+        advanceUntilIdle()
+
+        coVerify(exactly = 2) { appUpdateManager.downloadApk(release, any()) }
+        assertEquals(AppUpdateState.ReadyToInstall(release, freshApk), viewModel.uiState.value.appUpdateState)
+        assertEquals(freshApk, viewModel.uiState.value.installApkTrigger)
+        freshApk.delete()
         job.cancel()
     }
 
@@ -356,11 +414,26 @@ class SettingsViewModelTest {
         viewModel.downloadUpdate()
         advanceUntilIdle()
 
+        verify { logManager.e("SettingsViewModel", "Failed to download update", any()) }
         assertEquals(AppUpdateState.UpdateAvailable(release), viewModel.uiState.value.appUpdateState)
         val error = viewModel.uiState.value.errorMessage as? UiText.StringResource
         assertTrue(error != null)
         assertEquals(R.string.error_download_update, error!!.resId)
         assertEquals(listOf("Connection reset"), error.args.toList())
+        job.cancel()
+    }
+
+    @Test
+    fun onInstallError_setsInstallErrorMessage() = runTest {
+        val job = backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.onInstallError("No handler")
+        advanceUntilIdle()
+
+        val error = viewModel.uiState.value.errorMessage as? UiText.StringResource
+        assertTrue(error != null)
+        assertEquals(R.string.error_install_update, error!!.resId)
+        assertEquals(listOf("No handler"), error.args.toList())
         job.cancel()
     }
 }
