@@ -183,6 +183,7 @@ fun MainScreen(
                             navController.navigate(EpisodeDetailScreenRoute(episodeId))
                         },
                         onRemoveFromQueue = { episodeId -> queueViewModel.removeFromQueue(episodeId) },
+                        onMoveToTop = { episodeId -> queueViewModel.moveToTop(episodeId) },
                         onMoveItem = { from, to -> queueViewModel.moveItem(from, to) },
                         onCommitReorder = { queueViewModel.commitReorder() },
                         onPlayQueue = { episodes, startIndex, position ->

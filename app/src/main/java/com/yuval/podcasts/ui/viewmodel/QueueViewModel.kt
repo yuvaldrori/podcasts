@@ -118,7 +118,33 @@ class QueueViewModel @Inject constructor(
     fun commitReorder() {
         isDragging = false
         val currentQueue = _queue.value ?: return
-        val targetIds = currentQueue.map { item -> item.episode.id }
+        persistQueueOrder(currentQueue)
+    }
+
+    fun moveToTop(episodeId: String) {
+        val currentMediaId = playerManager.currentMediaId.value
+        if (episodeId == currentMediaId) return
+
+        val currentQueue = _queue.value ?: return
+        val fromIndex = currentQueue.indexOfFirst { it.episode.id == episodeId }
+        if (fromIndex == -1) return
+
+        val mutableList = currentQueue.toMutableList()
+        val item = mutableList.removeAt(fromIndex)
+        val currentIndexAfterRemoval = currentMediaId?.let { id ->
+            mutableList.indexOfFirst { it.episode.id == id }
+        } ?: -1
+        val targetIndex = if (currentIndexAfterRemoval != -1) currentIndexAfterRemoval + 1 else 0
+        if (targetIndex == fromIndex) return
+
+        mutableList.add(targetIndex, item)
+        val updatedQueue = mutableList.toImmutableList()
+        _queue.value = updatedQueue
+        persistQueueOrder(updatedQueue)
+    }
+
+    private fun persistQueueOrder(queue: ImmutableList<EpisodeWithPodcast>) {
+        val targetIds = queue.map { item -> item.episode.id }
         reorderJob?.cancel()
         reorderJob = viewModelScope.launch {
             try {

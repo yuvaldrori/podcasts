@@ -58,7 +58,7 @@ These tests verify RSS fetching, conditional caching, cancellation, and XML/date
 *   **`HardRefreshWorkerTest`**: Verifies forced periodic refresh calls `refreshPodcasts(..., forceRefresh = true)` and requeues missing downloads.
 *   **`CleanupWorkerTest`**: Verifies deleting orphaned `.mp3` and `.part` files while preserving queued episodes, non-queued downloaded episodes, and active downloading `.part` files.
 *   **`DownloadWorkerRequestTest`**: Verifies `DownloadWorker.createWorkRequest` maps input data, network constraint, and expedited flag.
-*   **`DownloadWorkerStreamTest`**: Verifies mid-stream stop and coroutine cancellation revert DB status from `DOWNLOADING` to `NOT_DOWNLOADED`, clear `DownloadProgressTracker`, and delete `.part` files, and verifies streaming progress updates are both emitted (`atLeast = 1`) and time-throttled (`atMost = 25`).
+*   **`DownloadWorkerStreamTest`**: Verifies mid-stream stop and coroutine cancellation revert DB status from `DOWNLOADING` to `NOT_DOWNLOADED`, clear `DownloadProgressTracker`, and delete `.part` files, and verifies streaming progress updates (`setProgress` and foreground notifications) are time-throttled and globally rate-limited across concurrent workers.
 *   **`DownloadWorkerIntegrationTest` (instrumented)**: Verifies `DownloadWorker` returns `Result.retry()` on network `IOException` and transitions `EpisodeDao` status from `DOWNLOADING` back to `NOT_DOWNLOADED`.
 *   **`OpmlImportWorkerTest`**: Verifies `OpmlImportWorker` reads an OPML `Uri` stream, delegates URLs to `repository.refreshPodcasts`, and reports initial and callback progress `(0/2, 1/2, 2/2)` to WorkManager `ProgressUpdater`.
 
@@ -66,7 +66,7 @@ These tests verify RSS fetching, conditional caching, cancellation, and XML/date
 *Located in: `app/src/test/java/com/yuval/podcasts/utils/`, `ui/utils/`, `ui/screens/`, and `media/`*
 
 *   **`StorageUtilsTest`**: Verifies `getDownloadsDir` creates the `podcasts` directory inside `filesDir`, `getFileName` generates deterministic per-episode filenames, and `getFileForEpisode` resolves inside `podcasts/`.
-*   **`LogManagerTest`**: Verifies `LogManager.exportLogsToStream` flushes pending buffered entries immediately and produces valid JSONL output.
+*   **`LogManagerTest`**: Verifies `LogManager.exportLogsToStream` flushes pending buffered entries immediately into valid JSONL output and confirms concurrent `log()` calls do not block while file I/O holds `fileLock`.
 *   **`FormatterTest`**: Verifies locale-independent date (`MMM dd, yyyy`), short duration, playback time, and remaining-time formatting.
 *   **`HtmlUtilsTest`**: Verifies safe URL filtering (`http`/`https`/`mailto` only) in `Spanned.toAnnotatedString()` and HTML tag/entity stripping in `HtmlUtils.stripHtml()`.
 *   **`UiTextTest`**: Verifies `UiText.DynamicString` and `UiText.StringResource` (including exact `resId`, varargs forwarding to `Context.getString`, and structural `equals`/`hashCode`).
@@ -101,7 +101,7 @@ These tests verify RSS fetching, conditional caching, cancellation, and XML/date
 *   **`ThemeViewModelTest`**: Verifies Material You dynamic palette generation uses podcast artwork over episode artwork and offloads palette work to `ioDispatcher`.
 *   **`FeedsViewModelTest`**: Verifies refresh state and progress from WorkManager, download progress exposure, and `addToQueue` delegation to `EnqueueEpisodeUseCase`.
 *   **`NavBadgeViewModelTest`**: Verifies reactive queue and unplayed-episode badge counts backed by lightweight SQL count flows.
-*   **`QueueViewModelTest`**: Verifies optimistic drag-and-drop commit and failure rollback (confirming subsequent DB emissions flow through after drag completes), removing playing vs non-playing episodes, and speed-adjusted time remaining.
+*   **`QueueViewModelTest`**: Verifies optimistic drag-and-drop commit and failure rollback (confirming subsequent DB emissions flow through after drag completes), `moveToTop` positioning (index 0 when idle, directly below an active/paused episode regardless of whether the moved episode started above or below it, consecutive moves, no-ops for the active episode or already-top item, and failure rollback), removing playing vs non-playing episodes, and speed-adjusted time remaining.
 *   **`QueueViewModelTimeTest`**: Verifies live playback position ticks update `queueTimeRemaining` without re-emitting `uiState` and override DB duration/position for the active episode.
 *   **`EpisodeDetailViewModelTest`**: Verifies loading episode details, pre-parsing HTML descriptions into clickable `AnnotatedString`s (and reusing them without re-parsing across queue updates), queue membership state, and `addToQueue` delegation.
 *   **`PodcastDetailViewModelTest`**: Verifies loading episodes for a podcast feed URL and adding episodes to the queue.
@@ -113,7 +113,7 @@ These tests verify RSS fetching, conditional caching, cancellation, and XML/date
 *   **`EpisodeItemTest`**: Verifies `EpisodeItem` renders plain-text previews with HTML tags and entities completely stripped (`substring = false`), and `PodcastItem` renders podcast title and description.
 *   **`NewEpisodesScreenTest`**: Verifies error snackbar display, scrolling and Dismiss / Add-to-Queue button callbacks, and pull-to-refresh on both populated and empty lists.
 *   **`AddToQueueIntegrationTest`**: End-to-end instrumented test wiring real in-memory Room, `DefaultPodcastRepository`, `NewEpisodesScreen`, and `QueueScreen` to verify persisted and visual top-to-bottom queue insertion order.
-*   **`QueueScreenTest`**: Verifies play/pause button state, drag-and-drop reordering and commit callbacks, state restoration preserving reordered queue order, pull-to-refresh on empty and non-empty queues, and top-bar listening-time visibility.
+*   **`QueueScreenTest`**: Verifies play/pause button state, Move to Top button enabled state (disabled only for the active episode) and callback dispatch, drag-and-drop reordering and commit callbacks, state restoration preserving reordered queue order, pull-to-refresh on empty and non-empty queues, and top-bar listening-time visibility.
 *   **`EpisodeDetailScreenShareTest`**: Verifies tapping Share launches `ACTION_CHOOSER` with `text/plain` `ACTION_SEND` sharing title + web link for remote episodes and text-only metadata for local episodes (even if `episodeWebLink` is non-null).
 
 ## 📱 AppFunctions Tests

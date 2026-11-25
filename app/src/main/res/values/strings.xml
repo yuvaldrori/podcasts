@@ -25,6 +25,7 @@
     <string name="play">Play</string>
     <string name="pause">Pause</string>
     <string name="reorder">Reorder</string>
+    <string name="move_to_top">Move to Top</string>
     <string name="options">Options</string>
     <string name="unsubscribe">Unsubscribe</string>
     <string name="podcast_cover">Podcast Cover</string>

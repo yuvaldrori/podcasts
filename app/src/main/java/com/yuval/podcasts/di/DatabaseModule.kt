@@ -5,14 +5,12 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.yuval.podcasts.BuildConfig
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.AppDatabase
 import com.yuval.podcasts.data.db.dao.ChapterDao
 import com.yuval.podcasts.data.db.dao.EpisodeDao
 import com.yuval.podcasts.data.db.dao.PodcastDao
 import com.yuval.podcasts.data.db.dao.QueueDao
-import com.yuval.podcasts.data.Constants
-import com.yuval.podcasts.utils.LogManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -74,34 +72,17 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(
-        @ApplicationContext context: Context,
-        logManager: LogManager
+        @ApplicationContext context: Context
     ): AppDatabase {
-        val builder = Room.databaseBuilder(
+        return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             Constants.DATABASE_NAME
         )
-        .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_5_6, MIGRATION_8_9)
-        .fallbackToDestructiveMigration(true)
-        
-        if (com.yuval.podcasts.BuildConfig.DEBUG) {
-            builder.setQueryCallback({ sqlQuery, bindArgs ->
-                val sql = sqlQuery.uppercase()
-                val isSignificant = sql.startsWith("INSERT") || sql.startsWith("UPDATE") || 
-                                   sql.startsWith("DELETE") || sql.startsWith("BEGIN") || 
-                                   sql.startsWith("COMMIT") || sql.startsWith("ROLLBACK")
-                
-                if (isSignificant) {
-                    logManager.i("DATABASE", "Query: $sqlQuery Args: $bindArgs")
-                } else {
-                    logManager.v("DATABASE", "Query: $sqlQuery Args: $bindArgs")
-                }
-            }, { it.run() })
-        }
-        
-        return builder.build()
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .addMigrations(MIGRATION_5_6, MIGRATION_8_9)
+            .fallbackToDestructiveMigration(true)
+            .build()
     }
 
     @Provides

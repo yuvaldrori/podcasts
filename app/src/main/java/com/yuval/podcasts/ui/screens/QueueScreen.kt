@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Reorder
+import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.yuval.podcasts.R
+import com.yuval.podcasts.data.Constants
 import com.yuval.podcasts.data.db.entity.EpisodeWithPodcast
 import com.yuval.podcasts.ui.components.EpisodeItem
 import com.yuval.podcasts.ui.components.LoadingBox
@@ -54,6 +57,7 @@ fun QueueScreen(
     onRefreshAll: () -> Unit = {},
     onEpisodeClick: (String) -> Unit,
     onRemoveFromQueue: (String) -> Unit,
+    onMoveToTop: (String) -> Unit = {},
     onMoveItem: (Int, Int) -> Unit,
     onCommitReorder: () -> Unit,
     onPlayQueue: (List<EpisodeWithPodcast>, Int, Long) -> Unit,
@@ -151,26 +155,45 @@ fun QueueScreen(
                                 containerColor = containerColor,
                                 trailingContent = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
+                                        val buttonSize = Constants.QUEUE_ACTION_BUTTON_SIZE_DP.dp
+                                        IconButton(
+                                            onClick = { onMoveToTop(episode.id) },
+                                            enabled = !isCurrent,
+                                            modifier = Modifier
+                                                .size(buttonSize)
+                                                .testTag("move_to_top_${episode.id}")
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.VerticalAlignTop,
+                                                contentDescription = stringResource(R.string.move_to_top)
+                                            )
+                                        }
                                         val isThisEpisodePlaying = isPlaying && currentMediaId == episode.id
-                                        IconButton(onClick = {
-                                            if (isThisEpisodePlaying) {
-                                                onPause()
-                                            } else {
-                                                onPlayQueue(queue, index, episode.lastPlayedPosition)
-                                            }
-                                        }) {
+                                        IconButton(
+                                            onClick = {
+                                                if (isThisEpisodePlaying) {
+                                                    onPause()
+                                                } else {
+                                                    onPlayQueue(queue, index, episode.lastPlayedPosition)
+                                                }
+                                            },
+                                            modifier = Modifier.size(buttonSize)
+                                        ) {
                                             val playIcon = if (isThisEpisodePlaying) Icons.Default.Pause else Icons.Default.PlayArrow
                                             val description = stringResource(if (isThisEpisodePlaying) R.string.pause else R.string.play)
                                             Icon(playIcon, contentDescription = description)
                                         }
-                                        IconButton(onClick = { onRemoveFromQueue(episode.id) }) {
+                                        IconButton(
+                                            onClick = { onRemoveFromQueue(episode.id) },
+                                            modifier = Modifier.size(buttonSize)
+                                        ) {
                                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove_from_queue_action))
                                         }
                                         Icon(
                                             imageVector = Icons.Default.Reorder,
                                             contentDescription = stringResource(R.string.reorder),
                                             modifier = Modifier
-                                                .padding(8.dp)
+                                                .padding(6.dp)
                                                 .testTag("reorder_handle_${episode.id}")
                                                 .dragContainer(episode.id, dragDropState)
                                         )

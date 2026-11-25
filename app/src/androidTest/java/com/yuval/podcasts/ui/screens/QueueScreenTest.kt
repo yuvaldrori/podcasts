@@ -7,11 +7,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.test.core.app.ApplicationProvider
@@ -42,6 +45,7 @@ class QueueScreenTest {
     private val dummyPodcast = Podcast("feed", "Podcast Title", "Desc", "url", "web")
     private val ep1 = Episode("ep1", "feed", "Ep 1", "Desc", "url", null, null, 0L, 1000, 0, null, false, 0, null)
     private val ep2 = Episode("ep2", "feed", "Ep 2", "Desc", "url", null, null, 0L, 1000, 0, null, false, 0, null)
+    private val ep3 = Episode("ep3", "feed", "Ep 3", "Desc", "url", null, null, 0L, 1000, 0, null, false, 0, null)
 
     @Test
     fun playButtonShowsWhenNotPlaying() {
@@ -298,5 +302,82 @@ class QueueScreenTest {
 
         val expectedLabel = context.getString(R.string.queue_listening_time, "2m")
         composeTestRule.onNodeWithText(expectedLabel).assertIsDisplayed()
+    }
+
+    @Test
+    fun moveToTopButton_disabledOnlyForCurrentEpisode_andInvokesCallbackForOthers() {
+        val movedIds = mutableListOf<String>()
+        val state = QueueUiState.Success(
+            persistentListOf(
+                EpisodeWithPodcast(ep1, dummyPodcast),
+                EpisodeWithPodcast(ep2, dummyPodcast),
+                EpisodeWithPodcast(ep3, dummyPodcast)
+            )
+        )
+
+        composeTestRule.setContent {
+            PodcastsTheme {
+                QueueScreen(
+                    uiState = state,
+                    queueTimeRemaining = 3000,
+                    isPlaying = false,
+                    currentMediaId = "ep2",
+                    onEpisodeClick = {},
+                    onRemoveFromQueue = {},
+                    onMoveToTop = { movedIds.add(it) },
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = {},
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
+                )
+            }
+        }
+
+        val ep1Btn = composeTestRule.onNodeWithTag("move_to_top_ep1")
+        val ep2Btn = composeTestRule.onNodeWithTag("move_to_top_ep2")
+        val ep3Btn = composeTestRule.onNodeWithTag("move_to_top_ep3")
+
+        ep1Btn.assertIsDisplayed().assertIsEnabled()
+        ep2Btn.assertIsDisplayed().assertIsNotEnabled()
+        ep3Btn.assertIsDisplayed().assertIsEnabled()
+
+        ep1Btn.performClick()
+        ep3Btn.performClick()
+
+        assertEquals(listOf("ep1", "ep3"), movedIds)
+    }
+
+    @Test
+    fun moveToTopButton_allEnabledWhenNoCurrentEpisode() {
+        val movedIds = mutableListOf<String>()
+        val state = QueueUiState.Success(
+            persistentListOf(
+                EpisodeWithPodcast(ep1, dummyPodcast),
+                EpisodeWithPodcast(ep2, dummyPodcast)
+            )
+        )
+
+        composeTestRule.setContent {
+            PodcastsTheme {
+                QueueScreen(
+                    uiState = state,
+                    queueTimeRemaining = 2000,
+                    isPlaying = false,
+                    currentMediaId = null,
+                    onEpisodeClick = {},
+                    onRemoveFromQueue = {},
+                    onMoveToTop = { movedIds.add(it) },
+                    onMoveItem = { _, _ -> },
+                    onCommitReorder = {},
+                    onPlayQueue = { _, _, _ -> },
+                    onPause = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("move_to_top_ep1").assertIsDisplayed().assertIsEnabled()
+        composeTestRule.onNodeWithTag("move_to_top_ep2").assertIsDisplayed().assertIsEnabled().performClick()
+
+        assertEquals(listOf("ep2"), movedIds)
     }
 }

@@ -43,6 +43,7 @@ class LogManager @Inject constructor(
 
     private val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
         .withZone(ZoneId.systemDefault())
+    private val bufferLock = Any()
     private val fileLock = Any()
     private val pendingEntries = mutableListOf<LogEntry>()
     private val bufferLimit = Constants.LOG_BUFFER_LIMIT
@@ -59,7 +60,7 @@ class LogManager @Inject constructor(
             while (true) {
                 wakeSignal.receive()
                 val deadlineMs = System.currentTimeMillis() + flushIntervalMs
-                while (synchronized(fileLock) { pendingEntries.size } < bufferLimit) {
+                while (synchronized(bufferLock) { pendingEntries.size } < bufferLimit) {
                     val remainingMs = deadlineMs - System.currentTimeMillis()
                     if (remainingMs <= 0L) break
                     withTimeoutOrNull(remainingMs) { wakeSignal.receive() } ?: break
@@ -101,7 +102,7 @@ class LogManager @Inject constructor(
         }
 
         val entry = createEntry(tag, message, level, metadata)
-        synchronized(fileLock) {
+        synchronized(bufferLock) {
             pendingEntries.add(entry)
         }
         wakeSignal.trySend(Unit)
@@ -116,17 +117,27 @@ class LogManager @Inject constructor(
             metadata = metadata
         )
 
+    private fun drainPendingEntries(): List<LogEntry> = synchronized(bufferLock) {
+        if (pendingEntries.isEmpty()) return emptyList()
+        val batch = ArrayList(pendingEntries)
+        pendingEntries.clear()
+        batch
+    }
+
+    private fun encodeBatch(batch: List<LogEntry>): String =
+        batch.joinToString("\n", postfix = "\n") { Json.encodeToString(it) }
+
     private fun flushPending(rotate: Boolean = true) {
+        val batch = drainPendingEntries()
+        if (batch.isEmpty()) return
+
+        val payload = encodeBatch(batch)
         synchronized(fileLock) {
-            flushPendingLocked(rotate)
+            writePayloadLocked(payload, rotate)
         }
     }
 
-    private fun flushPendingLocked(rotate: Boolean) {
-        if (pendingEntries.isEmpty()) return
-
-        val payload = pendingEntries.joinToString("\n", postfix = "\n") { Json.encodeToString(it) }
-        pendingEntries.clear()
+    private fun writePayloadLocked(payload: String, rotate: Boolean) {
         try {
             if (rotate) checkRotationLocked()
             activeLogFile.appendText(payload)
@@ -138,10 +149,10 @@ class LogManager @Inject constructor(
     private fun logSync(tag: String, message: String, level: String, metadata: Map<String, String>?) {
         if (getLogLevelInt(level) < Constants.MIN_LOG_LEVEL) return
         val entry = createEntry(tag, message, level, metadata)
-        synchronized(fileLock) {
+        synchronized(bufferLock) {
             pendingEntries.add(entry)
-            flushPendingLocked(rotate = false)
         }
+        flushPending(rotate = false)
     }
 
     private fun checkRotationLocked() {
@@ -162,7 +173,10 @@ class LogManager @Inject constructor(
 
     fun exportLogsToStream(output: OutputStream) {
         synchronized(fileLock) {
-            flushPendingLocked(rotate = true)
+            val batch = drainPendingEntries()
+            if (batch.isNotEmpty()) {
+                writePayloadLocked(encodeBatch(batch), rotate = true)
+            }
             if (previousLogFile.exists()) {
                 previousLogFile.inputStream().use { it.copyTo(output) }
             }

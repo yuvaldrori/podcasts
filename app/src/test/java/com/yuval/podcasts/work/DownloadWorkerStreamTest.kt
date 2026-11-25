@@ -54,6 +54,7 @@ class DownloadWorkerStreamTest {
     private lateinit var okHttpClient: OkHttpClient
     private lateinit var workerParams: WorkerParameters
     private lateinit var progressUpdater: ProgressUpdater
+    private lateinit var foregroundUpdater: ForegroundUpdater
 
     private val episodeId = "test_ep"
 
@@ -66,7 +67,7 @@ class DownloadWorkerStreamTest {
         progressUpdater = mockk()
         every { progressUpdater.updateProgress(any(), any(), any()) } returns Futures.immediateFuture(null)
 
-        val foregroundUpdater = mockk<ForegroundUpdater>()
+        foregroundUpdater = mockk()
         every { foregroundUpdater.setForegroundAsync(any(), any(), any()) } returns Futures.immediateFuture(null)
 
         workerParams = mockk(relaxed = true)
@@ -81,6 +82,7 @@ class DownloadWorkerStreamTest {
 
         // Make sure no stale file from a previous run interferes.
         StorageUtils.getFileForEpisode(context, episodeId).delete()
+        DownloadWorker.resetNotificationRateLimit()
     }
 
     /** Stubs the HTTP call to deliver a successful response carrying [bodyBytes]. */
@@ -166,6 +168,35 @@ class DownloadWorkerStreamTest {
         coVerify(atLeast = 1, atMost = 25) {
             progressUpdater.updateProgress(any(), any(), any())
         }
+    }
+
+    @Test
+    fun downloadWorker_throttlesForegroundNotificationUpdates_byElapsedTime() = runBlocking {
+        val bodySize = Constants.DOWNLOAD_BUFFER_SIZE_BYTES * 100
+        stubSuccessfulResponse(ByteArray(bodySize))
+
+        val worker = createWorker()
+        every { worker.isStopped } returns false
+
+        val result = worker.doWork()
+
+        assertEquals(ListenableWorker.Result.success(), result)
+
+        // A fast download completing in a few milliseconds must not spam foreground notification
+        // updates on every 5% step (which would emit 20+ notifications and trigger OS rate-limit shedding).
+        coVerify(atLeast = 1, atMost = 2) {
+            foregroundUpdater.setForegroundAsync(any(), any(), any())
+        }
+    }
+
+    @Test
+    fun tryAcquireNotificationSlot_enforcesGlobalMinIntervalAcrossWorkers() {
+        DownloadWorker.resetNotificationRateLimit()
+        val interval = Constants.DOWNLOAD_PROGRESS_NOTIFICATION_GLOBAL_MIN_INTERVAL_MS
+
+        org.junit.Assert.assertTrue(DownloadWorker.tryAcquireNotificationSlot(1_000L, interval))
+        org.junit.Assert.assertFalse(DownloadWorker.tryAcquireNotificationSlot(1_000L + interval - 1, interval))
+        org.junit.Assert.assertTrue(DownloadWorker.tryAcquireNotificationSlot(1_000L + interval, interval))
     }
 
     @Test

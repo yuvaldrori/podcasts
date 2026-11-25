@@ -34,6 +34,7 @@ import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicLong
 
 @HiltWorker
 class DownloadWorker @AssistedInject constructor(
@@ -86,9 +87,12 @@ class DownloadWorker @AssistedInject constructor(
                 val outputFile = StorageUtils.getFileForEpisode(appContext, episodeId)
                 val partFile = File(outputFile.absolutePath + ".part")
 
-                var lastProgressPercent = 0
-                var lastProgressUpdateTime = 0L
+                var lastUiProgressPercent = 0
+                var lastUiUpdateTime = 0L
+                var lastWorkerProgressPercent = 0
+                var lastWorkerUpdateTime = 0L
                 var lastNotifiedPercent = 0
+                var lastNotifiedTime = System.currentTimeMillis()
 
                 try {
                     FileOutputStream(partFile).use { outputStream ->
@@ -111,20 +115,31 @@ class DownloadWorker @AssistedInject constructor(
                                     val progress = (totalRead * 100 / totalBytes).toInt()
                                     val currentTime = System.currentTimeMillis()
 
-                                    if (progress > lastProgressPercent &&
-                                        currentTime - lastProgressUpdateTime > Constants.DOWNLOAD_PROGRESS_WORKER_THROTTLE_MS
+                                    if (progress > lastUiProgressPercent &&
+                                        currentTime - lastUiUpdateTime >= Constants.DOWNLOAD_PROGRESS_UI_THROTTLE_MS
                                     ) {
                                         downloadProgressTracker.updateProgress(episodeId, progress)
-                                        progressReporter.setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to progress))
-                                        lastProgressPercent = progress
-                                        lastProgressUpdateTime = currentTime
+                                        lastUiProgressPercent = progress
+                                        lastUiUpdateTime = currentTime
                                     }
 
-                                    if (progress >= lastNotifiedPercent + Constants.DOWNLOAD_PROGRESS_NOTIFICATION_INCREMENT_PERCENT) {
+                                    if (progress > lastWorkerProgressPercent &&
+                                        currentTime - lastWorkerUpdateTime >= Constants.DOWNLOAD_PROGRESS_WORKER_THROTTLE_MS
+                                    ) {
+                                        progressReporter.setProgress(workDataOf(Constants.WORK_KEY_PROGRESS to progress))
+                                        lastWorkerProgressPercent = progress
+                                        lastWorkerUpdateTime = currentTime
+                                    }
+
+                                    if (progress >= lastNotifiedPercent + Constants.DOWNLOAD_PROGRESS_NOTIFICATION_INCREMENT_PERCENT &&
+                                        currentTime - lastNotifiedTime >= Constants.DOWNLOAD_PROGRESS_NOTIFICATION_THROTTLE_MS &&
+                                        tryAcquireNotificationSlot(currentTime)
+                                    ) {
                                         progressReporter.setForegroundIfAllowed {
                                             createForegroundInfo(episodeId, title, progress)
                                         }
                                         lastNotifiedPercent = progress
+                                        lastNotifiedTime = currentTime
                                     }
                                 }
                             }
@@ -202,6 +217,24 @@ class DownloadWorker @AssistedInject constructor(
         private const val MAX_RETRY_COUNT = 3
         private const val NOTIFICATION_ID_HASH_MASK = 0x00ffffff
         private const val NOTIFICATION_PROGRESS_MAX = 100
+
+        private val lastGlobalNotificationMs = AtomicLong(0L)
+
+        internal fun tryAcquireNotificationSlot(
+            nowMs: Long,
+            minIntervalMs: Long = Constants.DOWNLOAD_PROGRESS_NOTIFICATION_GLOBAL_MIN_INTERVAL_MS
+        ): Boolean {
+            while (true) {
+                val prev = lastGlobalNotificationMs.get()
+                if (nowMs - prev < minIntervalMs) return false
+                if (lastGlobalNotificationMs.compareAndSet(prev, nowMs)) return true
+            }
+        }
+
+        @VisibleForTesting
+        internal fun resetNotificationRateLimit() {
+            lastGlobalNotificationMs.set(0L)
+        }
 
         fun createWorkRequest(
             episodeId: String,

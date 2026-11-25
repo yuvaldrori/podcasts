@@ -195,4 +195,177 @@ class QueueViewModelTest {
 
         assertEquals(progressMap, localViewModel.downloadProgressMap.value)
     }
+
+    @Test
+    fun moveToTop_noCurrentEpisode_movesEpisodeToIndexZero() = runTest {
+        val podcast = Podcast("p1", "T", "D", "I", "W")
+        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep3 = Episode("e3", "p1", "T3", "D3", "A3", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val initialQueue = listOf(
+            EpisodeWithPodcast(ep1, podcast),
+            EpisodeWithPodcast(ep2, podcast),
+            EpisodeWithPodcast(ep3, podcast)
+        )
+        listeningQueueFlow.value = initialQueue
+        currentMediaIdFlow.value = null
+
+        val uiStateJob = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        coEvery { repository.reorderQueue(listOf("e3", "e1", "e2")) } answers {
+            listeningQueueFlow.value = listOf(
+                EpisodeWithPodcast(ep3, podcast),
+                EpisodeWithPodcast(ep1, podcast),
+                EpisodeWithPodcast(ep2, podcast)
+            )
+        }
+
+        viewModel.moveToTop("e3")
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.reorderQueue(listOf("e3", "e1", "e2")) }
+        val state = viewModel.uiState.value as QueueUiState.Success
+        assertEquals(listOf("e3", "e1", "e2"), state.queue.map { it.episode.id })
+
+        uiStateJob.cancel()
+    }
+
+    @Test
+    fun moveToTop_currentEpisodePausedAtTop_placesBelowCurrent() = runTest {
+        val podcast = Podcast("p1", "T", "D", "I", "W")
+        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep3 = Episode("e3", "p1", "T3", "D3", "A3", null, null, 0L, 600L, 0, null, false, 0L, null)
+        listeningQueueFlow.value = listOf(
+            EpisodeWithPodcast(ep1, podcast),
+            EpisodeWithPodcast(ep2, podcast),
+            EpisodeWithPodcast(ep3, podcast)
+        )
+        currentMediaIdFlow.value = "e1"
+        every { playerManager.isPlaying } returns MutableStateFlow(false)
+
+        val uiStateJob = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        viewModel.moveToTop("e3")
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.reorderQueue(listOf("e1", "e3", "e2")) }
+        val state = viewModel.uiState.value as QueueUiState.Success
+        assertEquals(listOf("e1", "e3", "e2"), state.queue.map { it.episode.id })
+
+        uiStateJob.cancel()
+    }
+
+    @Test
+    fun moveToTop_episodeAboveCurrentEpisode_placesDirectlyBelowCurrent() = runTest {
+        val podcast = Podcast("p1", "T", "D", "I", "W")
+        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep3 = Episode("e3", "p1", "T3", "D3", "A3", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep4 = Episode("e4", "p1", "T4", "D4", "A4", null, null, 0L, 600L, 0, null, false, 0L, null)
+        listeningQueueFlow.value = listOf(
+            EpisodeWithPodcast(ep1, podcast),
+            EpisodeWithPodcast(ep2, podcast),
+            EpisodeWithPodcast(ep3, podcast),
+            EpisodeWithPodcast(ep4, podcast)
+        )
+        currentMediaIdFlow.value = "e3"
+
+        val uiStateJob = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        viewModel.moveToTop("e1")
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.reorderQueue(listOf("e2", "e3", "e1", "e4")) }
+        val state = viewModel.uiState.value as QueueUiState.Success
+        assertEquals(listOf("e2", "e3", "e1", "e4"), state.queue.map { it.episode.id })
+
+        uiStateJob.cancel()
+    }
+
+    @Test
+    fun moveToTop_currentEpisodeOrAlreadyAtTarget_isNoOp() = runTest {
+        val podcast = Podcast("p1", "T", "D", "I", "W")
+        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep3 = Episode("e3", "p1", "T3", "D3", "A3", null, null, 0L, 600L, 0, null, false, 0L, null)
+        listeningQueueFlow.value = listOf(
+            EpisodeWithPodcast(ep1, podcast),
+            EpisodeWithPodcast(ep2, podcast),
+            EpisodeWithPodcast(ep3, podcast)
+        )
+        currentMediaIdFlow.value = "e1"
+
+        val uiStateJob = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        viewModel.moveToTop("e1")
+        viewModel.moveToTop("e2")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.reorderQueue(any()) }
+        val state = viewModel.uiState.value as QueueUiState.Success
+        assertEquals(listOf("e1", "e2", "e3"), state.queue.map { it.episode.id })
+
+        uiStateJob.cancel()
+    }
+
+    @Test
+    fun moveToTop_multipleConsecutiveMoves_clustersEpisodesBelowCurrent() = runTest {
+        val podcast = Podcast("p1", "T", "D", "I", "W")
+        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep3 = Episode("e3", "p1", "T3", "D3", "A3", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep4 = Episode("e4", "p1", "T4", "D4", "A4", null, null, 0L, 600L, 0, null, false, 0L, null)
+        listeningQueueFlow.value = listOf(
+            EpisodeWithPodcast(ep1, podcast),
+            EpisodeWithPodcast(ep2, podcast),
+            EpisodeWithPodcast(ep3, podcast),
+            EpisodeWithPodcast(ep4, podcast)
+        )
+        currentMediaIdFlow.value = "e1"
+
+        val uiStateJob = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        viewModel.moveToTop("e3")
+        viewModel.moveToTop("e4")
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.reorderQueue(listOf("e1", "e4", "e3", "e2")) }
+        val state = viewModel.uiState.value as QueueUiState.Success
+        assertEquals(listOf("e1", "e4", "e3", "e2"), state.queue.map { it.episode.id })
+
+        uiStateJob.cancel()
+    }
+
+    @Test
+    fun moveToTop_revertsOnRepositoryFailure() = runTest {
+        val podcast = Podcast("p1", "T", "D", "I", "W")
+        val ep1 = Episode("e1", "p1", "T1", "D1", "A1", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep2 = Episode("e2", "p1", "T2", "D2", "A2", null, null, 0L, 600L, 0, null, false, 0L, null)
+        val ep3 = Episode("e3", "p1", "T3", "D3", "A3", null, null, 0L, 600L, 0, null, false, 0L, null)
+        listeningQueueFlow.value = listOf(
+            EpisodeWithPodcast(ep1, podcast),
+            EpisodeWithPodcast(ep2, podcast),
+            EpisodeWithPodcast(ep3, podcast)
+        )
+        currentMediaIdFlow.value = "e1"
+
+        val uiStateJob = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        coEvery { repository.reorderQueue(any()) } throws RuntimeException("Database error")
+
+        viewModel.moveToTop("e3")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value as QueueUiState.Success
+        assertEquals(listOf("e1", "e2", "e3"), state.queue.map { it.episode.id })
+
+        uiStateJob.cancel()
+    }
 }
